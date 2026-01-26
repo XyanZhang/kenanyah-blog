@@ -21,9 +21,11 @@ export {
   createPostSchema,
   updatePostSchema,
   postFiltersSchema,
+  postQuerySchema,
   type CreatePostInput,
   type UpdatePostInput,
   type PostFiltersInput,
+  type PostQueryInput,
 } from './post'
 
 // Comment validation

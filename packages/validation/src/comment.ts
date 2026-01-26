@@ -5,6 +5,7 @@ export const createCommentSchema = z.object({
     .string()
     .min(1, 'Comment content is required')
     .max(2000, 'Comment must be at most 2000 characters'),
+  postId: z.string().cuid(),
   parentId: z.string().cuid().optional(),
 })
 

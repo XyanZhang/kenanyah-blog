@@ -25,6 +25,9 @@ export const postFiltersSchema = z.object({
   search: z.string().max(100).optional(),
 })
 
+export const postQuerySchema = postFiltersSchema
+
 export type CreatePostInput = z.infer<typeof createPostSchema>
 export type UpdatePostInput = z.infer<typeof updatePostSchema>
 export type PostFiltersInput = z.infer<typeof postFiltersSchema>
+export type PostQueryInput = z.infer<typeof postQuerySchema>

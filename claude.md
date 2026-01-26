@@ -158,15 +158,49 @@ apps/api/
 ### Initial Setup
 
 ```bash
+# Quick setup (recommended)
+pnpm setup
+
+# This will:
+# 1. Install all dependencies
+# 2. Start Docker containers (PostgreSQL)
+# 3. Generate Prisma Client
+# 4. Run database migrations
+# 5. Seed database with test data
+```
+
+**Manual setup:**
+
+```bash
 # Install dependencies
 pnpm install
 
-# Setup database (PostgreSQL must be running)
-pnpm db:migrate
+# Start PostgreSQL with Docker
+pnpm docker:up
 
-# Seed database with test data
+# Setup database
+pnpm db:generate
+pnpm db:migrate
 pnpm db:seed
 ```
+
+### Docker Commands
+
+```bash
+# Start PostgreSQL containers
+pnpm docker:up
+
+# Stop containers
+pnpm docker:down
+
+# View logs
+pnpm docker:logs
+
+# Reset database (removes all data)
+pnpm docker:reset
+```
+
+See [DATABASE.md](DATABASE.md) for detailed database setup instructions.
 
 ### Development
 
@@ -478,27 +512,30 @@ Update user profile (authentication required, own profile only).
 - [x] Create packages/utils
 - [x] Create packages/config
 
-### Phase 3: Backend Core ⏳
-- [ ] Initialize Hono app
-- [ ] Setup Prisma with PostgreSQL
-- [ ] Create database schema
-- [ ] Implement JWT utilities
-- [ ] Implement OAuth utilities
-- [ ] Create authentication middleware
-- [ ] Create error handler middleware
-- [ ] Create rate limiter middleware
+### Phase 3: Backend Core ✅
 
-### Phase 4: Backend Features
-- [ ] Implement Auth routes
-- [ ] Implement Posts routes
-- [ ] Implement Comments routes
-- [ ] Implement Categories routes
-- [ ] Implement Tags routes
-- [ ] Implement Users routes
-- [ ] Create service layer
-- [ ] Create repository layer
+- [x] Initialize Hono app
+- [x] Setup Prisma with PostgreSQL
+- [x] Create database schema
+- [x] Implement JWT utilities
+- [x] Implement OAuth utilities
+- [x] Create authentication middleware
+- [x] Create error handler middleware
+- [x] Create rate limiter middleware
+
+### Phase 4: Backend Features ✅
+
+- [x] Implement Auth routes
+- [x] Implement Posts routes
+- [x] Implement Comments routes
+- [x] Implement Categories routes
+- [x] Implement Tags routes
+- [x] Implement Users routes
+- [x] Create service layer
+- [x] Create repository layer
 
 ### Phase 5: Backend Testing
+
 - [ ] Setup Vitest
 - [ ] Write unit tests for services
 - [ ] Write unit tests for repositories
@@ -506,6 +543,7 @@ Update user profile (authentication required, own profile only).
 - [ ] Achieve 80%+ coverage
 
 ### Phase 6: Frontend Foundation
+
 - [ ] Initialize Next.js app
 - [ ] Setup Tailwind CSS + shadcn/ui
 - [ ] Create root layout
@@ -515,6 +553,7 @@ Update user profile (authentication required, own profile only).
 - [ ] Create layout components
 
 ### Phase 7: Frontend Features
+
 - [ ] Create post listing page
 - [ ] Create post detail page
 - [ ] Create category pages
@@ -523,6 +562,7 @@ Update user profile (authentication required, own profile only).
 - [ ] Implement post components
 
 ### Phase 8: Frontend Testing
+
 - [ ] Setup Vitest for components
 - [ ] Write component tests
 - [ ] Write hook tests
@@ -531,6 +571,7 @@ Update user profile (authentication required, own profile only).
 - [ ] Achieve 80%+ coverage
 
 ### Phase 9: Security & Deployment
+
 - [ ] Run security audit
 - [ ] Verify security checklist
 - [ ] Setup production environment
@@ -542,6 +583,7 @@ Update user profile (authentication required, own profile only).
 ## Changelog
 
 ### 2026-01-26
+
 - **Project Initialization**: Created project structure and documentation
 - **Phase 1 Complete**: Foundation setup with monorepo configuration
   - Created root package.json with pnpm workspace scripts
@@ -554,4 +596,23 @@ Update user profile (authentication required, own profile only).
   - Created @blog/validation with Zod schemas
   - Created @blog/utils with utility functions (slug, date, pagination, string)
   - Created @blog/config with shared configurations
-
+- **Phase 3 Complete**: Backend Core implementation
+  - Initialized Hono app with middleware (CORS, logger, error handler)
+  - Setup Prisma with PostgreSQL schema (User, Post, Category, Tag, Comment models)
+  - Implemented JWT utilities for authentication
+  - Implemented OAuth utilities for Google/GitHub login
+  - Created authentication, validation, and rate limiting middleware
+- **Phase 4 Complete**: Backend API routes
+  - Implemented Auth routes (register, login, logout, refresh, OAuth)
+  - Implemented Posts routes (CRUD with pagination and filters)
+  - Implemented Categories routes (CRUD, admin only)
+  - Implemented Tags routes (CRUD, admin only)
+  - Implemented Comments routes (CRUD with nested replies)
+  - Implemented Users routes (profile management)
+- **Docker Setup**: Added Docker Compose configuration
+  - Created docker-compose.yml with PostgreSQL 16 (dev + test databases)
+  - Added database initialization script (init.sql)
+  - Updated .env.example with Docker database credentials
+  - Added Docker management scripts (docker:up, docker:down, docker:logs, docker:reset)
+  - Created one-command setup script (pnpm setup)
+  - Added comprehensive documentation (DATABASE.md, QUICKSTART.md, README.md)
