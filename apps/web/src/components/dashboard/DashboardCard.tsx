@@ -68,16 +68,17 @@ export function DashboardCard({ card, index }: DashboardCardProps) {
         damping: isDragging ? 30 : 20,
       }}
       className={`
-        rounded-xl bg-white shadow-lg
+        rounded-[40px] border border-white/50 p-6 backdrop-blur-xs
+        [box-shadow:0_40px_50px_-32px_rgba(0,0,0,0.05),inset_0_0_20px_rgba(255,255,255,0.25)]
         ${isEditMode ? 'cursor-grab active:cursor-grabbing' : ''}
         ${isSelected ? 'ring-2 ring-blue-500' : ''}
-        ${isDragging ? 'shadow-2xl' : ''}
+        ${isDragging ? '[box-shadow:0_50px_60px_-30px_rgba(0,0,0,0.1),inset_0_0_20px_rgba(255,255,255,0.25)]' : ''}
       `}
       onClick={() => isEditMode && selectCard(card.id)}
       {...(isEditMode ? { ...attributes, ...listeners } : {})}
     >
       {isEditMode && <CardToolbar cardId={card.id} />}
-      <div className="h-full w-full overflow-hidden rounded-xl p-4">
+      <div className="h-full w-full overflow-hidden rounded-4xl">
         <CardContent card={card} />
       </div>
     </motion.div>
