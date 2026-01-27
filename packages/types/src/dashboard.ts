@@ -4,6 +4,12 @@ export enum CardSize {
   LARGE = 'large',    // 400x400
   WIDE = 'wide',      // 600x300
   TALL = 'tall',      // 300x600
+  CUSTOM = 'custom',  // user-defined dimensions
+}
+
+export interface CardDimensions {
+  width: number
+  height: number
 }
 
 export enum CardType {
@@ -27,6 +33,7 @@ export interface DashboardCard {
   id: string
   type: CardType
   size: CardSize
+  customDimensions?: CardDimensions
   position: CardPosition
   config: Record<string, any>
   visible: boolean

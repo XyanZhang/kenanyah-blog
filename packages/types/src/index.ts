@@ -60,6 +60,7 @@ export type {
 // Dashboard types
 export { CardSize, CardType } from './dashboard'
 export type {
+  CardDimensions,
   CardPosition,
   DashboardCard,
   DashboardLayout,

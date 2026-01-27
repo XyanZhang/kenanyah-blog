@@ -1,15 +1,28 @@
-import { CardSize } from '@blog/types'
+import { CardSize, CardDimensions } from '@blog/types'
 
-export const CARD_DIMENSIONS = {
+export const CARD_DIMENSIONS: Record<string, CardDimensions> = {
   small: { width: 200, height: 200 },
   medium: { width: 300, height: 300 },
   large: { width: 400, height: 400 },
   wide: { width: 600, height: 300 },
   tall: { width: 300, height: 600 },
+}
+
+export const RESIZE_CONSTRAINTS = {
+  minWidth: 150,
+  minHeight: 150,
+  maxWidth: 800,
+  maxHeight: 800,
 } as const
 
-export function getCardDimensions(size: CardSize) {
-  return CARD_DIMENSIONS[size]
+export function getCardDimensions(
+  size: CardSize,
+  customDimensions?: CardDimensions
+): CardDimensions {
+  if (size === CardSize.CUSTOM && customDimensions) {
+    return customDimensions
+  }
+  return CARD_DIMENSIONS[size] ?? CARD_DIMENSIONS.medium
 }
 
 export const DEFAULT_LAYOUT_CONFIG = {
