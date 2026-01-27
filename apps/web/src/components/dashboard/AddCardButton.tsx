@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { Plus, User, BarChart3, FolderTree, FileText } from 'lucide-react'
+import { Plus, User, BarChart3, FolderTree, FileText, LayoutGrid, Clock, Shuffle, Calendar } from 'lucide-react'
 import { CardType, CardSize } from '@blog/types'
 import { useDashboard } from '@/hooks/useDashboard'
 import { Button } from '@/components/ui'
@@ -21,6 +21,10 @@ const cardTypeOptions = [
   { value: CardType.STATS, label: 'Statistics', icon: BarChart3, description: 'Blog statistics' },
   { value: CardType.CATEGORIES, label: 'Categories', icon: FolderTree, description: 'Category cloud' },
   { value: CardType.RECENT_POSTS, label: 'Recent Posts', icon: FileText, description: 'Latest articles' },
+  { value: CardType.TABBAR, label: 'Tabbar', icon: LayoutGrid, description: '多标签导航卡片' },
+  { value: CardType.LATEST_POSTS, label: 'Latest Posts', icon: Clock, description: '最新文章列表' },
+  { value: CardType.RANDOM_POSTS, label: 'Random Posts', icon: Shuffle, description: '随机推荐文章' },
+  { value: CardType.CALENDAR, label: 'Calendar', icon: Calendar, description: '日历组件' },
 ]
 
 const cardSizeOptions = [

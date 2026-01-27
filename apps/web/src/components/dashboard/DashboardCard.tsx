@@ -11,6 +11,10 @@ import { ProfileCard } from './cards/ProfileCard'
 import { StatsCard } from './cards/StatsCard'
 import { CategoriesCard } from './cards/CategoriesCard'
 import { RecentPostsCard } from './cards/RecentPostsCard'
+import { TabbarCard } from './cards/TabbarCard'
+import { LatestPostsCard } from './cards/LatestPostsCard'
+import { RandomPostsCard } from './cards/RandomPostsCard'
+import { CalendarCard } from './cards/CalendarCard'
 
 interface DashboardCardProps {
   card: DashboardCardType
@@ -23,6 +27,10 @@ function getCardComponent(type: CardType) {
     [CardType.STATS]: StatsCard,
     [CardType.CATEGORIES]: CategoriesCard,
     [CardType.RECENT_POSTS]: RecentPostsCard,
+    [CardType.TABBAR]: TabbarCard,
+    [CardType.LATEST_POSTS]: LatestPostsCard,
+    [CardType.RANDOM_POSTS]: RandomPostsCard,
+    [CardType.CALENDAR]: CalendarCard,
   }
   return registry[type]
 }

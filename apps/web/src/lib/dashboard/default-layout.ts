@@ -12,7 +12,7 @@ export function createDefaultCard(
 ): Omit<DashboardCard, 'position'> {
   const now = new Date()
 
-  const defaultConfigs = {
+  const defaultConfigs: Record<CardType, Record<string, any>> = {
     [CardType.PROFILE]: {
       showAvatar: true,
       showBio: true,
@@ -30,6 +30,25 @@ export function createDefaultCard(
       limit: 5,
       showExcerpt: true,
       showDate: true,
+    },
+    [CardType.TABBAR]: {
+      defaultTab: 'recent',
+    },
+    [CardType.LATEST_POSTS]: {
+      limit: 3,
+      showImage: true,
+      showExcerpt: true,
+      showDate: true,
+    },
+    [CardType.RANDOM_POSTS]: {
+      limit: 3,
+      showImage: true,
+      showExcerpt: true,
+      showDate: true,
+    },
+    [CardType.CALENDAR]: {
+      showPostDots: true,
+      highlightToday: true,
     },
   }
 
@@ -55,6 +74,10 @@ export function createDefaultLayout(): DashboardLayout {
     createDefaultCard(CardType.STATS, CardSize.WIDE),
     createDefaultCard(CardType.CATEGORIES, CardSize.MEDIUM),
     createDefaultCard(CardType.RECENT_POSTS, CardSize.TALL),
+    createDefaultCard(CardType.TABBAR, CardSize.WIDE),
+    createDefaultCard(CardType.LATEST_POSTS, CardSize.TALL),
+    createDefaultCard(CardType.RANDOM_POSTS, CardSize.TALL),
+    createDefaultCard(CardType.CALENDAR, CardSize.MEDIUM),
   ]
 
   const positions = generateCircularLayout(
