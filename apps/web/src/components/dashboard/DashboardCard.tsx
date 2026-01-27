@@ -39,28 +39,34 @@ export function DashboardCard({ card, index }: DashboardCardProps) {
 
   const CardContent = getCardComponent(card.type)
 
-  const style = {
-    position: 'absolute' as const,
-    left: card.position.x,
-    top: card.position.y,
-    width: dimensions.width,
-    height: dimensions.height,
-    zIndex: isDragging ? 1000 : card.position.z,
-    transform: transform
-      ? `translate3d(${transform.x}px, ${transform.y}px, 0)`
-      : undefined,
-  }
+  // Calculate final position including drag transform
+  const x = card.position.x + (transform?.x || 0)
+  const y = card.position.y + (transform?.y || 0)
 
   return (
     <motion.div
       ref={setNodeRef}
-      style={style}
+      style={{
+        position: 'absolute',
+        width: dimensions.width,
+        height: dimensions.height,
+        zIndex: isDragging ? 1000 : card.position.z,
+      }}
       variants={cardVariants}
       initial="hidden"
-      animate={isDragging ? 'drag' : 'visible'}
-      whileHover={isEditMode ? 'hover' : undefined}
-      whileTap={isEditMode ? 'tap' : undefined}
+      animate={{
+        x,
+        y,
+        scale: isDragging ? 1.05 : 1,
+        opacity: isDragging ? 0.8 : 1,
+      }}
+      whileHover={isEditMode && !isDragging ? { scale: 1.02 } : undefined}
       custom={index}
+      transition={{
+        type: 'spring',
+        stiffness: isDragging ? 500 : 260,
+        damping: isDragging ? 30 : 20,
+      }}
       className={`
         rounded-xl bg-white shadow-lg
         ${isEditMode ? 'cursor-grab active:cursor-grabbing' : ''}
