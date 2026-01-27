@@ -67,4 +67,8 @@ export type {
   StatsCardConfig,
   CategoriesCardConfig,
   RecentPostsCardConfig,
+  TabbarCardConfig,
+  LatestPostsCardConfig,
+  RandomPostsCardConfig,
+  CalendarCardConfig,
 } from './dashboard'

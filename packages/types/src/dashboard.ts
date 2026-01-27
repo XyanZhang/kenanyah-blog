@@ -11,6 +11,10 @@ export enum CardType {
   STATS = 'stats',
   CATEGORIES = 'categories',
   RECENT_POSTS = 'recent_posts',
+  TABBAR = 'tabbar',
+  LATEST_POSTS = 'latest_posts',
+  RANDOM_POSTS = 'random_posts',
+  CALENDAR = 'calendar',
 }
 
 export interface CardPosition {
@@ -60,4 +64,27 @@ export interface RecentPostsCardConfig {
   limit: number
   showExcerpt: boolean
   showDate: boolean
+}
+
+export interface TabbarCardConfig {
+  defaultTab: 'recent' | 'about' | 'photography' | 'projects'
+}
+
+export interface LatestPostsCardConfig {
+  limit: number
+  showImage: boolean
+  showExcerpt: boolean
+  showDate: boolean
+}
+
+export interface RandomPostsCardConfig {
+  limit: number
+  showImage: boolean
+  showExcerpt: boolean
+  showDate: boolean
+}
+
+export interface CalendarCardConfig {
+  showPostDots: boolean
+  highlightToday: boolean
 }
