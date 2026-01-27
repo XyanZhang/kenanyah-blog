@@ -51,3 +51,18 @@ export {
   type CreateTagInput,
   type UpdateTagInput,
 } from './tag'
+
+// Dashboard validation
+export {
+  cardSizeSchema,
+  cardTypeSchema,
+  cardPositionSchema,
+  dashboardCardSchema,
+  dashboardLayoutSchema,
+  profileCardConfigSchema,
+  statsCardConfigSchema,
+  categoriesCardConfigSchema,
+  recentPostsCardConfigSchema,
+  validateDashboardCard,
+  validateDashboardLayout,
+} from './dashboard'
