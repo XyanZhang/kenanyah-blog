@@ -2,7 +2,7 @@
 
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { DashboardCard, DashboardLayout, CardType, CardSize } from '@blog/types'
+import { DashboardCard, DashboardLayout, CardType, CardSize, CardDimensions } from '@blog/types'
 import { createDefaultLayout, createDefaultCard } from '@/lib/dashboard/default-layout'
 import { generateCircularLayout } from '@/lib/dashboard/layout-algorithms'
 import { DEFAULT_LAYOUT_CONFIG, STORAGE_KEY, LAYOUT_VERSION } from '@/lib/constants/dashboard'
@@ -20,6 +20,7 @@ interface DashboardState {
   removeCard: (cardId: string) => void
   updateCard: (cardId: string, updates: Partial<DashboardCard>) => void
   updateCardPosition: (cardId: string, delta: { x: number; y: number }) => void
+  updateCardSize: (cardId: string, dimensions: CardDimensions, positionDelta?: { x: number; y: number }) => void
   toggleEditMode: () => void
   selectCard: (cardId: string | null) => void
   resetLayout: () => void
@@ -122,6 +123,36 @@ export const useDashboardStore = create<DashboardState>()(
                       x: card.position.x + delta.x,
                       y: card.position.y + delta.y,
                     },
+                    updatedAt: new Date(),
+                  }
+                : card
+            ),
+            updatedAt: new Date(),
+          },
+        })
+      },
+
+      // Update card size (for edge resize)
+      updateCardSize: (cardId: string, dimensions: CardDimensions, positionDelta?: { x: number; y: number }) => {
+        const { layout } = get()
+        if (!layout) return
+
+        set({
+          layout: {
+            ...layout,
+            cards: layout.cards.map((card) =>
+              card.id === cardId
+                ? {
+                    ...card,
+                    size: CardSize.CUSTOM,
+                    customDimensions: dimensions,
+                    position: positionDelta
+                      ? {
+                          ...card.position,
+                          x: card.position.x + positionDelta.x,
+                          y: card.position.y + positionDelta.y,
+                        }
+                      : card.position,
                     updatedAt: new Date(),
                   }
                 : card

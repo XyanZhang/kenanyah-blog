@@ -1,12 +1,15 @@
 'use client'
 
+import { useCallback } from 'react'
 import { useDraggable } from '@dnd-kit/core'
 import { motion } from 'framer-motion'
-import { DashboardCard as DashboardCardType, CardType } from '@blog/types'
+import { DashboardCard as DashboardCardType, CardType, CardDimensions } from '@blog/types'
 import { useDashboard } from '@/hooks/useDashboard'
+import { useCardResize } from '@/hooks/useCardResize'
 import { cardVariants } from '@/hooks/useCardAnimation'
 import { getCardDimensions } from '@/lib/constants/dashboard'
 import { CardToolbar } from './CardToolbar'
+import { ResizeHandles } from './ResizeHandles'
 import { ProfileCard } from './cards/ProfileCard'
 import { StatsCard } from './cards/StatsCard'
 import { CategoriesCard } from './cards/CategoriesCard'
@@ -36,29 +39,41 @@ function getCardComponent(type: CardType) {
 }
 
 export function DashboardCard({ card, index }: DashboardCardProps) {
-  const { isEditMode, selectedCardId, selectCard } = useDashboard()
-  const dimensions = getCardDimensions(card.size)
+  const { isEditMode, selectedCardId, selectCard, updateCardSize } = useDashboard()
+  const baseDimensions = getCardDimensions(card.size, card.customDimensions)
   const isSelected = selectedCardId === card.id
+
+  const handleResizeEnd = useCallback(
+    (dimensions: CardDimensions, positionDelta: { x: number; y: number }) => {
+      updateCardSize(card.id, dimensions, positionDelta)
+    },
+    [card.id, updateCardSize]
+  )
+
+  const { isResizing, currentDimensions, positionDelta, handleResizeStart } = useCardResize({
+    initialDimensions: baseDimensions,
+    onResizeEnd: handleResizeEnd,
+  })
 
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: card.id,
-    disabled: !isEditMode,
+    disabled: !isEditMode || isResizing,
   })
 
   const CardContent = getCardComponent(card.type)
 
-  // Calculate final position including drag transform
-  const x = card.position.x + (transform?.x || 0)
-  const y = card.position.y + (transform?.y || 0)
+  // Calculate final position including drag transform and resize position delta
+  const x = card.position.x + (transform?.x || 0) + positionDelta.x
+  const y = card.position.y + (transform?.y || 0) + positionDelta.y
 
   return (
     <motion.div
       ref={setNodeRef}
       style={{
         position: 'absolute',
-        width: dimensions.width,
-        height: dimensions.height,
-        zIndex: isDragging ? 1000 : card.position.z,
+        width: currentDimensions.width,
+        height: currentDimensions.height,
+        zIndex: isDragging || isResizing ? 1000 : card.position.z,
       }}
       variants={cardVariants}
       initial="hidden"
@@ -72,10 +87,11 @@ export function DashboardCard({ card, index }: DashboardCardProps) {
       custom={index}
       transition={{
         type: 'spring',
-        stiffness: isDragging ? 500 : 260,
-        damping: isDragging ? 30 : 20,
+        stiffness: isDragging || isResizing ? 500 : 260,
+        damping: isDragging || isResizing ? 30 : 20,
       }}
       className={`
+        group relative
         rounded-[40px] border border-white/50 p-6 backdrop-blur-xs
         [box-shadow:0_40px_50px_-32px_rgba(0,0,0,0.05),inset_0_0_20px_rgba(255,255,255,0.25)]
         ${isEditMode ? 'cursor-grab active:cursor-grabbing' : ''}
@@ -83,12 +99,13 @@ export function DashboardCard({ card, index }: DashboardCardProps) {
         ${isDragging ? '[box-shadow:0_50px_60px_-30px_rgba(0,0,0,0.1),inset_0_0_20px_rgba(255,255,255,0.25)]' : ''}
       `}
       onClick={() => isEditMode && selectCard(card.id)}
-      {...(isEditMode ? { ...attributes, ...listeners } : {})}
+      {...(isEditMode && !isResizing ? { ...attributes, ...listeners } : {})}
     >
       {isEditMode && <CardToolbar cardId={card.id} />}
       <div className="h-full w-full overflow-hidden rounded-4xl">
         <CardContent card={card} />
       </div>
+      {isEditMode && <ResizeHandles onResizeStart={handleResizeStart} />}
     </motion.div>
   )
 }
