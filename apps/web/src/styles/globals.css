@@ -1,1 +1,24 @@
 @import 'tailwindcss';
+
+@layer base {
+  body {
+    @apply overflow-hidden;
+  }
+}
+
+@layer utilities {
+  .card-shadow {
+    box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.1);
+  }
+
+  .card-shadow-hover {
+    box-shadow: 0 20px 40px -5px rgba(0, 0, 0, 0.15);
+  }
+
+  .line-clamp-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+}

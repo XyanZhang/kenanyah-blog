@@ -1,5 +1,5 @@
 // User types
-export {
+export type {
   User,
   UserRole,
   AuthProvider,
@@ -9,7 +9,7 @@ export {
 } from './user'
 
 // Post types
-export {
+export type {
   Post,
   CreatePostDto,
   UpdatePostDto,
@@ -17,7 +17,7 @@ export {
 } from './post'
 
 // Comment types
-export {
+export type {
   Comment,
   CreateCommentDto,
   UpdateCommentDto,
@@ -25,7 +25,7 @@ export {
 } from './comment'
 
 // Category types
-export {
+export type {
   Category,
   CreateCategoryDto,
   UpdateCategoryDto,
@@ -33,7 +33,7 @@ export {
 } from './category'
 
 // Tag types
-export {
+export type {
   Tag,
   CreateTagDto,
   UpdateTagDto,
@@ -41,7 +41,7 @@ export {
 } from './tag'
 
 // API types
-export {
+export type {
   ApiResponse,
   PaginationMeta,
   PaginationParams,
@@ -49,10 +49,22 @@ export {
 } from './api'
 
 // Auth types
-export {
+export type {
   LoginDto,
   RegisterDto,
   AuthResponse,
   JwtPayload,
   TokenPair,
 } from './auth'
+
+// Dashboard types
+export { CardSize, CardType } from './dashboard'
+export type {
+  CardPosition,
+  DashboardCard,
+  DashboardLayout,
+  ProfileCardConfig,
+  StatsCardConfig,
+  CategoriesCardConfig,
+  RecentPostsCardConfig,
+} from './dashboard'
