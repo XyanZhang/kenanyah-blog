@@ -4,12 +4,10 @@ export const cardVariants = {
   hidden: {
     scale: 0,
     opacity: 0,
-    rotate: -10,
   },
   visible: (index: number) => ({
     scale: 1,
     opacity: 1,
-    rotate: 0,
     transition: {
       delay: index * 0.1,
       type: 'spring' as const,
