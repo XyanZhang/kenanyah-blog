@@ -57,10 +57,10 @@ export function DashboardCard({ card, index }: DashboardCardProps) {
       animate={{
         x,
         y,
-        scale: isDragging ? 1.05 : 1,
+        scale: 1,
         opacity: isDragging ? 0.8 : 1,
       }}
-      whileHover={isEditMode && !isDragging ? { scale: 1.02 } : undefined}
+      whileHover={!isEditMode ? { scale: 1.02 } : undefined}
       custom={index}
       transition={{
         type: 'spring',
