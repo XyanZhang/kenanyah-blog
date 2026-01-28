@@ -57,7 +57,7 @@ export function RandomPostsCard({ card }: RandomPostsCardProps) {
       <div className="mb-4 flex items-center justify-between">
         <h3 className="text-lg font-semibold text-content-primary">随机推荐</h3>
         <button
-          className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs text-content-muted transition-colors hover:bg-surface-hover hover:text-accent-primary"
+          className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs text-content-muted backdrop-blur-sm transition-colors hover:bg-surface-glass/60 hover:text-accent-primary"
           onClick={(e) => {
             e.preventDefault()
           }}
@@ -72,7 +72,7 @@ export function RandomPostsCard({ card }: RandomPostsCardProps) {
           <Link
             key={post.id}
             href={`/posts/${post.slug}` as any}
-            className="group flex gap-3 rounded-xl border border-line-primary p-2 transition-all hover:border-line-hover hover:shadow-md"
+            className="group flex gap-3 rounded-xl border border-line-glass/50 bg-surface-glass/40 p-2 backdrop-blur-sm transition-all hover:border-line-hover hover:bg-surface-glass/60 hover:shadow-md"
           >
             {config.showImage && (
               <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-lg bg-gradient-to-br from-accent-tertiary-light to-accent-primary-light">

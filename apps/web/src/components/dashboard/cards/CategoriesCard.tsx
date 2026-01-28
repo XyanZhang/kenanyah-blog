@@ -52,11 +52,11 @@ export function CategoriesCard({ card }: CategoriesCardProps) {
             <Link
               key={item.id}
               href={`/category/${item.slug}` as any}
-              className="flex items-center justify-between rounded-lg px-3 py-2 transition-colors hover:bg-surface-hover"
+              className="flex items-center justify-between rounded-xl bg-surface-glass/40 px-3 py-2 backdrop-blur-sm transition-colors hover:bg-surface-glass/60"
             >
               <span className="text-content-secondary">{item.name}</span>
               {config.showCount && (
-                <span className="rounded-full bg-surface-tertiary px-2 py-0.5 text-xs text-content-tertiary">
+                <span className="rounded-full bg-surface-glass/60 px-2 py-0.5 text-xs text-content-tertiary">
                   {item.count}
                 </span>
               )}
@@ -70,7 +70,7 @@ export function CategoriesCard({ card }: CategoriesCardProps) {
               key={item.id}
               href={`/tag/${item.slug}` as any}
               className={`
-                inline-flex items-center gap-1 rounded-full bg-surface-tertiary px-3 py-1 transition-colors hover:bg-surface-hover
+                inline-flex items-center gap-1 rounded-full bg-surface-glass/50 px-3 py-1 backdrop-blur-sm transition-colors hover:bg-surface-glass/70 border border-line-glass/30
                 ${getTagSize(item.count)}
               `}
             >

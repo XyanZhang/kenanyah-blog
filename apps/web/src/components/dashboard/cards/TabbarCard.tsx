@@ -29,7 +29,7 @@ export function TabbarCard({ card }: TabbarCardProps) {
 
   return (
     <div className="flex h-full flex-col">
-      <nav className="flex gap-1 rounded-xl bg-surface-tertiary/80 p-1">
+      <nav className="flex gap-1 rounded-xl bg-surface-glass/50 p-1 backdrop-blur-sm border border-line-glass/30">
         {tabs.map((tab) => (
           <button
             key={tab.key}
@@ -84,7 +84,7 @@ function RecentContent() {
       {posts.map((post, index) => (
         <li
           key={index}
-          className="flex items-center justify-between rounded-lg p-2 text-sm transition-colors hover:bg-surface-hover"
+          className="flex items-center justify-between rounded-xl bg-surface-glass/40 p-2 text-sm backdrop-blur-sm transition-colors hover:bg-surface-glass/60"
         >
           <span className="font-medium text-content-secondary">{post.title}</span>
           <span className="text-xs text-content-muted">{post.date}</span>
@@ -133,7 +133,7 @@ function ProjectsContent() {
       {projects.map((project, index) => (
         <li
           key={index}
-          className="rounded-lg border border-line-primary p-3 transition-colors hover:border-line-hover hover:bg-accent-primary-subtle/50"
+          className="rounded-xl border border-line-glass/50 bg-surface-glass/40 p-3 backdrop-blur-sm transition-colors hover:border-line-hover hover:bg-surface-glass/60"
         >
           <h4 className="font-medium text-content-primary">{project.name}</h4>
           <p className="text-xs text-content-muted">{project.description}</p>

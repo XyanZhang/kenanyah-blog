@@ -61,7 +61,7 @@ export function LatestPostsCard({ card }: LatestPostsCardProps) {
           <Link
             key={post.id}
             href={`/posts/${post.slug}` as any}
-            className="group flex gap-3 rounded-xl border border-line-primary p-2 transition-all hover:border-line-hover hover:shadow-md"
+            className="group flex gap-3 rounded-xl border border-line-glass/50 bg-surface-glass/40 p-2 backdrop-blur-sm transition-all hover:border-line-hover hover:bg-surface-glass/60 hover:shadow-md"
           >
             {config.showImage && (
               <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-lg bg-gradient-to-br from-accent-primary-light to-accent-secondary-light">

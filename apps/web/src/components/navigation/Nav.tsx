@@ -164,11 +164,12 @@ export function Nav() {
         width: config.customSize && isHomepage ? currentSize.width : undefined,
         height: config.customSize && isHomepage ? currentSize.height : undefined,
         viewTransitionName: showViewTransition ? 'main-nav' : undefined,
-        // Position: use CSS for base position, transform for offsets
-        ...(isHorizontal
-          ? { top: '32px', left: '50%', transform: `translateX(-50%) translate(${totalX}px, ${totalY}px)` }
-          : { top: '50%', left: '16px', transform: `translateY(-50%) translate(${totalX}px, ${totalY}px)` }
-        ),
+        // Use fixed positioning (top: 0, left: 0) with translate for smooth view transitions
+        top: 0,
+        left: 0,
+        transform: isHorizontal
+          ? `translate(calc(50vw + ${totalX}px), calc(32px + ${totalY}px)) translateX(-50%)`
+          : `translate(calc(16px + ${totalX}px), calc(50vh + ${totalY}px)) translateY(-50%)`,
       }}
       onPointerDown={isEditMode ? dragHandlers.onPointerDown : undefined}
       onPointerMove={isDragging ? dragHandlers.onPointerMove : undefined}
