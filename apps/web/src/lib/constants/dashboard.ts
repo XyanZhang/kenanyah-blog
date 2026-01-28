@@ -18,7 +18,10 @@ export const RESIZE_CONSTRAINTS = {
 export function getCardDimensions(
   size: CardSize,
   customDimensions?: CardDimensions
-): CardDimensions {
+): CardDimensions | null {
+  if (size === CardSize.AUTO) {
+    return null // auto size is determined by content
+  }
   if (size === CardSize.CUSTOM && customDimensions) {
     return customDimensions
   }

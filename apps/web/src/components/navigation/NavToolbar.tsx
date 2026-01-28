@@ -1,14 +1,14 @@
 'use client'
 
 import { useState } from 'react'
-import { Settings, RotateCcw } from 'lucide-react'
+import { Settings, RotateCcw, Maximize2 } from 'lucide-react'
 import { Button } from '@/components/ui'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui'
 import { useNavStore } from '@/store/nav-store'
 import { NavConfigDialog } from './NavConfigDialog'
 
 export function NavToolbar() {
-  const { resetConfig } = useNavStore()
+  const { config, resetConfig, updateSize } = useNavStore()
   const [isConfigOpen, setIsConfigOpen] = useState(false)
 
   return (
@@ -27,6 +27,22 @@ export function NavToolbar() {
           </TooltipTrigger>
           <TooltipContent side="top">配置导航</TooltipContent>
         </Tooltip>
+
+        {config.customSize && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => updateSize(null)}
+                className="h-8 w-8 p-0"
+              >
+                <Maximize2 className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="top">自动尺寸</TooltipContent>
+          </Tooltip>
+        )}
 
         <Tooltip>
           <TooltipTrigger asChild>

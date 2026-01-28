@@ -3,7 +3,7 @@
 import { useCallback } from 'react'
 import { useDraggable } from '@dnd-kit/core'
 import { motion } from 'framer-motion'
-import { DashboardCard as DashboardCardType, CardType, CardDimensions } from '@blog/types'
+import { DashboardCard as DashboardCardType, CardType, CardDimensions, CardSize } from '@blog/types'
 import { useDashboard } from '@/hooks/useDashboard'
 import { useCardResize } from '@/hooks/useCardResize'
 import { cardVariants } from '@/hooks/useCardAnimation'
@@ -43,6 +43,7 @@ function getCardComponent(type: CardType) {
 export function DashboardCard({ card, index }: DashboardCardProps) {
   const { isEditMode, selectedCardId, selectCard, updateCardSize } = useDashboard()
   const baseDimensions = getCardDimensions(card.size, card.customDimensions)
+  const isAutoSize = card.size === CardSize.AUTO
   const isSelected = selectedCardId === card.id
 
   const handleResizeEnd = useCallback(
@@ -53,7 +54,7 @@ export function DashboardCard({ card, index }: DashboardCardProps) {
   )
 
   const { isResizing, currentDimensions, positionDelta, handleResizeStart } = useCardResize({
-    initialDimensions: baseDimensions,
+    initialDimensions: baseDimensions ?? { width: 200, height: 200 },
     onResizeEnd: handleResizeEnd,
   })
 
@@ -74,8 +75,8 @@ export function DashboardCard({ card, index }: DashboardCardProps) {
       ref={setNodeRef}
       style={{
         position: 'absolute',
-        width: currentDimensions.width,
-        height: currentDimensions.height,
+        width: isAutoSize ? 'fit-content' : currentDimensions.width,
+        height: isAutoSize ? 'fit-content' : currentDimensions.height,
         zIndex: isDragging || isResizing ? 1000 : card.position.z,
         borderRadius: `${borderRadius}px`,
       }}
@@ -112,7 +113,7 @@ export function DashboardCard({ card, index }: DashboardCardProps) {
       >
         <CardContent card={card} />
       </div>
-      {isEditMode && <ResizeHandles onResizeStart={handleResizeStart} />}
+      {isEditMode && !isAutoSize && <ResizeHandles onResizeStart={handleResizeStart} />}
     </motion.div>
   )
 }

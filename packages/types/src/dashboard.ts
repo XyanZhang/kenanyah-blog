@@ -5,6 +5,7 @@ export enum CardSize {
   WIDE = 'wide',      // 600x300
   TALL = 'tall',      // 300x600
   CUSTOM = 'custom',  // user-defined dimensions
+  AUTO = 'auto',      // content-driven size
 }
 
 export interface CardDimensions {
