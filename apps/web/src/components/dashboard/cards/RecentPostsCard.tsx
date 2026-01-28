@@ -62,7 +62,7 @@ export function RecentPostsCard({ card }: RecentPostsCardProps) {
           <Link
             key={post.id}
             href={`/posts/${post.slug}` as any}
-            className="block rounded-lg border border-line-primary p-3 transition-all hover:border-line-hover hover:shadow-md"
+            className="block rounded-xl border border-line-glass/50 bg-surface-glass/40 p-3 backdrop-blur-sm transition-all hover:border-line-hover hover:bg-surface-glass/60 hover:shadow-md"
           >
             <h4 className="mb-1 font-medium text-content-primary line-clamp-2">
               {post.title}

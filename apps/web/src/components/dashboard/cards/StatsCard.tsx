@@ -52,7 +52,7 @@ export function StatsCard({ card }: StatsCardProps) {
           return (
             <div
               key={metric.label}
-              className="flex items-center gap-4 rounded-lg bg-surface-secondary p-4"
+              className="flex items-center gap-4 rounded-xl bg-surface-glass/60 p-4 backdrop-blur-sm border border-line-glass/50"
             >
               <div className={`rounded-full p-3 ${metric.bgColor}`}>
                 <Icon className={`h-6 w-6 ${metric.color}`} />

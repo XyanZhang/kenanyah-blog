@@ -97,11 +97,11 @@ export function DashboardCard({ card, index }: DashboardCardProps) {
       }}
       className={`
         group relative
-        border border-line-glass p-6 backdrop-blur-xs
-        [box-shadow:0_40px_50px_-32px_rgba(0,0,0,0.05),inset_0_0_20px_rgba(255,255,255,0.25)]
+        bg-surface-glass border border-line-glass p-6 backdrop-blur-lg
+        [box-shadow:0_20px_40px_-10px_rgba(0,0,0,0.1),inset_0_1px_0_rgba(255,255,255,0.4)]
         ${isEditMode ? 'cursor-grab active:cursor-grabbing' : ''}
         ${isSelected ? 'ring-2 ring-line-focus' : ''}
-        ${isDragging ? '[box-shadow:0_50px_60px_-30px_rgba(0,0,0,0.1),inset_0_0_20px_rgba(255,255,255,0.25)]' : ''}
+        ${isDragging ? '[box-shadow:0_30px_50px_-15px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.4)]' : ''}
       `}
       onClick={() => isEditMode && selectCard(card.id)}
       {...(isEditMode && !isResizing ? { ...attributes, ...listeners } : {})}

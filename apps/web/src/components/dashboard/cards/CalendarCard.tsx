@@ -70,7 +70,7 @@ export function CalendarCard({ card }: CalendarCardProps) {
       <div className="mb-3 flex items-center justify-between">
         <button
           onClick={goToPreviousMonth}
-          className="rounded-lg p-1.5 text-content-muted transition-colors hover:bg-surface-hover hover:text-content-secondary"
+          className="rounded-lg p-1.5 text-content-muted backdrop-blur-sm transition-colors hover:bg-surface-glass/60 hover:text-content-secondary"
         >
           <ChevronLeft className="h-4 w-4" />
         </button>
@@ -89,7 +89,7 @@ export function CalendarCard({ card }: CalendarCardProps) {
 
         <button
           onClick={goToNextMonth}
-          className="rounded-lg p-1.5 text-content-muted transition-colors hover:bg-surface-hover hover:text-content-secondary"
+          className="rounded-lg p-1.5 text-content-muted backdrop-blur-sm transition-colors hover:bg-surface-glass/60 hover:text-content-secondary"
         >
           <ChevronRight className="h-4 w-4" />
         </button>
@@ -117,7 +117,7 @@ export function CalendarCard({ card }: CalendarCardProps) {
                 relative aspect-square rounded-lg p-1 text-sm transition-all
                 ${!isCurrentMonth ? 'text-content-disabled' : 'text-content-secondary'}
                 ${isCurrentDay && config.highlightToday ? 'bg-accent-primary font-semibold text-content-inverse shadow-md' : ''}
-                ${!isCurrentDay && isCurrentMonth ? 'hover:bg-surface-hover' : ''}
+                ${!isCurrentDay && isCurrentMonth ? 'hover:bg-surface-glass/50' : ''}
               `}
             >
               <span className="flex h-full w-full items-center justify-center">
@@ -137,7 +137,7 @@ export function CalendarCard({ card }: CalendarCardProps) {
         })}
       </div>
 
-      <div className="mt-3 flex items-center justify-center gap-4 border-t border-line-primary pt-3 text-xs text-content-muted">
+      <div className="mt-3 flex items-center justify-center gap-4 border-t border-line-glass/50 pt-3 text-xs text-content-muted">
         <div className="flex items-center gap-1">
           <span className="h-2 w-2 rounded-full bg-accent-primary" />
           <span>今天</span>
