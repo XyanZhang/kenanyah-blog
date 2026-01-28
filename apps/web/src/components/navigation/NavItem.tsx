@@ -17,9 +17,11 @@ interface NavItemProps {
   item: NavItemType
   isHorizontal: boolean
   isActive: boolean
+  isHovered: boolean
+  onMouseEnter: (element: HTMLElement) => void
 }
 
-export function NavItem({ item, isHorizontal, isActive }: NavItemProps) {
+export function NavItem({ item, isHorizontal, isActive, isHovered, onMouseEnter }: NavItemProps) {
   const IconComponent = iconMap[item.icon]
 
   return (
@@ -28,10 +30,11 @@ export function NavItem({ item, isHorizontal, isActive }: NavItemProps) {
       className={cn(
         'group relative flex items-center gap-2 rounded-xl transition-all duration-300',
         isHorizontal ? 'flex-col justify-center px-4 py-3' : 'flex-row justify-center p-3',
-        isActive
-          ? 'bg-surface-primary text-accent-primary shadow-sm'
-          : 'text-content-tertiary hover:bg-surface-glass hover:text-content-primary'
+        isActive || isHovered
+          ? 'text-accent-primary'
+          : 'text-content-tertiary'
       )}
+      onMouseEnter={(e) => onMouseEnter(e.currentTarget)}
     >
       <div
         className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-accent-primary-light to-accent-secondary-light"

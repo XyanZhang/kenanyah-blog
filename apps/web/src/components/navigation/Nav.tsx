@@ -1,5 +1,6 @@
 'use client'
 
+import { useState, useRef, useCallback } from 'react'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import { NavItem } from './NavItem'
@@ -8,9 +9,36 @@ import { navItems } from './nav-items'
 export function Nav() {
   const pathname = usePathname()
   const isHomepage = pathname === '/'
+  const navRef = useRef<HTMLElement>(null)
+  const [hoverIndex, setHoverIndex] = useState<number | null>(null)
+  const [indicatorStyle, setIndicatorStyle] = useState<React.CSSProperties>({})
+
+  const handleMouseEnter = useCallback(
+    (index: number, element: HTMLElement) => {
+      setHoverIndex(index)
+      const rect = element.getBoundingClientRect()
+      const navRect = navRef.current?.getBoundingClientRect()
+      if (navRect) {
+        setIndicatorStyle({
+          width: rect.width,
+          height: rect.height,
+          transform: isHomepage
+            ? `translateX(${rect.left - navRect.left - 8}px)`
+            : `translateY(${rect.top - navRect.top - 8}px)`,
+          opacity: 1,
+        })
+      }
+    },
+    [isHomepage]
+  )
+
+  const handleMouseLeave = useCallback(() => {
+    setHoverIndex(null)
+  }, [])
 
   return (
     <nav
+      ref={navRef}
       className={cn(
         'fixed z-50 transition-all duration-500',
         'rounded-2xl bg-surface-glass backdrop-blur-lg',
@@ -25,13 +53,26 @@ export function Nav() {
         flexDirection: isHomepage ? 'row' : 'column',
         viewTransitionName: 'main-nav',
       }}
+      onMouseLeave={handleMouseLeave}
     >
-      {navItems.map((item) => (
+      <div
+        className={cn(
+          'absolute rounded-xl bg-surface-primary shadow-sm transition-all duration-300 ease-out',
+          hoverIndex === null && 'opacity-0'
+        )}
+        style={{
+          ...indicatorStyle,
+          pointerEvents: 'none',
+        }}
+      />
+      {navItems.map((item, index) => (
         <NavItem
           key={item.id}
           item={item}
           isHorizontal={isHomepage}
           isActive={pathname === item.href}
+          isHovered={hoverIndex === index}
+          onMouseEnter={(el) => handleMouseEnter(index, el)}
         />
       ))}
     </nav>
