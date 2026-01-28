@@ -21,6 +21,7 @@ export enum CardType {
   LATEST_POSTS = 'latest_posts',
   RANDOM_POSTS = 'random_posts',
   CALENDAR = 'calendar',
+  CLOCK = 'clock',
 }
 
 export interface CardPosition {
@@ -95,4 +96,11 @@ export interface RandomPostsCardConfig {
 export interface CalendarCardConfig {
   showPostDots: boolean
   highlightToday: boolean
+}
+
+export interface ClockCardConfig {
+  format24h: boolean
+  showSeconds: boolean
+  showDate: boolean
+  fontStyle: 'mono' | 'sans' | 'serif'
 }
