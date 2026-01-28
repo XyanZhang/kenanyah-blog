@@ -32,3 +32,5 @@ export const DEFAULT_LAYOUT_CONFIG = {
 
 export const STORAGE_KEY = 'dashboard-layout'
 export const LAYOUT_VERSION = 1
+
+export const DEFAULT_BORDER_RADIUS = 40

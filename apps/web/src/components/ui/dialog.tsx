@@ -79,6 +79,10 @@ function DialogContent({ children, className }: DialogContentProps) {
 
   if (!open) return null
 
+  const stopPropagation = (e: React.MouseEvent | React.PointerEvent | React.KeyboardEvent) => {
+    e.stopPropagation()
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div
@@ -90,6 +94,12 @@ function DialogContent({ children, className }: DialogContentProps) {
           'relative z-50 w-full max-w-lg rounded-lg bg-white p-6 shadow-lg',
           className
         )}
+        onClick={stopPropagation}
+        onPointerDown={stopPropagation}
+        onPointerMove={stopPropagation}
+        onPointerUp={stopPropagation}
+        onKeyDown={stopPropagation}
+        onKeyUp={stopPropagation}
       >
         <button
           className="absolute right-4 top-4 rounded-sm opacity-70 hover:opacity-100"

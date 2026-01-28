@@ -8,6 +8,8 @@ export {
   DialogDescription,
   DialogFooter,
 } from './dialog'
+export { Input } from './input'
+export { Label } from './label'
 export {
   Select,
   SelectTrigger,
@@ -15,6 +17,8 @@ export {
   SelectContent,
   SelectItem,
 } from './select'
+export { Slider } from './slider'
+export { Switch } from './switch'
 export {
   Tooltip,
   TooltipTrigger,
