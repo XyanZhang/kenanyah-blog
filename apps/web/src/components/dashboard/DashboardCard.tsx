@@ -18,6 +18,7 @@ import { TabbarCard } from './cards/TabbarCard'
 import { LatestPostsCard } from './cards/LatestPostsCard'
 import { RandomPostsCard } from './cards/RandomPostsCard'
 import { CalendarCard } from './cards/CalendarCard'
+import { ClockCard } from './cards/ClockCard'
 
 interface DashboardCardProps {
   card: DashboardCardType
@@ -34,6 +35,7 @@ function getCardComponent(type: CardType) {
     [CardType.LATEST_POSTS]: LatestPostsCard,
     [CardType.RANDOM_POSTS]: RandomPostsCard,
     [CardType.CALENDAR]: CalendarCard,
+    [CardType.CLOCK]: ClockCard,
   }
   return registry[type]
 }

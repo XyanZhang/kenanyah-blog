@@ -50,6 +50,12 @@ export function createDefaultCard(
       showPostDots: true,
       highlightToday: true,
     },
+    [CardType.CLOCK]: {
+      format24h: true,
+      showSeconds: true,
+      showDate: true,
+      fontStyle: 'mono',
+    },
   }
 
   return {
