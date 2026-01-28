@@ -5,6 +5,7 @@ import { persist } from 'zustand/middleware'
 import { DashboardCard, DashboardLayout, CardType, CardSize, CardDimensions } from '@blog/types'
 import { createDefaultLayout, createDefaultCard } from '@/lib/dashboard/default-layout'
 import { generateCircularLayout } from '@/lib/dashboard/layout-algorithms'
+import { applyTemplate, LayoutTemplate } from '@/lib/dashboard/layout-templates'
 import { DEFAULT_LAYOUT_CONFIG, STORAGE_KEY, LAYOUT_VERSION } from '@/lib/constants/dashboard'
 
 interface DashboardState {
@@ -25,6 +26,7 @@ interface DashboardState {
   selectCard: (cardId: string | null) => void
   resetLayout: () => void
   reorderCards: () => void
+  applyLayoutTemplate: (template: LayoutTemplate) => void
 }
 
 export const useDashboardStore = create<DashboardState>()(
@@ -200,6 +202,15 @@ export const useDashboardStore = create<DashboardState>()(
             })),
             updatedAt: new Date(),
           },
+        })
+      },
+
+      // Apply a layout template
+      applyLayoutTemplate: (template: LayoutTemplate) => {
+        const newLayout = applyTemplate(template)
+        set({
+          layout: newLayout,
+          selectedCardId: null,
         })
       },
     }),
