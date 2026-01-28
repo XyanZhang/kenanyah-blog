@@ -15,40 +15,41 @@ const iconMap: Record<string, LucideIcon> = {
 
 interface NavItemProps {
   item: NavItemType
-  isHorizontal: boolean
   isActive: boolean
   isHovered: boolean
+  isCompact?: boolean
   onMouseEnter: (element: HTMLElement) => void
 }
 
-export function NavItem({ item, isHorizontal, isActive, isHovered, onMouseEnter }: NavItemProps) {
+export function NavItem({ item, isActive, isHovered, isCompact = false, onMouseEnter }: NavItemProps) {
   const IconComponent = iconMap[item.icon]
 
   return (
     <Link
       href={item.href}
       className={cn(
-        'group relative flex items-center gap-2 rounded-xl transition-all duration-300',
-        isHorizontal ? 'flex-col justify-center px-4 py-3' : 'flex-row justify-center p-3',
+        'group relative flex items-center rounded-xl transition-all duration-300',
+        isCompact ? 'justify-center p-2' : 'gap-3 px-3 py-2',
         isActive || isHovered
-          ? 'text-accent-primary'
+          ? 'text-accent-primary-dark'
           : 'text-content-tertiary'
       )}
       onMouseEnter={(e) => onMouseEnter(e.currentTarget)}
     >
-      <div
-        className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-accent-primary-light to-accent-secondary-light"
+      <IconComponent
+        className={cn(
+          'h-5 w-5 transition-all duration-300',
+          isActive || isHovered
+            ? 'text-accent-primary-dark fill-accent-primary-dark'
+            : 'text-content-tertiary'
+        )}
         style={{ viewTransitionName: `nav-icon-${item.id}` }}
-      >
-        <IconComponent className="h-5 w-5" />
-      </div>
+      />
 
       <span
         className={cn(
           'text-sm font-medium transition-all duration-300',
-          isHorizontal
-            ? 'opacity-100 max-h-6 mt-1'
-            : 'opacity-0 max-h-0 overflow-hidden absolute pointer-events-none'
+          isCompact ? 'opacity-0 max-w-0 overflow-hidden' : 'opacity-100 max-w-32'
         )}
         style={{ viewTransitionName: `nav-label-${item.id}` }}
       >

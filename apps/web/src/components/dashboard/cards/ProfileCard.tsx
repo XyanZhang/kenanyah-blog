@@ -28,7 +28,7 @@ export function ProfileCard({ card }: ProfileCardProps) {
       {config.showAvatar && (
         <div className="relative">
           <div
-            className="relative h-32 w-32 overflow-hidden rounded-full ring-4 ring-accent-primary-light/50 shadow-2xl"
+            className="relative h-32 w-32 overflow-hidden rounded-full ring-accent-primary-light/50 shadow-2xl"
             style={{ '--tw-shadow-color': 'var(--theme-shadow-accent)' } as React.CSSProperties}
           >
             <Image
