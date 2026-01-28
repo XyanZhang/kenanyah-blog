@@ -1,4 +1,6 @@
 export { Nav } from './Nav'
 export { NavItem } from './NavItem'
+export { NavToolbar } from './NavToolbar'
+export { NavConfigDialog } from './NavConfigDialog'
 export { navItems } from './nav-items'
 export type { NavItem as NavItemType } from './nav-items'

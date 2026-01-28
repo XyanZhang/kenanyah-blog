@@ -1,6 +1,6 @@
 'use client'
 
-import { type ResizeDirection } from '@/hooks/useCardResize'
+import { type ResizeDirection } from '@/hooks/useResize'
 
 interface ResizeHandlesProps {
   onResizeStart: (direction: ResizeDirection, e: React.PointerEvent) => void

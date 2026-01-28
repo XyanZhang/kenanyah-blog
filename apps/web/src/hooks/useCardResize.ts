@@ -3,8 +3,9 @@
 import { useCallback, useRef, useState } from 'react'
 import { CardDimensions } from '@blog/types'
 import { RESIZE_CONSTRAINTS } from '@/lib/constants/dashboard'
+import { type ResizeDirection } from '@/hooks/useResize'
 
-export type ResizeDirection = 'n' | 's' | 'e' | 'w' | 'ne' | 'nw' | 'se' | 'sw'
+export type { ResizeDirection }
 
 interface UseCardResizeOptions {
   initialDimensions: CardDimensions
