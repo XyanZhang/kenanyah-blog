@@ -94,9 +94,43 @@ export function Nav() {
     [isHorizontal, isEditMode]
   )
 
+  // Update indicator to active item position
+  const updateIndicatorToActive = useCallback(() => {
+    if (!navRef.current) return
+    const links = navRef.current.querySelectorAll<HTMLAnchorElement>('a')
+    const navRect = navRef.current.getBoundingClientRect()
+    let activeEl: HTMLAnchorElement | null = null
+    links.forEach((link) => {
+      if (link.getAttribute('href') === pathname) {
+        activeEl = link
+      }
+    })
+    if (!activeEl) {
+      setIndicatorStyle((prev) => ({ ...prev, opacity: 0 }))
+      return
+    }
+    const rect = (activeEl as HTMLElement).getBoundingClientRect()
+    setIndicatorStyle({
+      width: rect.width,
+      height: rect.height,
+      transform: isHorizontal
+        ? `translateX(${rect.left - navRect.left - 8}px)`
+        : `translateY(${rect.top - navRect.top - 8}px)`,
+      opacity: 1,
+    })
+  }, [pathname, isHorizontal])
+
+  // Sync indicator to active item on pathname change
+  useEffect(() => {
+    if (hoverIndex === null) {
+      updateIndicatorToActive()
+    }
+  }, [pathname, hoverIndex, updateIndicatorToActive])
+
   const handleMouseLeave = useCallback(() => {
     setHoverIndex(null)
-  }, [])
+    updateIndicatorToActive()
+  }, [updateIndicatorToActive])
 
   // Calculate current size
   const currentSize = isResizing ? resizeCurrentSize : baseSize
@@ -127,8 +161,8 @@ export function Nav() {
         flexDirection: isHorizontal ? 'row' : 'column',
         gap: '4px',
         padding: '8px',
-        width: config.customSize ? currentSize.width : undefined,
-        height: config.customSize ? currentSize.height : undefined,
+        width: config.customSize && isHomepage ? currentSize.width : undefined,
+        height: config.customSize && isHomepage ? currentSize.height : undefined,
         viewTransitionName: showViewTransition ? 'main-nav' : undefined,
         // Position: use CSS for base position, transform for offsets
         ...(isHorizontal
@@ -147,10 +181,7 @@ export function Nav() {
       {/* Hover indicator */}
       {!isEditMode && (
         <div
-          className={cn(
-            'absolute rounded-xl bg-surface-primary shadow-sm transition-all duration-300 ease-out',
-            hoverIndex === null && 'opacity-0'
-          )}
+          className="absolute rounded-xl bg-surface-primary shadow-sm transition-all duration-300 ease-out"
           style={{
             ...indicatorStyle,
             pointerEvents: 'none',
