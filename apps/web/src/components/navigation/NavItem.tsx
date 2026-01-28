@@ -29,12 +29,12 @@ export function NavItem({ item, isHorizontal, isActive }: NavItemProps) {
         'group relative flex items-center gap-2 rounded-xl transition-all duration-300',
         isHorizontal ? 'flex-col justify-center px-4 py-3' : 'flex-row justify-center p-3',
         isActive
-          ? 'bg-white text-purple-600 shadow-sm'
-          : 'text-gray-600 hover:bg-white/50 hover:text-gray-900'
+          ? 'bg-surface-primary text-accent-primary shadow-sm'
+          : 'text-content-tertiary hover:bg-surface-glass hover:text-content-primary'
       )}
     >
       <div
-        className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-purple-100 to-blue-100"
+        className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-accent-primary-light to-accent-secondary-light"
         style={{ viewTransitionName: `nav-icon-${item.id}` }}
       >
         <IconComponent className="h-5 w-5" />

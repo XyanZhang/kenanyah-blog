@@ -1,25 +1,78 @@
 @import 'tailwindcss';
 @import './view-transitions.css';
+@import './themes.css';
 
 @theme {
-  --color-primary: #6366f1;
-  --color-primary-light: #818cf8;
-  --color-primary-dark: #4f46e5;
+  /* Background */
+  --color-bg-base: var(--theme-bg-base);
+
+  /* Accent colors */
+  --color-accent-primary: var(--theme-accent-primary);
+  --color-accent-secondary: var(--theme-accent-secondary);
+  --color-accent-tertiary: var(--theme-accent-tertiary);
+  --color-accent-primary-light: var(--theme-accent-primary-light);
+  --color-accent-secondary-light: var(--theme-accent-secondary-light);
+  --color-accent-tertiary-light: var(--theme-accent-tertiary-light);
+  --color-accent-primary-dark: var(--theme-accent-primary-dark);
+  --color-accent-primary-muted: var(--theme-accent-primary-muted);
+  --color-accent-primary-subtle: var(--theme-accent-primary-subtle);
+
+  /* Surface colors */
+  --color-surface-primary: var(--theme-surface-primary);
+  --color-surface-secondary: var(--theme-surface-secondary);
+  --color-surface-tertiary: var(--theme-surface-tertiary);
+  --color-surface-hover: var(--theme-surface-hover);
+  --color-surface-glass: var(--theme-surface-glass);
+  --color-surface-selected: var(--theme-surface-selected);
+
+  /* Content (text) colors */
+  --color-content-primary: var(--theme-text-primary);
+  --color-content-secondary: var(--theme-text-secondary);
+  --color-content-tertiary: var(--theme-text-tertiary);
+  --color-content-muted: var(--theme-text-muted);
+  --color-content-dim: var(--theme-text-dim);
+  --color-content-disabled: var(--theme-text-disabled);
+  --color-content-inverse: var(--theme-text-inverse);
+
+  /* Border (line) colors */
+  --color-line-primary: var(--theme-border-primary);
+  --color-line-secondary: var(--theme-border-secondary);
+  --color-line-hover: var(--theme-border-hover);
+  --color-line-focus: var(--theme-border-focus);
+  --color-line-glass: var(--theme-border-glass);
+
+  /* UI component colors */
+  --color-ui-primary: var(--theme-ui-primary);
+  --color-ui-primary-hover: var(--theme-ui-primary-hover);
+  --color-ui-primary-ring: var(--theme-ui-primary-ring);
+  --color-ui-destructive: var(--theme-ui-destructive);
+  --color-ui-destructive-hover: var(--theme-ui-destructive-hover);
+  --color-ui-destructive-light: var(--theme-ui-destructive-light);
+  --color-ui-success: var(--theme-ui-success);
+  --color-ui-success-text: var(--theme-ui-success-text);
+  --color-ui-switch-off: var(--theme-ui-switch-off);
+
+  /* Legacy alias for alignment guides */
+  --color-primary: var(--theme-accent-primary);
+  --color-primary-light: var(--theme-accent-primary-light);
+  --color-primary-dark: var(--theme-accent-primary-dark);
 }
 
 @layer base {
   body {
-    @apply bg-gradient-to-br from-slate-50 via-purple-50/30 to-blue-50/30 min-h-screen;
+    background-color: var(--theme-bg-base);
+    @apply min-h-screen;
+    transition: background-color 0.3s ease, color 0.3s ease;
   }
 }
 
 @layer utilities {
   .card-shadow {
-    box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 10px 30px -5px var(--theme-shadow-color);
   }
 
   .card-shadow-hover {
-    box-shadow: 0 20px 40px -5px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 20px 40px -5px var(--theme-shadow-color);
   }
 
   .line-clamp-2 {

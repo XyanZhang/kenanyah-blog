@@ -72,4 +72,5 @@ export type {
   LatestPostsCardConfig,
   RandomPostsCardConfig,
   CalendarCardConfig,
+  ClockCardConfig,
 } from './dashboard'

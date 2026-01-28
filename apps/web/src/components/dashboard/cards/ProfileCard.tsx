@@ -27,7 +27,10 @@ export function ProfileCard({ card }: ProfileCardProps) {
     <div className="relative flex h-full flex-col items-center justify-center space-y-6 text-center">
       {config.showAvatar && (
         <div className="relative">
-          <div className="relative h-32 w-32 overflow-hidden rounded-full ring-4 ring-purple-200/50 shadow-2xl shadow-purple-300/50">
+          <div
+            className="relative h-32 w-32 overflow-hidden rounded-full ring-4 ring-accent-primary-light/50 shadow-2xl"
+            style={{ '--tw-shadow-color': 'var(--theme-shadow-accent)' } as React.CSSProperties}
+          >
             <Image
               src={profile.avatar}
               alt={profile.name}
@@ -37,16 +40,16 @@ export function ProfileCard({ card }: ProfileCardProps) {
             />
           </div>
           {/* Glow effect behind avatar */}
-          <div className="absolute inset-0 -z-10 rounded-full bg-linear-to-br from-purple-400 to-cyan-400 opacity-20 blur-xl" />
+          <div className="absolute inset-0 -z-10 rounded-full bg-linear-to-br from-accent-primary-muted to-accent-tertiary opacity-20 blur-xl" />
         </div>
       )}
 
       <div className="space-y-2">
-        <h2 className="bg-linear-to-r from-purple-600 via-blue-600 to-cyan-600 bg-clip-text text-2xl font-bold text-transparent">
+        <h2 className="bg-linear-to-r from-accent-primary via-accent-secondary to-accent-tertiary bg-clip-text text-2xl font-bold text-transparent">
           {profile.greeting}
         </h2>
         {config.showBio && (
-          <p className="text-lg font-medium text-purple-900/70">
+          <p className="text-lg font-medium text-accent-primary-dark">
             {profile.subtitle}
           </p>
         )}
@@ -58,7 +61,7 @@ export function ProfileCard({ card }: ProfileCardProps) {
             href={profile.social.github}
             target="_blank"
             rel="noopener noreferrer"
-            className="group rounded-full bg-white/80 p-3 text-purple-600 shadow-md backdrop-blur-sm transition-all hover:scale-110 hover:bg-linear-to-br hover:from-purple-500 hover:to-blue-500 hover:text-white hover:shadow-xl hover:shadow-purple-300/50"
+            className="group rounded-full bg-surface-glass p-3 text-accent-primary shadow-md backdrop-blur-sm transition-all hover:scale-110 hover:bg-accent-primary hover:text-content-inverse hover:shadow-xl"
             aria-label="GitHub"
           >
             <Github className="h-5 w-5" />
@@ -67,14 +70,14 @@ export function ProfileCard({ card }: ProfileCardProps) {
             href={profile.social.twitter}
             target="_blank"
             rel="noopener noreferrer"
-            className="group rounded-full bg-white/80 p-3 text-blue-600 shadow-md backdrop-blur-sm transition-all hover:scale-110 hover:bg-linear-to-br hover:from-blue-500 hover:to-cyan-500 hover:text-white hover:shadow-xl hover:shadow-blue-300/50"
+            className="group rounded-full bg-surface-glass p-3 text-accent-secondary shadow-md backdrop-blur-sm transition-all hover:scale-110 hover:bg-accent-secondary hover:text-content-inverse hover:shadow-xl"
             aria-label="Twitter"
           >
             <Twitter className="h-5 w-5" />
           </a>
           <a
             href={`mailto:${profile.social.email}`}
-            className="group rounded-full bg-white/80 p-3 text-cyan-600 shadow-md backdrop-blur-sm transition-all hover:scale-110 hover:bg-linear-to-br hover:from-cyan-500 hover:to-purple-500 hover:text-white hover:shadow-xl hover:shadow-cyan-300/50"
+            className="group rounded-full bg-surface-glass p-3 text-accent-tertiary shadow-md backdrop-blur-sm transition-all hover:scale-110 hover:bg-accent-tertiary hover:text-content-inverse hover:shadow-xl"
             aria-label="Email"
           >
             <Mail className="h-5 w-5" />

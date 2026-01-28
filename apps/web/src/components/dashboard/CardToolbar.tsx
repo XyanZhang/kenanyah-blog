@@ -36,7 +36,7 @@ export function CardToolbar({ cardId }: CardToolbarProps) {
                 e.stopPropagation()
                 setConfigOpen(true)
               }}
-              className="h-8 w-8 rounded-md bg-white/80 backdrop-blur-sm hover:bg-white"
+              className="h-8 w-8 rounded-md bg-surface-glass backdrop-blur-sm hover:bg-surface-primary"
             >
               <Settings className="h-4 w-4" />
             </Button>
@@ -53,7 +53,7 @@ export function CardToolbar({ cardId }: CardToolbarProps) {
                 e.stopPropagation()
                 handleDelete()
               }}
-              className="h-8 w-8 rounded-md bg-white/80 backdrop-blur-sm hover:bg-red-50 hover:text-red-600"
+              className="h-8 w-8 rounded-md bg-surface-glass backdrop-blur-sm hover:bg-ui-destructive-light hover:text-ui-destructive"
             >
               <Trash2 className="h-4 w-4" />
             </Button>

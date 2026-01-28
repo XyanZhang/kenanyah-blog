@@ -55,9 +55,9 @@ export function RandomPostsCard({ card }: RandomPostsCardProps) {
   return (
     <div className="flex h-full flex-col">
       <div className="mb-4 flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-gray-900">随机推荐</h3>
+        <h3 className="text-lg font-semibold text-content-primary">随机推荐</h3>
         <button
-          className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs text-gray-500 transition-colors hover:bg-gray-100 hover:text-purple-600"
+          className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs text-content-muted transition-colors hover:bg-surface-hover hover:text-accent-primary"
           onClick={(e) => {
             e.preventDefault()
           }}
@@ -72,10 +72,10 @@ export function RandomPostsCard({ card }: RandomPostsCardProps) {
           <Link
             key={post.id}
             href={`/posts/${post.slug}` as any}
-            className="group flex gap-3 rounded-xl border border-gray-200 p-2 transition-all hover:border-cyan-300 hover:shadow-md"
+            className="group flex gap-3 rounded-xl border border-line-primary p-2 transition-all hover:border-line-hover hover:shadow-md"
           >
             {config.showImage && (
-              <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-lg bg-gradient-to-br from-cyan-200 to-purple-200">
+              <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-lg bg-gradient-to-br from-accent-tertiary-light to-accent-primary-light">
                 <Image
                   src={post.coverImage}
                   alt={post.title}
@@ -90,16 +90,16 @@ export function RandomPostsCard({ card }: RandomPostsCardProps) {
 
             <div className="flex min-w-0 flex-1 flex-col justify-between py-1">
               <div>
-                <h4 className="mb-1 font-medium text-gray-900 line-clamp-1 group-hover:text-cyan-600">
+                <h4 className="mb-1 font-medium text-content-primary line-clamp-1 group-hover:text-accent-tertiary">
                   {post.title}
                 </h4>
                 {config.showExcerpt && (
-                  <p className="text-xs text-gray-600 line-clamp-2">{post.excerpt}</p>
+                  <p className="text-xs text-content-tertiary line-clamp-2">{post.excerpt}</p>
                 )}
               </div>
 
               {config.showDate && (
-                <div className="flex items-center gap-1 text-xs text-gray-500">
+                <div className="flex items-center gap-1 text-xs text-content-muted">
                   <Calendar className="h-3 w-3" />
                   <span>{format(post.publishedAt, 'yyyy年MM月dd日', { locale: zhCN })}</span>
                 </div>

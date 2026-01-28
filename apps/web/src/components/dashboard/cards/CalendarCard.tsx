@@ -70,18 +70,18 @@ export function CalendarCard({ card }: CalendarCardProps) {
       <div className="mb-3 flex items-center justify-between">
         <button
           onClick={goToPreviousMonth}
-          className="rounded-lg p-1.5 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700"
+          className="rounded-lg p-1.5 text-content-muted transition-colors hover:bg-surface-hover hover:text-content-secondary"
         >
           <ChevronLeft className="h-4 w-4" />
         </button>
 
         <div className="flex items-center gap-2">
-          <h3 className="text-base font-semibold text-gray-900">
+          <h3 className="text-base font-semibold text-content-primary">
             {format(currentDate, 'yyyy年MM月', { locale: zhCN })}
           </h3>
           <button
             onClick={goToToday}
-            className="rounded-md px-2 py-0.5 text-xs text-purple-600 transition-colors hover:bg-purple-50"
+            className="rounded-md px-2 py-0.5 text-xs text-accent-primary transition-colors hover:bg-accent-primary-subtle"
           >
             今天
           </button>
@@ -89,7 +89,7 @@ export function CalendarCard({ card }: CalendarCardProps) {
 
         <button
           onClick={goToNextMonth}
-          className="rounded-lg p-1.5 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700"
+          className="rounded-lg p-1.5 text-content-muted transition-colors hover:bg-surface-hover hover:text-content-secondary"
         >
           <ChevronRight className="h-4 w-4" />
         </button>
@@ -99,7 +99,7 @@ export function CalendarCard({ card }: CalendarCardProps) {
         {WEEKDAYS.map((day) => (
           <div
             key={day}
-            className="py-1 text-center text-xs font-medium text-gray-500"
+            className="py-1 text-center text-xs font-medium text-content-muted"
           >
             {day}
           </div>
@@ -115,9 +115,9 @@ export function CalendarCard({ card }: CalendarCardProps) {
               key={index}
               className={`
                 relative aspect-square rounded-lg p-1 text-sm transition-all
-                ${!isCurrentMonth ? 'text-gray-300' : 'text-gray-700'}
-                ${isCurrentDay && config.highlightToday ? 'bg-purple-500 font-semibold text-white shadow-md shadow-purple-200' : ''}
-                ${!isCurrentDay && isCurrentMonth ? 'hover:bg-gray-100' : ''}
+                ${!isCurrentMonth ? 'text-content-disabled' : 'text-content-secondary'}
+                ${isCurrentDay && config.highlightToday ? 'bg-accent-primary font-semibold text-content-inverse shadow-md' : ''}
+                ${!isCurrentDay && isCurrentMonth ? 'hover:bg-surface-hover' : ''}
               `}
             >
               <span className="flex h-full w-full items-center justify-center">
@@ -128,7 +128,7 @@ export function CalendarCard({ card }: CalendarCardProps) {
                 <span
                   className={`
                     absolute bottom-0.5 left-1/2 h-1 w-1 -translate-x-1/2 rounded-full
-                    ${isCurrentDay ? 'bg-white' : 'bg-purple-400'}
+                    ${isCurrentDay ? 'bg-surface-primary' : 'bg-accent-primary-muted'}
                   `}
                 />
               )}
@@ -137,14 +137,14 @@ export function CalendarCard({ card }: CalendarCardProps) {
         })}
       </div>
 
-      <div className="mt-3 flex items-center justify-center gap-4 border-t border-gray-100 pt-3 text-xs text-gray-500">
+      <div className="mt-3 flex items-center justify-center gap-4 border-t border-line-primary pt-3 text-xs text-content-muted">
         <div className="flex items-center gap-1">
-          <span className="h-2 w-2 rounded-full bg-purple-500" />
+          <span className="h-2 w-2 rounded-full bg-accent-primary" />
           <span>今天</span>
         </div>
         {config.showPostDots && (
           <div className="flex items-center gap-1">
-            <span className="h-1.5 w-1.5 rounded-full bg-purple-400" />
+            <span className="h-1.5 w-1.5 rounded-full bg-accent-primary-muted" />
             <span>有文章</span>
           </div>
         )}

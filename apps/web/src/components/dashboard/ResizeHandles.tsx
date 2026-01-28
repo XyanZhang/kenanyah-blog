@@ -84,8 +84,8 @@ export function ResizeHandles({ onResizeStart }: ResizeHandlesProps) {
             transition-opacity duration-150
             ${
               isCorner(direction)
-                ? 'rounded-full border-2 border-blue-500 bg-white opacity-0 group-hover:opacity-100'
-                : 'opacity-0 hover:bg-blue-500/30 group-hover:opacity-100'
+                ? 'rounded-full border-2 border-line-focus bg-surface-primary opacity-0 group-hover:opacity-100'
+                : 'opacity-0 hover:bg-line-focus/30 group-hover:opacity-100'
             }
           `}
         />

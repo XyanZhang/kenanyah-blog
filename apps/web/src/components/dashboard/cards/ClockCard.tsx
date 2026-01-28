@@ -53,7 +53,7 @@ export function ClockCard({ card }: ClockCardProps) {
         <span
           className={`
             ${fontClass}
-            bg-linear-to-r from-purple-600 via-blue-500 to-cyan-500
+            bg-linear-to-r from-accent-primary via-accent-secondary to-accent-tertiary
             bg-clip-text text-5xl font-bold tracking-wider text-transparent
             tabular-nums
           `}
@@ -61,14 +61,14 @@ export function ClockCard({ card }: ClockCardProps) {
           {timeStr}
         </span>
         {!config.format24h && (
-          <span className="text-lg font-medium text-gray-400">
+          <span className="text-lg font-medium text-content-dim">
             {getPeriod(now)}
           </span>
         )}
       </div>
 
       {config.showDate && (
-        <span className="text-sm text-gray-500">
+        <span className="text-sm text-content-muted">
           {format(now, 'yyyy年MM月dd日 EEEE', { locale: zhCN })}
         </span>
       )}
