@@ -10,8 +10,9 @@ const nextConfig = {
       },
     ],
   },
+  typedRoutes: true,
   experimental: {
-    typedRoutes: true,
+    viewTransition: true,
   },
 }
 
