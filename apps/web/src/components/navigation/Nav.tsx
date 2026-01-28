@@ -2,6 +2,7 @@
 
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { usePathname } from 'next/navigation'
+import Image from 'next/image'
 import { cn } from '@/lib/utils'
 import { useDashboard } from '@/hooks/useDashboard'
 import { useNavStore } from '@/store/nav-store'
@@ -23,10 +24,6 @@ export function Nav() {
   const [indicatorStyle, setIndicatorStyle] = useState<React.CSSProperties>({})
   const [navSize, setNavSize] = useState({ width: 200, height: 60 })
 
-  // Determine layout based on config
-  const isHorizontal =
-    config.layout === 'horizontal' || (config.layout === 'auto' && isHomepage)
-
   // Filter visible items
   const visibleNavItems = navItems.filter((item) => config.visibleItems.includes(item.id))
 
@@ -38,12 +35,12 @@ export function Nav() {
         setNavSize({ width: rect.width, height: rect.height })
       }
     }
-  }, [config.customSize, visibleNavItems.length, isHorizontal])
+  }, [config.customSize, visibleNavItems.length])
 
-  // Use shared drag hook
+  // Use shared drag hook (always vertical layout)
   const { isDragging, dragDelta, dragHandlers } = useDrag({
     onDragEnd: (delta) => {
-      updatePosition(delta, isHorizontal)
+      updatePosition(delta, false)
     },
     disabled: !isEditMode,
   })
@@ -61,7 +58,7 @@ export function Nav() {
     onResizeEnd: (size, positionDelta) => {
       updateSize(size)
       if (positionDelta.x !== 0 || positionDelta.y !== 0) {
-        updatePosition(positionDelta, isHorizontal)
+        updatePosition(positionDelta, false)
       }
       setResizing(false)
     },
@@ -79,26 +76,28 @@ export function Nav() {
       if (isEditMode) return
       setHoverIndex(index)
       const rect = element.getBoundingClientRect()
-      const navRect = navRef.current?.getBoundingClientRect()
-      if (navRect) {
+      const container = navRef.current?.querySelector('[data-nav-items]')
+      const containerRect = container?.getBoundingClientRect()
+      if (containerRect) {
         setIndicatorStyle({
           width: rect.width,
           height: rect.height,
-          transform: isHorizontal
-            ? `translateX(${rect.left - navRect.left - 8}px)`
-            : `translateY(${rect.top - navRect.top - 8}px)`,
+          left: rect.left - containerRect.left,
+          top: rect.top - containerRect.top,
           opacity: 1,
         })
       }
     },
-    [isHorizontal, isEditMode]
+    [isEditMode]
   )
 
   // Update indicator to active item position
   const updateIndicatorToActive = useCallback(() => {
     if (!navRef.current) return
-    const links = navRef.current.querySelectorAll<HTMLAnchorElement>('a')
-    const navRect = navRef.current.getBoundingClientRect()
+    const navItemsContainer = navRef.current.querySelector('[data-nav-items]')
+    if (!navItemsContainer) return
+    const links = navItemsContainer.querySelectorAll<HTMLAnchorElement>('a')
+    const containerRect = navItemsContainer.getBoundingClientRect()
     let activeEl: HTMLAnchorElement | null = null
     links.forEach((link) => {
       if (link.getAttribute('href') === pathname) {
@@ -113,19 +112,24 @@ export function Nav() {
     setIndicatorStyle({
       width: rect.width,
       height: rect.height,
-      transform: isHorizontal
-        ? `translateX(${rect.left - navRect.left - 8}px)`
-        : `translateY(${rect.top - navRect.top - 8}px)`,
+      left: rect.left - containerRect.left,
+      top: rect.top - containerRect.top,
       opacity: 1,
     })
-  }, [pathname, isHorizontal])
+  }, [pathname])
 
   // Sync indicator to active item on pathname change
   useEffect(() => {
-    if (hoverIndex === null) {
+    // Always update on pathname change, regardless of hover state
+    setHoverIndex(null)
+    // Immediate update for quick feedback
+    updateIndicatorToActive()
+    // Delayed update to ensure layout is complete after view transition
+    const timer = setTimeout(() => {
       updateIndicatorToActive()
-    }
-  }, [pathname, hoverIndex, updateIndicatorToActive])
+    }, 100)
+    return () => clearTimeout(timer)
+  }, [pathname, updateIndicatorToActive])
 
   const handleMouseLeave = useCallback(() => {
     setHoverIndex(null)
@@ -139,7 +143,7 @@ export function Nav() {
   const showViewTransition = !isEditMode && config.layout === 'auto'
 
   // Calculate total offset using layout-specific position
-  const position = isHorizontal ? config.horizontalPosition : config.verticalPosition
+  const position = config.verticalPosition
   const totalX = position.x + dragDelta.x + (isResizing ? resizePositionDelta.x : 0)
   const totalY = position.y + dragDelta.y + (isResizing ? resizePositionDelta.y : 0)
 
@@ -158,18 +162,15 @@ export function Nav() {
       )}
       style={{
         display: 'flex',
-        flexDirection: isHorizontal ? 'row' : 'column',
+        flexDirection: 'column',
         gap: '4px',
-        padding: '8px',
-        width: config.customSize && isHomepage ? currentSize.width : undefined,
-        height: config.customSize && isHomepage ? currentSize.height : undefined,
+        padding: '12px',
+        width: undefined,
+        height: undefined,
         viewTransitionName: showViewTransition ? 'main-nav' : undefined,
-        // Use fixed positioning (top: 0, left: 0) with translate for smooth view transitions
         top: 0,
         left: 0,
-        transform: isHorizontal
-          ? `translate(calc(50vw + ${totalX}px), calc(32px + ${totalY}px)) translateX(-50%)`
-          : `translate(calc(16px + ${totalX}px), calc(50vh + ${totalY}px)) translateY(-50%)`,
+        transform: `translate(calc(16px + ${totalX}px), calc(50vh + ${totalY}px)) translateY(-50%)`,
       }}
       onPointerDown={isEditMode ? dragHandlers.onPointerDown : undefined}
       onPointerMove={isDragging ? dragHandlers.onPointerMove : undefined}
@@ -179,28 +180,57 @@ export function Nav() {
       {/* Edit mode toolbar */}
       {isEditMode && <NavToolbar />}
 
-      {/* Hover indicator */}
-      {!isEditMode && (
-        <div
-          className="absolute rounded-xl bg-surface-primary shadow-sm transition-all duration-300 ease-out"
-          style={{
-            ...indicatorStyle,
-            pointerEvents: 'none',
-          }}
+      {/* Site logo and blogger name */}
+      <div
+        className={cn(
+          'flex flex-col items-center gap-2',
+          isHomepage && 'pb-3 mb-2 border-b border-line-glass'
+        )}
+      >
+        <Image
+          src="/images/avatar/kenanyah.png"
+          alt="Kenanyah"
+          width={isHomepage ? 48 : 36}
+          height={isHomepage ? 48 : 36}
+          className="rounded-full transition-all duration-300"
+          style={{ viewTransitionName: 'nav-avatar' }}
         />
-      )}
+        <span
+          className={cn(
+            'text-sm font-medium text-content-primary transition-all duration-300',
+            isHomepage ? 'opacity-100 max-h-6' : 'opacity-0 max-h-0 overflow-hidden'
+          )}
+          style={{ viewTransitionName: 'nav-name' }}
+        >
+          Kenanyah
+        </span>
+      </div>
 
-      {/* Nav items */}
-      {visibleNavItems.map((item, index) => (
-        <NavItem
-          key={item.id}
-          item={item}
-          isHorizontal={isHorizontal}
-          isActive={pathname === item.href}
-          isHovered={hoverIndex === index}
-          onMouseEnter={(el) => handleMouseEnter(index, el)}
-        />
-      ))}
+      {/* Nav items container */}
+      <div data-nav-items className={cn('relative flex flex-col', isHomepage ? 'gap-1' : 'gap-0 items-center')}>
+        {/* Hover indicator */}
+        {!isEditMode && (
+          <div
+            className="absolute rounded-xl bg-accent-primary-light transition-all duration-300 ease-out"
+            style={{
+              ...indicatorStyle,
+              pointerEvents: 'none',
+            }}
+          />
+        )}
+
+        {/* Nav items */}
+        {visibleNavItems.map((item, index) => (
+          <NavItem
+            key={item.id}
+            item={item}
+            isActive={pathname === item.href}
+            isHovered={hoverIndex === index}
+            isCompact={!isHomepage}
+            onMouseEnter={(el) => handleMouseEnter(index, el)}
+          />
+        ))}
+      </div>
 
       {/* Resize handles in edit mode */}
       {isEditMode && <ResizeHandles onResizeStart={handleResizeStart} />}
