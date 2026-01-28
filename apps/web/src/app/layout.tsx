@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { Nav } from '@/components/navigation'
 import '@/styles/globals.css'
 
 export const metadata: Metadata = {
@@ -16,7 +17,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        <Nav />
+        <div style={{ viewTransitionName: 'page-content' }}>{children}</div>
+      </body>
     </html>
   )
 }
