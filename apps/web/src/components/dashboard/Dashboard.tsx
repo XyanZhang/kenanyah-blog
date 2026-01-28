@@ -16,6 +16,7 @@ import { DashboardCard } from './DashboardCard'
 import { EditModeToggle } from './EditModeToggle'
 import { AddCardButton } from './AddCardButton'
 import { AlignmentGuides } from './AlignmentGuides'
+import { LayoutTemplatePicker } from './LayoutTemplatePicker'
 
 export function Dashboard() {
   const { layout, isEditMode, isLoading, initializeLayout, updateCardPosition } = useDashboard()
@@ -114,6 +115,7 @@ export function Dashboard() {
 
       <EditModeToggle />
       {isEditMode && <AddCardButton />}
+      {isEditMode && <LayoutTemplatePicker />}
     </div>
   )
 }
