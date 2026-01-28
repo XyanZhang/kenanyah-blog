@@ -1,6 +1,6 @@
 import { DashboardCard, DashboardLayout, CardType, CardSize } from '@blog/types'
 import { generateCircularLayout } from './layout-algorithms'
-import { DEFAULT_LAYOUT_CONFIG, LAYOUT_VERSION } from '../constants/dashboard'
+import { DEFAULT_LAYOUT_CONFIG, LAYOUT_VERSION, DEFAULT_BORDER_RADIUS } from '../constants/dashboard'
 
 /**
  * Create a default dashboard card
@@ -56,6 +56,7 @@ export function createDefaultCard(
     id: `${type}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
     type,
     size,
+    borderRadius: DEFAULT_BORDER_RADIUS,
     config: { ...defaultConfigs[type], ...config },
     visible: true,
     createdAt: now,

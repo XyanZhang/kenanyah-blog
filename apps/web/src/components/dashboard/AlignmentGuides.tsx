@@ -23,7 +23,7 @@ export function AlignmentGuides({ lines, isVisible }: AlignmentGuidesProps) {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.15 }}
-            className="absolute bg-blue-500"
+            className="absolute bg-primary"
             style={
               line.type === 'vertical'
                 ? {
@@ -32,7 +32,7 @@ export function AlignmentGuides({ lines, isVisible }: AlignmentGuidesProps) {
                     width: '2px',
                     height: `${line.end - line.start}px`,
                     backgroundImage:
-                      'repeating-linear-gradient(0deg, #3b82f6, #3b82f6 6px, transparent 6px, transparent 10px)',
+                      'repeating-linear-gradient(0deg, var(--color-primary), var(--color-primary) 6px, transparent 6px, transparent 10px)',
                   }
                 : {
                     left: `${line.start}px`,
@@ -40,7 +40,7 @@ export function AlignmentGuides({ lines, isVisible }: AlignmentGuidesProps) {
                     width: `${line.end - line.start}px`,
                     height: '2px',
                     backgroundImage:
-                      'repeating-linear-gradient(90deg, #3b82f6, #3b82f6 6px, transparent 6px, transparent 10px)',
+                      'repeating-linear-gradient(90deg, var(--color-primary), var(--color-primary) 6px, transparent 6px, transparent 10px)',
                   }
             }
           />

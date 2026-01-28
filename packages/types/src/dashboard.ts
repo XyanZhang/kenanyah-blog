@@ -35,6 +35,7 @@ export interface DashboardCard {
   size: CardSize
   customDimensions?: CardDimensions
   position: CardPosition
+  borderRadius: number
   config: Record<string, any>
   visible: boolean
   createdAt: Date

@@ -7,7 +7,7 @@ import { DashboardCard as DashboardCardType, CardType, CardDimensions } from '@b
 import { useDashboard } from '@/hooks/useDashboard'
 import { useCardResize } from '@/hooks/useCardResize'
 import { cardVariants } from '@/hooks/useCardAnimation'
-import { getCardDimensions } from '@/lib/constants/dashboard'
+import { getCardDimensions, DEFAULT_BORDER_RADIUS } from '@/lib/constants/dashboard'
 import { CardToolbar } from './CardToolbar'
 import { ResizeHandles } from './ResizeHandles'
 import { ProfileCard } from './cards/ProfileCard'
@@ -61,6 +61,7 @@ export function DashboardCard({ card, index }: DashboardCardProps) {
   })
 
   const CardContent = getCardComponent(card.type)
+  const borderRadius = card.borderRadius ?? DEFAULT_BORDER_RADIUS
 
   // Calculate final position including drag transform and resize position delta
   const x = card.position.x + (transform?.x || 0) + positionDelta.x
@@ -74,6 +75,7 @@ export function DashboardCard({ card, index }: DashboardCardProps) {
         width: currentDimensions.width,
         height: currentDimensions.height,
         zIndex: isDragging || isResizing ? 1000 : card.position.z,
+        borderRadius: `${borderRadius}px`,
       }}
       variants={cardVariants}
       initial="hidden"
@@ -92,7 +94,7 @@ export function DashboardCard({ card, index }: DashboardCardProps) {
       }}
       className={`
         group relative
-        rounded-[40px] border border-white/50 p-6 backdrop-blur-xs
+        border border-white/50 p-6 backdrop-blur-xs
         [box-shadow:0_40px_50px_-32px_rgba(0,0,0,0.05),inset_0_0_20px_rgba(255,255,255,0.25)]
         ${isEditMode ? 'cursor-grab active:cursor-grabbing' : ''}
         ${isSelected ? 'ring-2 ring-blue-500' : ''}
@@ -102,7 +104,10 @@ export function DashboardCard({ card, index }: DashboardCardProps) {
       {...(isEditMode && !isResizing ? { ...attributes, ...listeners } : {})}
     >
       {isEditMode && <CardToolbar cardId={card.id} />}
-      <div className="h-full w-full overflow-hidden rounded-4xl">
+      <div
+        className="h-full w-full overflow-hidden"
+        style={{ borderRadius: `${Math.max(0, borderRadius - 24)}px` }}
+      >
         <CardContent card={card} />
       </div>
       {isEditMode && <ResizeHandles onResizeStart={handleResizeStart} />}
