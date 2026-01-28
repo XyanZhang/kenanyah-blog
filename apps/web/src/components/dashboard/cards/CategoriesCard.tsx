@@ -42,7 +42,7 @@ export function CategoriesCard({ card }: CategoriesCardProps) {
 
   return (
     <div className="flex h-full flex-col">
-      <h3 className="mb-4 text-lg font-semibold text-gray-900">
+      <h3 className="mb-4 text-lg font-semibold text-content-primary">
         {config.type === 'categories' ? 'Categories' : 'Tags'}
       </h3>
 
@@ -52,11 +52,11 @@ export function CategoriesCard({ card }: CategoriesCardProps) {
             <Link
               key={item.id}
               href={`/category/${item.slug}` as any}
-              className="flex items-center justify-between rounded-lg px-3 py-2 transition-colors hover:bg-gray-100"
+              className="flex items-center justify-between rounded-lg px-3 py-2 transition-colors hover:bg-surface-hover"
             >
-              <span className="text-gray-700">{item.name}</span>
+              <span className="text-content-secondary">{item.name}</span>
               {config.showCount && (
-                <span className="rounded-full bg-gray-200 px-2 py-0.5 text-xs text-gray-600">
+                <span className="rounded-full bg-surface-tertiary px-2 py-0.5 text-xs text-content-tertiary">
                   {item.count}
                 </span>
               )}
@@ -70,13 +70,13 @@ export function CategoriesCard({ card }: CategoriesCardProps) {
               key={item.id}
               href={`/tag/${item.slug}` as any}
               className={`
-                inline-flex items-center gap-1 rounded-full bg-gray-100 px-3 py-1 transition-colors hover:bg-gray-200
+                inline-flex items-center gap-1 rounded-full bg-surface-tertiary px-3 py-1 transition-colors hover:bg-surface-hover
                 ${getTagSize(item.count)}
               `}
             >
-              <span className="text-gray-700">{item.name}</span>
+              <span className="text-content-secondary">{item.name}</span>
               {config.showCount && (
-                <span className="text-xs text-gray-500">({item.count})</span>
+                <span className="text-xs text-content-muted">({item.count})</span>
               )}
             </Link>
           ))}

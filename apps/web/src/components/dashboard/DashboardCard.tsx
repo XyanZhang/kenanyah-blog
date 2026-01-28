@@ -96,10 +96,10 @@ export function DashboardCard({ card, index }: DashboardCardProps) {
       }}
       className={`
         group relative
-        border border-white/50 p-6 backdrop-blur-xs
+        border border-line-glass p-6 backdrop-blur-xs
         [box-shadow:0_40px_50px_-32px_rgba(0,0,0,0.05),inset_0_0_20px_rgba(255,255,255,0.25)]
         ${isEditMode ? 'cursor-grab active:cursor-grabbing' : ''}
-        ${isSelected ? 'ring-2 ring-blue-500' : ''}
+        ${isSelected ? 'ring-2 ring-line-focus' : ''}
         ${isDragging ? '[box-shadow:0_50px_60px_-30px_rgba(0,0,0,0.1),inset_0_0_20px_rgba(255,255,255,0.25)]' : ''}
       `}
       onClick={() => isEditMode && selectCard(card.id)}

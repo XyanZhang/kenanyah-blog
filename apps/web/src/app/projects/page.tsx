@@ -33,30 +33,30 @@ export default function ProjectsPage() {
     <main className="min-h-screen pl-24 pr-8 py-8">
       <div className="max-w-4xl mx-auto">
         <div className="flex items-center gap-3 mb-8">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-purple-100 to-blue-100">
-            <FolderOpen className="h-6 w-6 text-purple-600" />
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-accent-primary-light to-accent-secondary-light">
+            <FolderOpen className="h-6 w-6 text-accent-primary" />
           </div>
-          <h1 className="text-3xl font-bold text-gray-900">项目</h1>
+          <h1 className="text-3xl font-bold text-content-primary">项目</h1>
         </div>
 
         <div className="grid gap-4 md:grid-cols-2">
           {projects.map((project) => (
             <article
               key={project.name}
-              className="group rounded-2xl border border-gray-200 bg-white/80 p-6 backdrop-blur-sm transition-all hover:border-purple-300 hover:shadow-lg"
+              className="group rounded-2xl border border-line-primary bg-surface-glass p-6 backdrop-blur-sm transition-all hover:border-line-hover hover:shadow-lg"
             >
               <div className="flex items-start justify-between mb-3">
-                <h2 className="text-xl font-semibold text-gray-900">
+                <h2 className="text-xl font-semibold text-content-primary">
                   {project.name}
                 </h2>
-                <ExternalLink className="h-5 w-5 text-gray-400 group-hover:text-purple-600 transition-colors" />
+                <ExternalLink className="h-5 w-5 text-content-dim group-hover:text-accent-primary transition-colors" />
               </div>
-              <p className="text-gray-600 mb-4">{project.description}</p>
+              <p className="text-content-tertiary mb-4">{project.description}</p>
               <div className="flex flex-wrap gap-2">
                 {project.tags.map((tag) => (
                   <span
                     key={tag}
-                    className="rounded-full bg-gray-100 px-2.5 py-0.5 text-xs text-gray-600"
+                    className="rounded-full bg-surface-tertiary px-2.5 py-0.5 text-xs text-content-tertiary"
                   >
                     {tag}
                   </span>

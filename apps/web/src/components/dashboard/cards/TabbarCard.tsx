@@ -29,7 +29,7 @@ export function TabbarCard({ card }: TabbarCardProps) {
 
   return (
     <div className="flex h-full flex-col">
-      <nav className="flex gap-1 rounded-xl bg-gray-100/80 p-1">
+      <nav className="flex gap-1 rounded-xl bg-surface-tertiary/80 p-1">
         {tabs.map((tab) => (
           <button
             key={tab.key}
@@ -39,8 +39,8 @@ export function TabbarCard({ card }: TabbarCardProps) {
               transition-all duration-200
               ${
                 activeTab === tab.key
-                  ? 'bg-white text-purple-600 shadow-sm'
-                  : 'text-gray-600 hover:bg-white/50 hover:text-gray-900'
+                  ? 'bg-surface-primary text-accent-primary shadow-sm'
+                  : 'text-content-tertiary hover:bg-surface-glass hover:text-content-primary'
               }
             `}
           >
@@ -84,10 +84,10 @@ function RecentContent() {
       {posts.map((post, index) => (
         <li
           key={index}
-          className="flex items-center justify-between rounded-lg p-2 text-sm transition-colors hover:bg-gray-100/80"
+          className="flex items-center justify-between rounded-lg p-2 text-sm transition-colors hover:bg-surface-hover"
         >
-          <span className="font-medium text-gray-800">{post.title}</span>
-          <span className="text-xs text-gray-500">{post.date}</span>
+          <span className="font-medium text-content-secondary">{post.title}</span>
+          <span className="text-xs text-content-muted">{post.date}</span>
         </li>
       ))}
     </ul>
@@ -96,13 +96,13 @@ function RecentContent() {
 
 function AboutContent() {
   return (
-    <div className="space-y-3 text-sm text-gray-700">
+    <div className="space-y-3 text-sm text-content-secondary">
       <p>这是一个使用 Next.js 15 和 React 19 构建的个人博客网站。</p>
       <p>专注于前端开发、技术分享和生活记录。</p>
       <div className="flex gap-2 pt-2">
-        <span className="rounded-full bg-purple-100 px-2 py-1 text-xs text-purple-700">Next.js</span>
-        <span className="rounded-full bg-blue-100 px-2 py-1 text-xs text-blue-700">React</span>
-        <span className="rounded-full bg-cyan-100 px-2 py-1 text-xs text-cyan-700">TypeScript</span>
+        <span className="rounded-full bg-accent-primary-light px-2 py-1 text-xs text-accent-primary-dark">Next.js</span>
+        <span className="rounded-full bg-accent-secondary-light px-2 py-1 text-xs text-accent-secondary">React</span>
+        <span className="rounded-full bg-accent-tertiary-light px-2 py-1 text-xs text-accent-tertiary">TypeScript</span>
       </div>
     </div>
   )
@@ -114,7 +114,7 @@ function PhotographyContent() {
       {[1, 2, 3, 4, 5, 6].map((item) => (
         <div
           key={item}
-          className="aspect-square rounded-lg bg-gradient-to-br from-purple-200 to-blue-200"
+          className="aspect-square rounded-lg bg-gradient-to-br from-accent-primary-light to-accent-secondary-light"
         />
       ))}
     </div>
@@ -133,10 +133,10 @@ function ProjectsContent() {
       {projects.map((project, index) => (
         <li
           key={index}
-          className="rounded-lg border border-gray-200 p-3 transition-colors hover:border-purple-300 hover:bg-purple-50/50"
+          className="rounded-lg border border-line-primary p-3 transition-colors hover:border-line-hover hover:bg-accent-primary-subtle/50"
         >
-          <h4 className="font-medium text-gray-900">{project.name}</h4>
-          <p className="text-xs text-gray-500">{project.description}</p>
+          <h4 className="font-medium text-content-primary">{project.name}</h4>
+          <p className="text-xs text-content-muted">{project.description}</p>
         </li>
       ))}
     </ul>

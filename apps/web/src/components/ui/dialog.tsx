@@ -91,7 +91,7 @@ function DialogContent({ children, className }: DialogContentProps) {
       />
       <div
         className={cn(
-          'relative z-50 w-full max-w-lg rounded-lg bg-white p-6 shadow-lg',
+          'relative z-50 w-full max-w-lg rounded-lg bg-surface-primary p-6 shadow-lg',
           className
         )}
         onClick={stopPropagation}
@@ -146,7 +146,7 @@ interface DialogDescriptionProps {
 
 function DialogDescription({ children, className }: DialogDescriptionProps) {
   return (
-    <p className={cn('text-sm text-gray-500', className)}>
+    <p className={cn('text-sm text-content-muted', className)}>
       {children}
     </p>
   )

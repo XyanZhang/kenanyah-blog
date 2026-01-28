@@ -22,22 +22,22 @@ export function StatsCard({ card }: StatsCardProps) {
       label: 'Posts',
       value: stats.posts,
       icon: FileText,
-      color: 'text-blue-600',
-      bgColor: 'bg-blue-100',
+      color: 'text-accent-secondary',
+      bgColor: 'bg-accent-secondary-light',
     },
     views: {
       label: 'Views',
       value: stats.views.toLocaleString(),
       icon: Eye,
-      color: 'text-green-600',
-      bgColor: 'bg-green-100',
+      color: 'text-ui-success-text',
+      bgColor: 'bg-ui-success',
     },
     comments: {
       label: 'Comments',
       value: stats.comments,
       icon: MessageCircle,
-      color: 'text-purple-600',
-      bgColor: 'bg-purple-100',
+      color: 'text-accent-primary',
+      bgColor: 'bg-accent-primary-light',
     },
   }
 
@@ -45,21 +45,21 @@ export function StatsCard({ card }: StatsCardProps) {
 
   return (
     <div className="flex h-full flex-col justify-center space-y-4">
-      <h3 className="text-center text-lg font-semibold text-gray-900">Statistics</h3>
+      <h3 className="text-center text-lg font-semibold text-content-primary">Statistics</h3>
       <div className="grid grid-cols-1 gap-4">
         {displayMetrics.map((metric) => {
           const Icon = metric.icon
           return (
             <div
               key={metric.label}
-              className="flex items-center gap-4 rounded-lg bg-gray-50 p-4"
+              className="flex items-center gap-4 rounded-lg bg-surface-secondary p-4"
             >
               <div className={`rounded-full p-3 ${metric.bgColor}`}>
                 <Icon className={`h-6 w-6 ${metric.color}`} />
               </div>
               <div>
-                <div className="text-2xl font-bold text-gray-900">{metric.value}</div>
-                <div className="text-sm text-gray-500">{metric.label}</div>
+                <div className="text-2xl font-bold text-content-primary">{metric.value}</div>
+                <div className="text-sm text-content-muted">{metric.label}</div>
               </div>
             </div>
           )

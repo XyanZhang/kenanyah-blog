@@ -55,27 +55,27 @@ export function RecentPostsCard({ card }: RecentPostsCardProps) {
 
   return (
     <div className="flex h-full flex-col">
-      <h3 className="mb-4 text-lg font-semibold text-gray-900">Recent Posts</h3>
+      <h3 className="mb-4 text-lg font-semibold text-content-primary">Recent Posts</h3>
 
       <div className="flex-1 space-y-3 overflow-auto">
         {displayPosts.map((post) => (
           <Link
             key={post.id}
             href={`/posts/${post.slug}` as any}
-            className="block rounded-lg border border-gray-200 p-3 transition-all hover:border-blue-300 hover:shadow-md"
+            className="block rounded-lg border border-line-primary p-3 transition-all hover:border-line-hover hover:shadow-md"
           >
-            <h4 className="mb-1 font-medium text-gray-900 line-clamp-2">
+            <h4 className="mb-1 font-medium text-content-primary line-clamp-2">
               {post.title}
             </h4>
 
             {config.showExcerpt && (
-              <p className="mb-2 text-sm text-gray-600 line-clamp-2">
+              <p className="mb-2 text-sm text-content-tertiary line-clamp-2">
                 {post.excerpt}
               </p>
             )}
 
             {config.showDate && (
-              <div className="flex items-center gap-1 text-xs text-gray-500">
+              <div className="flex items-center gap-1 text-xs text-content-muted">
                 <Calendar className="h-3 w-3" />
                 <span>{formatDistanceToNow(post.publishedAt, { addSuffix: true })}</span>
               </div>

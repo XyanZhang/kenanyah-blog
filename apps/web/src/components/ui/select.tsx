@@ -49,8 +49,8 @@ function SelectTrigger({ className, children }: SelectTriggerProps) {
     <button
       type="button"
       className={cn(
-        'flex h-10 w-full items-center justify-between rounded-md border border-gray-300 bg-white px-3 py-2 text-sm',
-        'focus:outline-none focus:ring-2 focus:ring-blue-500',
+        'flex h-10 w-full items-center justify-between rounded-md border border-line-secondary bg-surface-primary px-3 py-2 text-sm',
+        'focus:outline-none focus:ring-2 focus:ring-line-focus',
         className
       )}
       onClick={() => setOpen(!open)}
@@ -85,7 +85,7 @@ function SelectContent({ children, className }: SelectContentProps) {
       <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
       <div
         className={cn(
-          'absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-md border border-gray-200 bg-white py-1 shadow-lg',
+          'absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-md border border-line-primary bg-surface-primary py-1 shadow-lg',
           className
         )}
       >
@@ -109,8 +109,8 @@ function SelectItem({ value, children, className }: SelectItemProps) {
     <div
       className={cn(
         'relative flex cursor-pointer select-none items-center px-3 py-2 text-sm',
-        'hover:bg-gray-100',
-        isSelected && 'bg-blue-50 text-blue-600',
+        'hover:bg-surface-hover',
+        isSelected && 'bg-surface-selected text-accent-secondary',
         className
       )}
       onClick={() => {

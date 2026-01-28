@@ -89,15 +89,15 @@ export function AddCardButton() {
                       className={`
                         flex items-center gap-3 rounded-lg border p-3 text-left transition-colors
                         ${selectedType === option.value
-                          ? 'border-blue-500 bg-blue-50'
-                          : 'border-gray-200 hover:border-gray-300'
+                          ? 'border-line-focus bg-surface-selected'
+                          : 'border-line-primary hover:border-line-secondary'
                         }
                       `}
                     >
-                      <Icon className="h-5 w-5 text-gray-600" />
+                      <Icon className="h-5 w-5 text-content-tertiary" />
                       <div>
                         <div className="font-medium">{option.label}</div>
-                        <div className="text-xs text-gray-500">{option.description}</div>
+                        <div className="text-xs text-content-muted">{option.description}</div>
                       </div>
                     </button>
                   )

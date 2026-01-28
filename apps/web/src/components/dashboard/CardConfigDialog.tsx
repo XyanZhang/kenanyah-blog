@@ -136,7 +136,7 @@ export function CardConfigDialog({ card, open, onOpenChange }: CardConfigDialogP
         <div className="space-y-6 py-4">
           {/* Common Settings */}
           <div className="space-y-4">
-            <h3 className="text-sm font-semibold text-gray-700">General Settings</h3>
+            <h3 className="text-sm font-semibold text-content-secondary">General Settings</h3>
 
             {/* Dimensions */}
             <div className="grid grid-cols-2 gap-4">
@@ -170,7 +170,7 @@ export function CardConfigDialog({ card, open, onOpenChange }: CardConfigDialogP
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <Label htmlFor="borderRadius">Border Radius</Label>
-                <span className="text-sm text-gray-500">{borderRadius}px</span>
+                <span className="text-sm text-content-muted">{borderRadius}px</span>
               </div>
               <Slider
                 value={borderRadius}
@@ -184,7 +184,7 @@ export function CardConfigDialog({ card, open, onOpenChange }: CardConfigDialogP
 
           {/* Card-specific Settings */}
           <div className="space-y-4">
-            <h3 className="text-sm font-semibold text-gray-700">Card Settings</h3>
+            <h3 className="text-sm font-semibold text-content-secondary">Card Settings</h3>
             <ConfigForm config={config} onChange={setConfig} />
           </div>
         </div>

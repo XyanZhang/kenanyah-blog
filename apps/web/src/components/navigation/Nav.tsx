@@ -13,8 +13,8 @@ export function Nav() {
     <nav
       className={cn(
         'fixed z-50 transition-all duration-500',
-        'rounded-2xl bg-white/80 backdrop-blur-lg',
-        'border border-white/50',
+        'rounded-2xl bg-surface-glass backdrop-blur-lg',
+        'border border-line-glass',
         '[box-shadow:0_20px_40px_-10px_rgba(0,0,0,0.1)]',
         isHomepage
           ? 'top-8 left-1/2 -translate-x-1/2 flex-row gap-1 p-2'

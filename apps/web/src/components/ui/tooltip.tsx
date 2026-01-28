@@ -86,7 +86,7 @@ function TooltipContent({ children, className, side = 'top' }: TooltipContentPro
   return (
     <div
       className={cn(
-        'absolute z-50 rounded-md bg-gray-900 px-3 py-1.5 text-xs text-white shadow-md',
+        'absolute z-50 rounded-md bg-content-primary px-3 py-1.5 text-xs text-content-inverse shadow-md',
         positionClasses[side],
         className
       )}
