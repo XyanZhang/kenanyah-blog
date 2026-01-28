@@ -91,12 +91,17 @@ export function Dashboard() {
   return (
     <div
       className="relative h-screen w-full overflow-hidden"
-      style={{ background: `linear-gradient(to bottom right, var(--theme-bg-gradient-from), var(--theme-bg-gradient-via), var(--theme-bg-gradient-to))` }}
+      style={{ background: 'var(--theme-bg-base)' }}
     >
-      {/* Decorative gradient orbs for visual depth */}
-      <div className="absolute -top-20 -right-20 h-96 w-96 rounded-full blur-3xl" style={{ background: `linear-gradient(to bottom right, var(--theme-bg-orb-1), var(--theme-bg-orb-2))` }} />
-      <div className="absolute -bottom-20 -left-20 h-96 w-96 rounded-full blur-3xl" style={{ background: `linear-gradient(to top right, var(--theme-bg-orb-2), var(--theme-bg-orb-1))` }} />
-      <div className="absolute top-1/2 left-1/2 h-96 w-96 -translate-x-1/2 -translate-y-1/2 rounded-full blur-3xl" style={{ background: `linear-gradient(to right, var(--theme-bg-orb-3), var(--theme-bg-orb-1))` }} />
+      {/* Nightscape bokeh light orbs with floating animation */}
+      <div className="bokeh-orb bokeh-orb-1 absolute top-[8%] left-[12%] h-72 w-72 rounded-full opacity-70 blur-3xl" style={{ background: 'var(--theme-bg-orb-1)' }} />
+      <div className="bokeh-orb bokeh-orb-2 absolute top-[15%] right-[8%] h-96 w-96 rounded-full opacity-60 blur-3xl" style={{ background: 'var(--theme-bg-orb-2)' }} />
+      <div className="bokeh-orb bokeh-orb-3 absolute bottom-[20%] left-[5%] h-80 w-80 rounded-full opacity-50 blur-3xl" style={{ background: 'var(--theme-bg-orb-3)' }} />
+      <div className="bokeh-orb bokeh-orb-4 absolute bottom-[10%] right-[15%] h-64 w-64 rounded-full opacity-65 blur-3xl" style={{ background: 'var(--theme-bg-orb-4)' }} />
+      <div className="bokeh-orb bokeh-orb-5 absolute top-[45%] left-[35%] h-56 w-56 rounded-full opacity-40 blur-3xl" style={{ background: 'var(--theme-bg-orb-5)' }} />
+      <div className="bokeh-orb bokeh-orb-6 absolute top-[5%] left-[55%] h-48 w-48 rounded-full opacity-55 blur-3xl" style={{ background: 'var(--theme-bg-orb-6)' }} />
+      <div className="bokeh-orb bokeh-orb-7 absolute bottom-[35%] right-[30%] h-40 w-40 rounded-full opacity-45 blur-2xl" style={{ background: 'var(--theme-bg-orb-7)' }} />
+      <div className="bokeh-orb bokeh-orb-8 absolute top-[60%] left-[65%] h-36 w-36 rounded-full opacity-50 blur-2xl" style={{ background: 'var(--theme-bg-orb-8)' }} />
 
       <DndContext
         sensors={sensors}
