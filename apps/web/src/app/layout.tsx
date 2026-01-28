@@ -36,6 +36,7 @@ export default function RootLayout({
       </head>
       <body>
         <ThemeProvider>
+          <div className="frosted-overlay" />
           <Nav />
           <div style={{ viewTransitionName: 'page-content' }}>{children}</div>
           <ThemeSwitcher />

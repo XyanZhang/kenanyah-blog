@@ -63,6 +63,23 @@
     background-color: var(--theme-bg-base);
     @apply min-h-screen;
     transition: background-color 0.3s ease, color 0.3s ease;
+    position: relative;
+  }
+
+  .frosted-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    backdrop-filter: blur(var(--frosted-blur, 60px)) saturate(var(--frosted-saturate, 1.8));
+    -webkit-backdrop-filter: blur(var(--frosted-blur, 60px)) saturate(var(--frosted-saturate, 1.8));
+    background: var(--frosted-tint, rgba(255, 255, 255, 0.05));
+    transition: backdrop-filter 0.3s ease, background 0.3s ease;
+  }
+
+  body > * {
+    position: relative;
+    z-index: 1;
   }
 }
 
@@ -80,5 +97,95 @@
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
+  }
+}
+
+/* Bokeh orb floating animations */
+@keyframes bokeh-float-1 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  25% { transform: translate(30px, -20px) scale(1.05); }
+  50% { transform: translate(-10px, 25px) scale(0.95); }
+  75% { transform: translate(-25px, -15px) scale(1.02); }
+}
+
+@keyframes bokeh-float-2 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(-35px, 20px) scale(1.08); }
+  66% { transform: translate(25px, -30px) scale(0.92); }
+}
+
+@keyframes bokeh-float-3 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  20% { transform: translate(20px, 35px) scale(0.96); }
+  40% { transform: translate(-30px, 10px) scale(1.04); }
+  60% { transform: translate(15px, -25px) scale(1.02); }
+  80% { transform: translate(-20px, -10px) scale(0.98); }
+}
+
+@keyframes bokeh-float-4 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(-40px, -35px) scale(1.1); }
+}
+
+@keyframes bokeh-pulse {
+  0%, 100% { opacity: var(--bokeh-opacity, 0.5); }
+  50% { opacity: calc(var(--bokeh-opacity, 0.5) * 1.3); }
+}
+
+.bokeh-orb {
+  will-change: transform, opacity;
+}
+
+.bokeh-orb-1 {
+  --bokeh-opacity: 0.7;
+  animation: bokeh-float-1 25s ease-in-out infinite, bokeh-pulse 8s ease-in-out infinite;
+}
+
+.bokeh-orb-2 {
+  --bokeh-opacity: 0.6;
+  animation: bokeh-float-2 30s ease-in-out infinite, bokeh-pulse 10s ease-in-out infinite;
+  animation-delay: -5s;
+}
+
+.bokeh-orb-3 {
+  --bokeh-opacity: 0.5;
+  animation: bokeh-float-3 35s ease-in-out infinite, bokeh-pulse 12s ease-in-out infinite;
+  animation-delay: -10s;
+}
+
+.bokeh-orb-4 {
+  --bokeh-opacity: 0.65;
+  animation: bokeh-float-4 28s ease-in-out infinite, bokeh-pulse 9s ease-in-out infinite;
+  animation-delay: -3s;
+}
+
+.bokeh-orb-5 {
+  --bokeh-opacity: 0.4;
+  animation: bokeh-float-1 32s ease-in-out infinite reverse, bokeh-pulse 11s ease-in-out infinite;
+  animation-delay: -8s;
+}
+
+.bokeh-orb-6 {
+  --bokeh-opacity: 0.55;
+  animation: bokeh-float-2 26s ease-in-out infinite, bokeh-pulse 7s ease-in-out infinite;
+  animation-delay: -12s;
+}
+
+.bokeh-orb-7 {
+  --bokeh-opacity: 0.45;
+  animation: bokeh-float-3 22s ease-in-out infinite reverse, bokeh-pulse 13s ease-in-out infinite;
+  animation-delay: -6s;
+}
+
+.bokeh-orb-8 {
+  --bokeh-opacity: 0.5;
+  animation: bokeh-float-4 38s ease-in-out infinite, bokeh-pulse 15s ease-in-out infinite;
+  animation-delay: -15s;
+}
+
+/* Respect reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+  .bokeh-orb {
+    animation: none;
   }
 }
