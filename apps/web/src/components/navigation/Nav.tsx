@@ -188,7 +188,7 @@ export function Nav() {
         )}
       >
         <Image
-          src="/images/avatar/kenanyah.png"
+          src="/images/avatar/avatar-pink.png"
           alt="Kenanyah"
           width={isHomepage ? 48 : 36}
           height={isHomepage ? 48 : 36}

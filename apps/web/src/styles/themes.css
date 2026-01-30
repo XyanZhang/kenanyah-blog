@@ -7,7 +7,7 @@
 /* === Default Theme: 科技渐变 (Tech Gradient) === */
 :root,
 [data-theme='default'] {
-  --theme-bg-base: #0f0a1a;
+  --theme-bg-base: #f5f0ff;
   --theme-bg-orb-1: #9333ea;
   --theme-bg-orb-2: #3b82f6;
   --theme-bg-orb-3: #06b6d4;
@@ -68,7 +68,7 @@
 
 /* === Warm Natural: 暖色自然风 === */
 [data-theme='warm-natural'] {
-  --theme-bg-base: #1a1208;
+  --theme-bg-base: #fefcf5;
   --theme-bg-orb-1: #f59e0b;
   --theme-bg-orb-2: #22c55e;
   --theme-bg-orb-3: #eab308;
@@ -95,12 +95,12 @@
   --theme-surface-glass: rgba(255, 254, 247, 0.15);
   --theme-surface-selected: #fef3c7;
 
-  --theme-text-primary: #451a03;
-  --theme-text-secondary: #78350f;
-  --theme-text-tertiary: #92400e;
-  --theme-text-muted: #a16207;
-  --theme-text-dim: #ca8a04;
-  --theme-text-disabled: #d4a574;
+  --theme-text-primary: #292115;
+  --theme-text-secondary: #4a3d2a;
+  --theme-text-tertiary: #5c4d38;
+  --theme-text-muted: #7a6b55;
+  --theme-text-dim: #a89a80;
+  --theme-text-disabled: #c9bfae;
   --theme-text-inverse: #fffef7;
 
   --theme-border-primary: #fde68a;
@@ -129,7 +129,7 @@
 
 /* === Classic Minimal: 经典黑白极简 === */
 [data-theme='classic-minimal'] {
-  --theme-bg-base: #0a0a0a;
+  --theme-bg-base: #fafafa;
   --theme-bg-orb-1: #e5e5e5;
   --theme-bg-orb-2: #a3a3a3;
   --theme-bg-orb-3: #d4d4d4;
@@ -190,7 +190,7 @@
 
 /* === Vintage Study: 复古墨绿书房风 === */
 [data-theme='vintage-study'] {
-  --theme-bg-base: #0d1a0a;
+  --theme-bg-base: #f7f5f0;
   --theme-bg-orb-1: #22c55e;
   --theme-bg-orb-2: #a16207;
   --theme-bg-orb-3: #4ade80;
@@ -217,11 +217,11 @@
   --theme-surface-glass: rgba(253, 251, 247, 0.15);
   --theme-surface-selected: #e6eee3;
 
-  --theme-text-primary: #2c2416;
-  --theme-text-secondary: #4a3f2f;
-  --theme-text-tertiary: #5c5040;
-  --theme-text-muted: #8b7b66;
-  --theme-text-dim: #a99c88;
+  --theme-text-primary: #1a1510;
+  --theme-text-secondary: #3a3025;
+  --theme-text-tertiary: #4d4235;
+  --theme-text-muted: #6b5d4d;
+  --theme-text-dim: #9a8b78;
   --theme-text-disabled: #c9bfae;
   --theme-text-inverse: #fdfbf7;
 
@@ -251,7 +251,7 @@
 
 /* === Morandi: 柔和莫兰迪色系 === */
 [data-theme='morandi'] {
-  --theme-bg-base: #1a1816;
+  --theme-bg-base: #f8f6f3;
   --theme-bg-orb-1: #c9a892;
   --theme-bg-orb-2: #9eada3;
   --theme-bg-orb-3: #b5a8c0;
@@ -278,11 +278,11 @@
   --theme-surface-glass: rgba(250, 248, 245, 0.15);
   --theme-surface-selected: #e8e2dc;
 
-  --theme-text-primary: #3d3530;
-  --theme-text-secondary: #5a504a;
-  --theme-text-tertiary: #6e6460;
-  --theme-text-muted: #8b8480;
-  --theme-text-dim: #a8a4a0;
+  --theme-text-primary: #1a1815;
+  --theme-text-secondary: #3a3530;
+  --theme-text-tertiary: #4d4845;
+  --theme-text-muted: #6b6560;
+  --theme-text-dim: #9a9590;
   --theme-text-disabled: #c8c4c0;
   --theme-text-inverse: #faf8f5;
 
@@ -308,4 +308,65 @@
   --frosted-blur: 55px;
   --frosted-saturate: 1.4;
   --frosted-tint: rgba(250, 248, 245, 0.05);
+}
+
+/* === Sakura Pink: 樱花粉色主题 === */
+[data-theme='sakura-pink'] {
+  --theme-bg-base: #fff5f7;
+  --theme-bg-orb-1: #fce7f3;
+  --theme-bg-orb-2: #fbcfe8;
+  --theme-bg-orb-3: #fdf2f8;
+  --theme-bg-orb-4: #f9a8d4;
+  --theme-bg-orb-5: #fff1f2;
+  --theme-bg-orb-6: #fecdd3;
+  --theme-bg-orb-7: #ffe4e6;
+  --theme-bg-orb-8: #fce7f3;
+
+  --theme-accent-primary: #f472b6;
+  --theme-accent-secondary: #f9a8d4;
+  --theme-accent-tertiary: #ec4899;
+  --theme-accent-primary-light: #fdf2f8;
+  --theme-accent-secondary-light: #fce7f3;
+  --theme-accent-tertiary-light: #fbcfe8;
+  --theme-accent-primary-dark: #db2777;
+  --theme-accent-primary-muted: #fbcfe8;
+  --theme-accent-primary-subtle: #fff1f2;
+
+  --theme-surface-primary: #ffffff;
+  --theme-surface-secondary: #fff5f7;
+  --theme-surface-tertiary: #fdf2f8;
+  --theme-surface-hover: #fce7f3;
+  --theme-surface-glass: rgba(255, 255, 255, 0.18);
+  --theme-surface-selected: #fce7f3;
+
+  --theme-text-primary: #1c1017;
+  --theme-text-secondary: #44303a;
+  --theme-text-tertiary: #5c4350;
+  --theme-text-muted: #8b6b7a;
+  --theme-text-dim: #b8a0ac;
+  --theme-text-disabled: #dcc8d2;
+  --theme-text-inverse: #ffffff;
+
+  --theme-border-primary: #fce7f3;
+  --theme-border-secondary: #fbcfe8;
+  --theme-border-hover: #f9a8d4;
+  --theme-border-focus: #f472b6;
+  --theme-border-glass: rgba(252, 231, 243, 0.7);
+
+  --theme-ui-primary: #f472b6;
+  --theme-ui-primary-hover: #ec4899;
+  --theme-ui-primary-ring: #f9a8d4;
+  --theme-ui-destructive: #e11d48;
+  --theme-ui-destructive-hover: #be123c;
+  --theme-ui-destructive-light: #fff1f2;
+  --theme-ui-success: #d1fae5;
+  --theme-ui-success-text: #059669;
+  --theme-ui-switch-off: #fce7f3;
+
+  --theme-shadow-color: rgba(28, 16, 23, 0.06);
+  --theme-shadow-accent: rgba(244, 114, 182, 0.15);
+
+  --frosted-blur: 55px;
+  --frosted-saturate: 1.4;
+  --frosted-tint: rgba(255, 241, 242, 0.08);
 }
