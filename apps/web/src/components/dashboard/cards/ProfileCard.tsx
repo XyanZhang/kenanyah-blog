@@ -13,7 +13,7 @@ export function ProfileCard({ card }: ProfileCardProps) {
 
   const profile = {
     name: 'Kenanyah',
-    avatar: '/images/avatar/kenanyah.png',
+    avatar: '/images/avatar/avatar-pink.png',
     greeting: 'Hello, I\'m Kenanyah',
     subtitle: 'Nice to meet you.',
     social: {

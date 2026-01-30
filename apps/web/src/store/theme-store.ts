@@ -9,6 +9,7 @@ export type ThemeId =
   | 'classic-minimal'
   | 'vintage-study'
   | 'morandi'
+  | 'sakura-pink'
 
 export interface ThemeOption {
   readonly id: ThemeId
@@ -47,6 +48,12 @@ export const THEME_OPTIONS: readonly ThemeOption[] = [
     name: '莫兰迪',
     description: '低饱和灰粉灰蓝，高级质感',
     previewColors: ['#8b7b6b', '#7a8b80', '#8b8499'],
+  },
+  {
+    id: 'sakura-pink',
+    name: '樱花粉',
+    description: '浅粉色系，温柔甜美',
+    previewColors: ['#fce7f3', '#f9a8d4', '#f472b6'],
   },
 ] as const
 
