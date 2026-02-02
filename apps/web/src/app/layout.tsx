@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { Nav } from '@/components/navigation'
 import { ThemeProvider } from '@/components/providers/ThemeProvider'
+import { FloatingActionsProvider } from '@/components/providers/FloatingActionsProvider'
 import { ThemeSwitcher } from '@/components/theme/ThemeSwitcher'
 import '@/styles/globals.css'
 
@@ -36,10 +37,12 @@ export default function RootLayout({
       </head>
       <body>
         <ThemeProvider>
-          <div className="frosted-overlay" />
-          <Nav />
-          <div style={{ viewTransitionName: 'page-content' }}>{children}</div>
-          <ThemeSwitcher />
+          <FloatingActionsProvider>
+            <div className="frosted-overlay" />
+            <Nav />
+            <div style={{ viewTransitionName: 'page-content' }}>{children}</div>
+            <ThemeSwitcher />
+          </FloatingActionsProvider>
         </ThemeProvider>
       </body>
     </html>

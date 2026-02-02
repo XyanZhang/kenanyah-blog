@@ -40,6 +40,7 @@ export interface DashboardCard {
   borderRadius: number
   config: Record<string, any>
   visible: boolean
+  animationPriority?: number
   createdAt: Date
   updatedAt: Date
 }

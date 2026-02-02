@@ -88,6 +88,18 @@ export function Dashboard() {
 
   const visibleCards = layout.cards.filter((card) => card.visible)
 
+  // Sort cards by animationPriority for staggered animation
+  const sortedCardsForAnimation = [...visibleCards].sort((a, b) => {
+    const priorityA = a.animationPriority ?? Infinity
+    const priorityB = b.animationPriority ?? Infinity
+    return priorityA - priorityB
+  })
+
+  // Create a map of card id to animation index
+  const animationIndexMap = new Map(
+    sortedCardsForAnimation.map((card, index) => [card.id, index])
+  )
+
   return (
     <div
       className="relative h-screen w-full overflow-hidden"
@@ -110,8 +122,12 @@ export function Dashboard() {
         onDragEnd={handleDragEnd}
       >
         <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
-          {visibleCards.map((card, index) => (
-            <DashboardCard key={card.id} card={card} index={index} />
+          {visibleCards.map((card) => (
+            <DashboardCard
+              key={card.id}
+              card={card}
+              animationIndex={animationIndexMap.get(card.id) ?? 0}
+            />
           ))}
           {/* 辅助线 */}
           <AlignmentGuides lines={alignmentLines} isVisible={isEditMode && activeCardId !== null} />

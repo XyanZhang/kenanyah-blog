@@ -9,7 +9,7 @@ export const cardVariants = {
     scale: 1,
     opacity: 1,
     transition: {
-      delay: index * 0.1,
+      delay: index * 0.3,
       type: 'spring' as const,
       stiffness: 260,
       damping: 20,

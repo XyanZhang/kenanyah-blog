@@ -1,12 +1,11 @@
 'use client'
 
-import { useCallback } from 'react'
+import { useCallback, useState } from 'react'
 import { useDraggable } from '@dnd-kit/core'
 import { motion } from 'framer-motion'
 import { DashboardCard as DashboardCardType, CardType, CardDimensions, CardSize } from '@blog/types'
 import { useDashboard } from '@/hooks/useDashboard'
 import { useCardResize } from '@/hooks/useCardResize'
-import { cardVariants } from '@/hooks/useCardAnimation'
 import { getCardDimensions, DEFAULT_BORDER_RADIUS } from '@/lib/constants/dashboard'
 import { CardToolbar } from './CardToolbar'
 import { ResizeHandles } from './ResizeHandles'
@@ -22,7 +21,7 @@ import { ClockCard } from './cards/ClockCard'
 
 interface DashboardCardProps {
   card: DashboardCardType
-  index: number
+  animationIndex: number
 }
 
 function getCardComponent(type: CardType) {
@@ -40,11 +39,14 @@ function getCardComponent(type: CardType) {
   return registry[type]
 }
 
-export function DashboardCard({ card, index }: DashboardCardProps) {
+export function DashboardCard({ card, animationIndex }: DashboardCardProps) {
   const { isEditMode, selectedCardId, selectCard, updateCardSize } = useDashboard()
   const baseDimensions = getCardDimensions(card.size, card.customDimensions)
   const isAutoSize = card.size === CardSize.AUTO
   const isSelected = selectedCardId === card.id
+
+  // Track if initial animation has completed
+  const [hasAnimated, setHasAnimated] = useState(false)
 
   const handleResizeEnd = useCallback(
     (dimensions: CardDimensions, positionDelta: { x: number; y: number }) => {
@@ -70,6 +72,9 @@ export function DashboardCard({ card, index }: DashboardCardProps) {
   const x = card.position.x + (transform?.x || 0) + positionDelta.x
   const y = card.position.y + (transform?.y || 0) + positionDelta.y
 
+  // Animation delay based on priority
+  const animationDelay = animationIndex * 0.15
+
   return (
     <motion.div
       ref={setNodeRef}
@@ -80,21 +85,33 @@ export function DashboardCard({ card, index }: DashboardCardProps) {
         zIndex: isDragging || isResizing ? 1000 : card.position.z,
         borderRadius: `${borderRadius}px`,
       }}
-      variants={cardVariants}
-      initial="hidden"
+      initial={{ scale: 0, opacity: 0, x, y }}
       animate={{
         x,
         y,
         scale: 1,
         opacity: isDragging ? 0.8 : 1,
       }}
-      whileHover={!isEditMode ? { scale: 1.02 } : undefined}
-      custom={index}
       transition={{
-        type: 'spring',
-        stiffness: isDragging || isResizing ? 500 : 260,
-        damping: isDragging || isResizing ? 30 : 20,
+        x: { type: 'spring', stiffness: isDragging || isResizing ? 500 : 260, damping: isDragging || isResizing ? 30 : 20 },
+        y: { type: 'spring', stiffness: isDragging || isResizing ? 500 : 260, damping: isDragging || isResizing ? 30 : 20 },
+        scale: {
+          type: 'spring',
+          stiffness: 260,
+          damping: 20,
+          delay: hasAnimated ? 0 : animationDelay,
+        },
+        opacity: {
+          type: 'spring',
+          stiffness: 260,
+          damping: 20,
+          delay: hasAnimated ? 0 : animationDelay,
+        },
       }}
+      onAnimationComplete={() => {
+        if (!hasAnimated) setHasAnimated(true)
+      }}
+      whileHover={!isEditMode ? { scale: 1.02 } : undefined}
       className={`
         group relative
         bg-surface-glass border border-line-glass p-6 backdrop-blur-lg
