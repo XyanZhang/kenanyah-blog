@@ -79,12 +79,14 @@ export function Nav() {
       const container = navRef.current?.querySelector('[data-nav-items]')
       const containerRect = container?.getBoundingClientRect()
       if (containerRect) {
+        // Scale down slightly when hovering to create visual feedback
         setIndicatorStyle({
           width: rect.width,
           height: rect.height,
           left: rect.left - containerRect.left,
           top: rect.top - containerRect.top,
           opacity: 1,
+          transform: 'scale(0.95)',
         })
       }
     },
@@ -109,12 +111,14 @@ export function Nav() {
       return
     }
     const rect = (activeEl as HTMLElement).getBoundingClientRect()
+    // Return to normal scale when returning to active state
     setIndicatorStyle({
       width: rect.width,
       height: rect.height,
       left: rect.left - containerRect.left,
       top: rect.top - containerRect.top,
       opacity: 1,
+      transform: 'scale(1)',
     })
   }, [pathname])
 
@@ -226,6 +230,7 @@ export function Nav() {
             item={item}
             isActive={pathname === item.href}
             isHovered={hoverIndex === index}
+            isAnyHovered={hoverIndex !== null}
             isCompact={!isHomepage}
             onMouseEnter={(el) => handleMouseEnter(index, el)}
           />

@@ -17,12 +17,16 @@ interface NavItemProps {
   item: NavItemType
   isActive: boolean
   isHovered: boolean
+  isAnyHovered: boolean
   isCompact?: boolean
   onMouseEnter: (element: HTMLElement) => void
 }
 
-export function NavItem({ item, isActive, isHovered, isCompact = false, onMouseEnter }: NavItemProps) {
+export function NavItem({ item, isActive, isHovered, isAnyHovered, isCompact = false, onMouseEnter }: NavItemProps) {
   const IconComponent = iconMap[item.icon]
+  // When any item is hovered, only the hovered item should be highlighted
+  // When nothing is hovered, the active item should be highlighted
+  const shouldHighlight = isAnyHovered ? isHovered : isActive
 
   return (
     <Link
@@ -30,7 +34,7 @@ export function NavItem({ item, isActive, isHovered, isCompact = false, onMouseE
       className={cn(
         'group relative flex items-center rounded-xl transition-all duration-300',
         isCompact ? 'justify-center p-2' : 'gap-3 px-3 py-2',
-        isActive || isHovered
+        shouldHighlight
           ? 'text-accent-primary-dark'
           : 'text-content-tertiary'
       )}
@@ -39,7 +43,7 @@ export function NavItem({ item, isActive, isHovered, isCompact = false, onMouseE
       <IconComponent
         className={cn(
           'h-5 w-5 transition-all duration-300',
-          isActive || isHovered
+          shouldHighlight
             ? 'text-accent-primary-dark fill-accent-primary-dark'
             : 'text-content-tertiary'
         )}
