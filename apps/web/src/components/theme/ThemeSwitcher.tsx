@@ -3,14 +3,15 @@
 import { useState, useRef, useEffect } from 'react'
 import { Palette, Check } from 'lucide-react'
 import { useThemeStore, THEME_OPTIONS, type ThemeId } from '@/store/theme-store'
+import { useFloatingActions } from '@/components/providers/FloatingActionsProvider'
 
 export function ThemeSwitcher() {
   const [isOpen, setIsOpen] = useState(false)
   const panelRef = useRef<HTMLDivElement>(null)
   const buttonRef = useRef<HTMLButtonElement>(null)
   const { themeId, setTheme } = useThemeStore()
+  const { extraActions } = useFloatingActions()
 
-  // Close panel when clicking outside
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (
@@ -29,7 +30,6 @@ export function ThemeSwitcher() {
     }
   }, [isOpen])
 
-  // Close panel on escape key
   useEffect(() => {
     function handleEscape(event: KeyboardEvent) {
       if (event.key === 'Escape') {
@@ -49,7 +49,10 @@ export function ThemeSwitcher() {
   }
 
   return (
-    <div className="fixed bottom-6 right-6 z-50">
+    <div className="fixed bottom-6 right-6 z-50 flex flex-col items-center gap-3">
+      {/* Extra Buttons Slot */}
+      {extraActions}
+
       {/* Theme Panel */}
       {isOpen && (
         <div

@@ -77,14 +77,14 @@ export function createDefaultLayout(): DashboardLayout {
   const now = new Date()
 
   const cardsWithoutPosition = [
-    createDefaultCard(CardType.PROFILE, CardSize.MEDIUM),
-    createDefaultCard(CardType.STATS, CardSize.WIDE),
-    createDefaultCard(CardType.CATEGORIES, CardSize.MEDIUM),
-    createDefaultCard(CardType.RECENT_POSTS, CardSize.TALL),
-    createDefaultCard(CardType.TABBAR, CardSize.WIDE),
-    createDefaultCard(CardType.LATEST_POSTS, CardSize.TALL),
-    createDefaultCard(CardType.RANDOM_POSTS, CardSize.TALL),
-    createDefaultCard(CardType.CALENDAR, CardSize.MEDIUM),
+    { ...createDefaultCard(CardType.PROFILE, CardSize.MEDIUM), animationPriority: 1 },
+    { ...createDefaultCard(CardType.STATS, CardSize.WIDE), animationPriority: 2 },
+    { ...createDefaultCard(CardType.CATEGORIES, CardSize.MEDIUM), animationPriority: 3 },
+    { ...createDefaultCard(CardType.RECENT_POSTS, CardSize.TALL), animationPriority: 4 },
+    { ...createDefaultCard(CardType.TABBAR, CardSize.WIDE), animationPriority: 5 },
+    { ...createDefaultCard(CardType.LATEST_POSTS, CardSize.TALL), animationPriority: 6 },
+    { ...createDefaultCard(CardType.RANDOM_POSTS, CardSize.TALL), animationPriority: 7 },
+    { ...createDefaultCard(CardType.CALENDAR, CardSize.MEDIUM), animationPriority: 8 },
   ]
 
   const positions = generateCircularLayout(

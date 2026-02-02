@@ -1,40 +1,56 @@
 'use client'
 
+import { useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { Edit3, Eye } from 'lucide-react'
 import { useDashboard } from '@/hooks/useDashboard'
-import { Button } from '@/components/ui'
+import { useFloatingActions } from '@/components/providers/FloatingActionsProvider'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui'
 
-export function EditModeToggle() {
+function EditModeButton() {
   const { isEditMode, toggleEditMode } = useDashboard()
 
   return (
     <motion.div
-      className="fixed bottom-8 right-8 z-50"
       initial={{ scale: 0, opacity: 0 }}
       animate={{ scale: 1, opacity: 1 }}
       transition={{ delay: 0.5, type: 'spring', stiffness: 260, damping: 20 }}
     >
       <Tooltip>
         <TooltipTrigger asChild>
-          <Button
-            size="lg"
-            variant={isEditMode ? 'default' : 'outline'}
+          <button
             onClick={toggleEditMode}
-            className="h-14 w-14 rounded-full shadow-lg"
+            className={`
+              flex h-12 w-12 items-center justify-center rounded-full shadow-lg transition-all
+              ${isEditMode
+                ? 'bg-accent-primary text-white'
+                : 'bg-surface-primary text-content-secondary hover:bg-surface-hover border border-line-primary'
+              }
+            `}
+            aria-label={isEditMode ? '退出编辑模式' : '进入编辑模式'}
           >
             {isEditMode ? (
-              <Eye className="h-6 w-6" />
+              <Eye className="h-5 w-5" />
             ) : (
-              <Edit3 className="h-6 w-6" />
+              <Edit3 className="h-5 w-5" />
             )}
-          </Button>
+          </button>
         </TooltipTrigger>
         <TooltipContent side="left">
-          {isEditMode ? 'Exit Edit Mode' : 'Enter Edit Mode'}
+          {isEditMode ? '退出编辑模式' : '进入编辑模式'}
         </TooltipContent>
       </Tooltip>
     </motion.div>
   )
+}
+
+export function EditModeToggle() {
+  const { setExtraActions } = useFloatingActions()
+
+  useEffect(() => {
+    setExtraActions(<EditModeButton />)
+    return () => setExtraActions(null)
+  }, [setExtraActions])
+
+  return null
 }
