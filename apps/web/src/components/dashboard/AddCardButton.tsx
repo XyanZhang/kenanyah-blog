@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { Plus, User, BarChart3, FolderTree, FileText, LayoutGrid, Clock, Shuffle, Calendar, Timer } from 'lucide-react'
+import { Plus, User, BarChart3, FolderTree, FileText, LayoutGrid, Clock, Shuffle, Calendar, Timer, ImageIcon } from 'lucide-react'
 import { CardType, CardSize } from '@blog/types'
 import { useDashboard } from '@/hooks/useDashboard'
 import { Button } from '@/components/ui'
@@ -26,6 +26,7 @@ const cardTypeOptions = [
   { value: CardType.RANDOM_POSTS, label: 'Random Posts', icon: Shuffle, description: '随机推荐文章' },
   { value: CardType.CALENDAR, label: 'Calendar', icon: Calendar, description: '日历组件' },
   { value: CardType.CLOCK, label: 'Clock', icon: Timer, description: '透明电子时钟' },
+  { value: CardType.IMAGE, label: 'Image', icon: ImageIcon, description: '封面图片卡片' },
 ]
 
 const cardSizeOptions = [

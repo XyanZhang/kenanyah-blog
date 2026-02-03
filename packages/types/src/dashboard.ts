@@ -23,6 +23,7 @@ export enum CardType {
   RANDOM_POSTS = 'random_posts',
   CALENDAR = 'calendar',
   CLOCK = 'clock',
+  IMAGE = 'image',
 }
 
 export interface CardPosition {
@@ -105,4 +106,13 @@ export interface ClockCardConfig {
   showSeconds: boolean
   showDate: boolean
   fontStyle: 'mono' | 'sans' | 'serif'
+}
+
+export interface ImageCardConfig {
+  src: string
+  alt: string
+  objectFit: 'cover' | 'contain' | 'fill'
+  showOverlay: boolean
+  overlayText?: string
+  linkUrl?: string
 }

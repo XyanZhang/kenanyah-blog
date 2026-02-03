@@ -56,6 +56,12 @@ export function createDefaultCard(
       showDate: true,
       fontStyle: 'mono',
     },
+    [CardType.IMAGE]: {
+      src: '/images/avatar/avatar-pink.png',
+      alt: 'Cover Image',
+      objectFit: 'cover',
+      showOverlay: false,
+    },
   }
 
   return {

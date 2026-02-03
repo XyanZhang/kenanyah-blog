@@ -24,6 +24,7 @@ import { LatestPostsConfigForm } from './config-forms/LatestPostsConfigForm'
 import { RandomPostsConfigForm } from './config-forms/RandomPostsConfigForm'
 import { CalendarConfigForm } from './config-forms/CalendarConfigForm'
 import { ClockConfigForm } from './config-forms/ClockConfigForm'
+import { ImageConfigForm } from './config-forms/ImageConfigForm'
 
 interface CardConfigDialogProps {
   card: DashboardCard
@@ -42,6 +43,7 @@ function getCardTypeLabel(type: CardType): string {
     [CardType.RANDOM_POSTS]: 'Random Posts',
     [CardType.CALENDAR]: 'Calendar',
     [CardType.CLOCK]: 'Clock',
+    [CardType.IMAGE]: 'Image',
   }
   return labels[type]
 }
@@ -57,6 +59,7 @@ function getConfigForm(type: CardType) {
     [CardType.RANDOM_POSTS]: RandomPostsConfigForm,
     [CardType.CALENDAR]: CalendarConfigForm,
     [CardType.CLOCK]: ClockConfigForm,
+    [CardType.IMAGE]: ImageConfigForm,
   }
   return forms[type]
 }
