@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useState } from 'react'
+import { useCallback, useState, useEffect, useRef } from 'react'
 import { useDraggable } from '@dnd-kit/core'
 import { motion } from 'framer-motion'
 import { DashboardCard as DashboardCardType, CardType, CardDimensions, CardSize } from '@blog/types'
@@ -20,9 +20,12 @@ import { CalendarCard } from './cards/CalendarCard'
 import { ClockCard } from './cards/ClockCard'
 import { ImageCard } from './cards/ImageCard'
 
+import { ResizeState } from '@/hooks/useAlignmentGuides'
+
 interface DashboardCardProps {
   card: DashboardCardType
   animationIndex: number
+  onResizeChange?: (cardId: string, state: ResizeState | null) => void
 }
 
 function getCardComponent(type: CardType) {
@@ -41,7 +44,7 @@ function getCardComponent(type: CardType) {
   return registry[type]
 }
 
-export function DashboardCard({ card, animationIndex }: DashboardCardProps) {
+export function DashboardCard({ card, animationIndex, onResizeChange }: DashboardCardProps) {
   const { isEditMode, selectedCardId, selectCard, updateCardSize } = useDashboard()
   const baseDimensions = getCardDimensions(card.size, card.customDimensions)
   const isAutoSize = card.size === CardSize.AUTO
@@ -61,6 +64,30 @@ export function DashboardCard({ card, animationIndex }: DashboardCardProps) {
     initialDimensions: baseDimensions ?? { width: 200, height: 200 },
     onResizeEnd: handleResizeEnd,
   })
+
+  // 使用 ref 存储回调，避免 useEffect 依赖问题
+  const onResizeChangeRef = useRef(onResizeChange)
+  onResizeChangeRef.current = onResizeChange
+
+  // 追踪上一次的 isResizing 状态
+  const prevIsResizingRef = useRef(false)
+
+  // 通知父组件 resize 状态变化
+  useEffect(() => {
+    // 只在 isResizing 为 true 时通知，或者从 true 变为 false 时通知
+    if (isResizing) {
+      onResizeChangeRef.current?.(card.id, {
+        width: currentDimensions.width,
+        height: currentDimensions.height,
+        positionDelta,
+      })
+      prevIsResizingRef.current = true
+    } else if (prevIsResizingRef.current) {
+      // 只有之前是 resizing 状态，现在变为 false 时才通知
+      onResizeChangeRef.current?.(card.id, null)
+      prevIsResizingRef.current = false
+    }
+  }, [isResizing, currentDimensions, positionDelta, card.id])
 
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: card.id,
