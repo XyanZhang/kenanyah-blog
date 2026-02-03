@@ -98,6 +98,18 @@
     -webkit-box-orient: vertical;
     overflow: hidden;
   }
+
+  /* Gradient text utility with dynamic colors (dual-layer gradient) */
+  .text-gradient {
+    --gradient-from: var(--theme-accent-primary);
+    --gradient-to: var(--theme-accent-secondary);
+    background:
+      linear-gradient(to right bottom, rgb(0 0 0 / 0.2) 0%, rgb(170 170 170 / 0.067)),
+      linear-gradient(to right bottom, var(--gradient-from) 40%, var(--gradient-to));
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
 }
 
 /* Bokeh orb floating animations */

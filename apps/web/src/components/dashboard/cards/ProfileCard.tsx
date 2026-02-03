@@ -14,7 +14,7 @@ export function ProfileCard({ card }: ProfileCardProps) {
   const profile = {
     name: 'Kenanyah',
     avatar: '/images/avatar/avatar-pink.png',
-    greeting: 'Hello, I\'m Kenanyah',
+    greeting: 'Hello, I\'m',
     subtitle: 'Nice to meet you.',
     social: {
       github: 'https://github.com/XyanZhang',
@@ -45,8 +45,15 @@ export function ProfileCard({ card }: ProfileCardProps) {
       )}
 
       <div className="space-y-2">
-        <h2 className="bg-linear-to-r from-accent-primary via-accent-secondary to-accent-tertiary bg-clip-text text-2xl font-bold text-transparent">
-          {profile.greeting}
+        <h2 className="text-2xl font-bold">
+          {profile.greeting} &nbsp;
+          <span
+            className="text-gradient"
+            style={{
+              '--gradient-from': 'var(--theme-accent-primary)',
+              '--gradient-to': 'var(--theme-accent-secondary)'
+            } as React.CSSProperties}
+          >{profile.name}</span>
         </h2>
         {config.showBio && (
           <p className="text-lg font-medium text-accent-primary-dark">
