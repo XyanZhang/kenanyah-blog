@@ -18,6 +18,7 @@ import { LatestPostsCard } from './cards/LatestPostsCard'
 import { RandomPostsCard } from './cards/RandomPostsCard'
 import { CalendarCard } from './cards/CalendarCard'
 import { ClockCard } from './cards/ClockCard'
+import { ImageCard } from './cards/ImageCard'
 
 interface DashboardCardProps {
   card: DashboardCardType
@@ -35,6 +36,7 @@ function getCardComponent(type: CardType) {
     [CardType.RANDOM_POSTS]: RandomPostsCard,
     [CardType.CALENDAR]: CalendarCard,
     [CardType.CLOCK]: ClockCard,
+    [CardType.IMAGE]: ImageCard,
   }
   return registry[type]
 }
