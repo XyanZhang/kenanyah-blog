@@ -21,8 +21,10 @@ interface CardBounds {
   centerY: number
 }
 
-function getCardBounds(card: DashboardCard): CardBounds {
-  const dimensions = getCardDimensions(card.size)
+function getCardBounds(card: DashboardCard): CardBounds | null {
+  const dimensions = getCardDimensions(card.size, card.customDimensions)
+  if (!dimensions) return null
+
   const left = card.position.x
   const top = card.position.y
   const right = left + dimensions.width
@@ -38,10 +40,17 @@ function getCardBounds(card: DashboardCard): CardBounds {
   }
 }
 
+export interface ResizeState {
+  width: number
+  height: number
+  positionDelta: { x: number; y: number }
+}
+
 interface UseAlignmentGuidesProps {
   cards: DashboardCard[]
   activeCardId: string | null
   dragDelta: { x: number; y: number }
+  resizeState?: ResizeState | null
 }
 
 interface UseAlignmentGuidesResult {
@@ -53,21 +62,42 @@ export function useAlignmentGuides({
   cards,
   activeCardId,
   dragDelta,
+  resizeState,
 }: UseAlignmentGuidesProps): UseAlignmentGuidesResult {
   // 计算其他卡片的边界（排除当前拖拽的卡片）
   const otherCardsBounds = useMemo(() => {
     return cards
       .filter((card) => card.id !== activeCardId && card.visible)
       .map(getCardBounds)
+      .filter((bounds): bounds is CardBounds => bounds !== null)
   }, [cards, activeCardId])
 
-  // 计算当前拖拽卡片的边界（包含拖拽偏移）
+  // 计算当前拖拽/调整尺寸卡片的边界
   const activeCardBounds = useMemo(() => {
     if (!activeCardId) return null
     const activeCard = cards.find((card) => card.id === activeCardId)
     if (!activeCard) return null
 
+    // 如果正在调整尺寸，使用 resizeState 计算边界
+    if (resizeState) {
+      const left = activeCard.position.x + resizeState.positionDelta.x
+      const top = activeCard.position.y + resizeState.positionDelta.y
+      const right = left + resizeState.width
+      const bottom = top + resizeState.height
+      return {
+        left,
+        right,
+        top,
+        bottom,
+        centerX: left + resizeState.width / 2,
+        centerY: top + resizeState.height / 2,
+      }
+    }
+
+    // 否则使用拖拽偏移
     const bounds = getCardBounds(activeCard)
+    if (!bounds) return null
+
     return {
       left: bounds.left + dragDelta.x,
       right: bounds.right + dragDelta.x,
@@ -76,7 +106,7 @@ export function useAlignmentGuides({
       centerX: bounds.centerX + dragDelta.x,
       centerY: bounds.centerY + dragDelta.y,
     }
-  }, [cards, activeCardId, dragDelta])
+  }, [cards, activeCardId, dragDelta, resizeState])
 
   // 计算对齐线
   const alignmentLines = useMemo(() => {

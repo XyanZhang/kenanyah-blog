@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import {
   DndContext,
   DragEndEvent,
@@ -11,7 +11,7 @@ import {
   useSensors,
 } from '@dnd-kit/core'
 import { useDashboard } from '@/hooks/useDashboard'
-import { useAlignmentGuides } from '@/hooks/useAlignmentGuides'
+import { useAlignmentGuides, ResizeState } from '@/hooks/useAlignmentGuides'
 import { DashboardCard } from './DashboardCard'
 import { EditModeToggle } from './EditModeToggle'
 import { AddCardButton } from './AddCardButton'
@@ -25,11 +25,15 @@ export function Dashboard() {
   const [activeCardId, setActiveCardId] = useState<string | null>(null)
   const [dragDelta, setDragDelta] = useState({ x: 0, y: 0 })
 
+  // Resize 状态追踪
+  const [resizeState, setResizeState] = useState<ResizeState | null>(null)
+
   // 计算辅助线
   const { alignmentLines, snapOffset } = useAlignmentGuides({
     cards: layout?.cards ?? [],
     activeCardId,
     dragDelta,
+    resizeState,
   })
 
   const sensors = useSensors(
@@ -69,6 +73,12 @@ export function Dashboard() {
     setActiveCardId(null)
     setDragDelta({ x: 0, y: 0 })
   }
+
+  // Resize 状态变化回调
+  const handleResizeChange = useCallback((cardId: string, state: ResizeState | null) => {
+    setActiveCardId(state ? cardId : null)
+    setResizeState(state)
+  }, [])
 
   if (isLoading) {
     return (
@@ -127,6 +137,7 @@ export function Dashboard() {
               key={card.id}
               card={card}
               animationIndex={animationIndexMap.get(card.id) ?? 0}
+              onResizeChange={handleResizeChange}
             />
           ))}
           {/* 辅助线 */}
