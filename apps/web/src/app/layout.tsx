@@ -3,6 +3,7 @@ import { Nav } from '@/components/navigation'
 import { ThemeProvider } from '@/components/providers/ThemeProvider'
 import { FloatingActionsProvider } from '@/components/providers/FloatingActionsProvider'
 import { ThemeSwitcher } from '@/components/theme/ThemeSwitcher'
+import { RootAlignmentGuides } from '@/components/layout/RootAlignmentGuides'
 import '@/styles/globals.css'
 
 const themeScript = `
@@ -42,6 +43,7 @@ export default function RootLayout({
             <Nav />
             <div style={{ viewTransitionName: 'page-content' }}>{children}</div>
             <ThemeSwitcher />
+            <RootAlignmentGuides />
           </FloatingActionsProvider>
         </ThemeProvider>
       </body>

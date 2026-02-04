@@ -1,40 +1,36 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 import {
   DndContext,
   DragEndEvent,
-  DragMoveEvent,
-  DragStartEvent,
   PointerSensor,
   useSensor,
   useSensors,
 } from '@dnd-kit/core'
 import { useDashboard } from '@/hooks/useDashboard'
-import { useAlignmentGuides, ResizeState } from '@/hooks/useAlignmentGuides'
+import { useAlignmentStore } from '@/store/alignment-store'
 import { DashboardCard } from './DashboardCard'
 import { EditModeToggle } from './EditModeToggle'
-import { AddCardButton } from './AddCardButton'
-import { AlignmentGuides } from './AlignmentGuides'
-import { LayoutTemplatePicker } from './LayoutTemplatePicker'
+import { AddCardDialog, AddCardDialogHandle } from './AddCardButton'
+import { LayoutTemplatePickerDialog, LayoutTemplatePickerHandle } from './LayoutTemplatePicker'
 
 export function Dashboard() {
-  const { layout, isEditMode, isLoading, initializeLayout, updateCardPosition } = useDashboard()
+  const { layout, isLoading, initializeLayout, updateCardPosition } = useDashboard()
+  const { setActiveElement } = useAlignmentStore()
 
-  // 拖拽状态追踪
-  const [activeCardId, setActiveCardId] = useState<string | null>(null)
-  const [dragDelta, setDragDelta] = useState({ x: 0, y: 0 })
+  // Dialog refs
+  const addCardDialogRef = useRef<AddCardDialogHandle>(null)
+  const layoutPickerDialogRef = useRef<LayoutTemplatePickerHandle>(null)
 
-  // Resize 状态追踪
-  const [resizeState, setResizeState] = useState<ResizeState | null>(null)
+  // Dialog handlers
+  const handleAddCard = useCallback(() => {
+    addCardDialogRef.current?.open()
+  }, [])
 
-  // 计算辅助线
-  const { alignmentLines, snapOffset } = useAlignmentGuides({
-    cards: layout?.cards ?? [],
-    activeCardId,
-    dragDelta,
-    resizeState,
-  })
+  const handleSelectLayout = useCallback(() => {
+    layoutPickerDialogRef.current?.open()
+  }, [])
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -48,37 +44,21 @@ export function Dashboard() {
     initializeLayout()
   }, [initializeLayout])
 
-  const handleDragStart = (event: DragStartEvent) => {
-    setActiveCardId(event.active.id as string)
-    setDragDelta({ x: 0, y: 0 })
-  }
-
-  const handleDragMove = (event: DragMoveEvent) => {
-    const { delta } = event
-    setDragDelta({ x: delta.x, y: delta.y })
-  }
-
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, delta } = event
 
     if (delta.x !== 0 || delta.y !== 0) {
-      // 应用吸附效果
+      // Read fresh snapOffset from store to avoid stale closure
+      const currentSnapOffset = useAlignmentStore.getState().snapOffset
       const finalDelta = {
-        x: delta.x + (snapOffset?.x ?? 0),
-        y: delta.y + (snapOffset?.y ?? 0),
+        x: delta.x + (currentSnapOffset?.x ?? 0),
+        y: delta.y + (currentSnapOffset?.y ?? 0),
       }
       updateCardPosition(active.id as string, finalDelta)
     }
 
-    setActiveCardId(null)
-    setDragDelta({ x: 0, y: 0 })
+    setActiveElement(null)
   }
-
-  // Resize 状态变化回调
-  const handleResizeChange = useCallback((cardId: string, state: ResizeState | null) => {
-    setActiveCardId(state ? cardId : null)
-    setResizeState(state)
-  }, [])
 
   if (isLoading) {
     return (
@@ -127,8 +107,6 @@ export function Dashboard() {
 
       <DndContext
         sensors={sensors}
-        onDragStart={handleDragStart}
-        onDragMove={handleDragMove}
         onDragEnd={handleDragEnd}
       >
         <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
@@ -137,17 +115,14 @@ export function Dashboard() {
               key={card.id}
               card={card}
               animationIndex={animationIndexMap.get(card.id) ?? 0}
-              onResizeChange={handleResizeChange}
             />
           ))}
-          {/* 辅助线 */}
-          <AlignmentGuides lines={alignmentLines} isVisible={isEditMode && activeCardId !== null} />
         </div>
       </DndContext>
 
-      <EditModeToggle />
-      {isEditMode && <AddCardButton />}
-      {isEditMode && <LayoutTemplatePicker />}
+      <EditModeToggle onAddCard={handleAddCard} onSelectLayout={handleSelectLayout} />
+      <AddCardDialog ref={addCardDialogRef} />
+      <LayoutTemplatePickerDialog ref={layoutPickerDialogRef} />
     </div>
   )
 }

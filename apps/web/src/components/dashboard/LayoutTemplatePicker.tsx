@@ -1,9 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useImperativeHandle, forwardRef } from 'react'
 import { motion } from 'framer-motion'
 import {
-  LayoutTemplate as LayoutIcon,
   Layout,
   Minus,
   LayoutGrid,
@@ -22,7 +21,6 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@/components/ui'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui'
 import { layoutTemplates, LayoutTemplate } from '@/lib/dashboard/layout-templates'
 
 const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -89,42 +87,29 @@ function TemplatePreviewCard({
   )
 }
 
-export function LayoutTemplatePicker() {
-  const [isOpen, setIsOpen] = useState(false)
-  const [selectedTemplate, setSelectedTemplate] = useState<LayoutTemplate | null>(null)
-  const { applyLayoutTemplate } = useDashboard()
+export interface LayoutTemplatePickerHandle {
+  open: () => void
+}
 
-  const handleApply = () => {
-    if (selectedTemplate) {
-      applyLayoutTemplate(selectedTemplate)
-      setIsOpen(false)
-      setSelectedTemplate(null)
+export const LayoutTemplatePickerDialog = forwardRef<LayoutTemplatePickerHandle>(
+  function LayoutTemplatePickerDialog(_props, ref) {
+    const [isOpen, setIsOpen] = useState(false)
+    const [selectedTemplate, setSelectedTemplate] = useState<LayoutTemplate | null>(null)
+    const { applyLayoutTemplate } = useDashboard()
+
+    useImperativeHandle(ref, () => ({
+      open: () => setIsOpen(true),
+    }))
+
+    const handleApply = () => {
+      if (selectedTemplate) {
+        applyLayoutTemplate(selectedTemplate)
+        setIsOpen(false)
+        setSelectedTemplate(null)
+      }
     }
-  }
 
-  return (
-    <>
-      <motion.div
-        className="fixed bottom-8 left-28 z-50"
-        initial={{ scale: 0, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        transition={{ delay: 0.7, type: 'spring', stiffness: 260, damping: 20 }}
-      >
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              size="lg"
-              variant="outline"
-              onClick={() => setIsOpen(true)}
-              className="h-14 w-14 rounded-full shadow-lg"
-            >
-              <LayoutIcon className="h-6 w-6" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent side="top">选择布局模板</TooltipContent>
-        </Tooltip>
-      </motion.div>
-
+    return (
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
@@ -177,9 +162,9 @@ export function LayoutTemplatePicker() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </>
-  )
-}
+    )
+  }
+)
 
 function getCardTypeName(type: string): string {
   const names: Record<string, string> = {

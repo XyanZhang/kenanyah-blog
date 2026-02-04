@@ -12,8 +12,6 @@ interface UseDragReturn {
   dragDelta: { x: number; y: number }
   dragHandlers: {
     onPointerDown: (e: React.PointerEvent) => void
-    onPointerMove: (e: React.PointerEvent) => void
-    onPointerUp: (e: React.PointerEvent) => void
   }
 }
 
@@ -37,42 +35,36 @@ export function useDrag({ onDragEnd, disabled = false }: UseDragOptions = {}): U
       dragStartRef.current = { x: e.clientX, y: e.clientY }
       setIsDragging(true)
       setDragDelta({ x: 0, y: 0 })
+
+      const onMove = (moveEvent: PointerEvent) => {
+        moveEvent.preventDefault()
+        const deltaX = moveEvent.clientX - dragStartRef.current.x
+        const deltaY = moveEvent.clientY - dragStartRef.current.y
+        setDragDelta({ x: deltaX, y: deltaY })
+      }
+
+      const onUp = (upEvent: PointerEvent) => {
+        target.releasePointerCapture(upEvent.pointerId)
+        document.removeEventListener('pointermove', onMove)
+        document.removeEventListener('pointerup', onUp)
+
+        const finalDelta = {
+          x: upEvent.clientX - dragStartRef.current.x,
+          y: upEvent.clientY - dragStartRef.current.y,
+        }
+
+        if (finalDelta.x !== 0 || finalDelta.y !== 0) {
+          onDragEndRef.current?.(finalDelta)
+        }
+
+        setIsDragging(false)
+        setDragDelta({ x: 0, y: 0 })
+      }
+
+      document.addEventListener('pointermove', onMove)
+      document.addEventListener('pointerup', onUp)
     },
     [disabled]
-  )
-
-  const handlePointerMove = useCallback(
-    (e: React.PointerEvent) => {
-      if (!isDragging) return
-      e.preventDefault()
-
-      const deltaX = e.clientX - dragStartRef.current.x
-      const deltaY = e.clientY - dragStartRef.current.y
-      setDragDelta({ x: deltaX, y: deltaY })
-    },
-    [isDragging]
-  )
-
-  const handlePointerUp = useCallback(
-    (e: React.PointerEvent) => {
-      if (!isDragging) return
-
-      const target = e.currentTarget as HTMLElement
-      target.releasePointerCapture(e.pointerId)
-
-      const finalDelta = {
-        x: e.clientX - dragStartRef.current.x,
-        y: e.clientY - dragStartRef.current.y,
-      }
-
-      if (finalDelta.x !== 0 || finalDelta.y !== 0) {
-        onDragEndRef.current?.(finalDelta)
-      }
-
-      setIsDragging(false)
-      setDragDelta({ x: 0, y: 0 })
-    },
-    [isDragging]
   )
 
   return {
@@ -80,8 +72,6 @@ export function useDrag({ onDragEnd, disabled = false }: UseDragOptions = {}): U
     dragDelta,
     dragHandlers: {
       onPointerDown: handlePointerDown,
-      onPointerMove: handlePointerMove,
-      onPointerUp: handlePointerUp,
     },
   }
 }

@@ -1,8 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { motion } from 'framer-motion'
-import { Plus, User, BarChart3, FolderTree, FileText, LayoutGrid, Clock, Shuffle, Calendar, Timer, ImageIcon } from 'lucide-react'
+import { useState, useImperativeHandle, forwardRef } from 'react'
+import { User, BarChart3, FolderTree, FileText, LayoutGrid, Clock, Shuffle, Calendar, Timer, ImageIcon } from 'lucide-react'
 import { CardType, CardSize } from '@blog/types'
 import { useDashboard } from '@/hooks/useDashboard'
 import { Button } from '@/components/ui'
@@ -37,11 +36,19 @@ const cardSizeOptions = [
   { value: CardSize.TALL, label: 'Tall (300x600)' },
 ]
 
-export function AddCardButton() {
+export interface AddCardDialogHandle {
+  open: () => void
+}
+
+export const AddCardDialog = forwardRef<AddCardDialogHandle>(function AddCardDialog(_props, ref) {
   const [isOpen, setIsOpen] = useState(false)
   const [selectedType, setSelectedType] = useState<CardType>(CardType.PROFILE)
   const [selectedSize, setSelectedSize] = useState<CardSize>(CardSize.MEDIUM)
   const { addCard } = useDashboard()
+
+  useImperativeHandle(ref, () => ({
+    open: () => setIsOpen(true),
+  }))
 
   const handleAdd = () => {
     addCard(selectedType, selectedSize)
@@ -51,86 +58,69 @@ export function AddCardButton() {
   }
 
   return (
-    <>
-      <motion.div
-        className="fixed bottom-8 left-8 z-50"
-        initial={{ scale: 0, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        transition={{ delay: 0.6, type: 'spring', stiffness: 260, damping: 20 }}
-      >
-        <Button
-          size="lg"
-          onClick={() => setIsOpen(true)}
-          className="h-14 w-14 rounded-full shadow-lg"
-        >
-          <Plus className="h-6 w-6" />
-        </Button>
-      </motion.div>
+    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Add New Card</DialogTitle>
+          <DialogDescription>
+            Choose a card type and size to add to your dashboard.
+          </DialogDescription>
+        </DialogHeader>
 
-      <Dialog open={isOpen} onOpenChange={setIsOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Add New Card</DialogTitle>
-            <DialogDescription>
-              Choose a card type and size to add to your dashboard.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Card Type</label>
-              <div className="grid grid-cols-2 gap-2">
-                {cardTypeOptions.map((option) => {
-                  const Icon = option.icon
-                  return (
-                    <button
-                      key={option.value}
-                      type="button"
-                      onClick={() => setSelectedType(option.value)}
-                      className={`
-                        flex items-center gap-3 rounded-lg border p-3 text-left transition-colors
-                        ${selectedType === option.value
-                          ? 'border-line-focus bg-surface-selected'
-                          : 'border-line-primary hover:border-line-secondary'
-                        }
-                      `}
-                    >
-                      <Icon className="h-5 w-5 text-content-tertiary" />
-                      <div>
-                        <div className="font-medium">{option.label}</div>
-                        <div className="text-xs text-content-muted">{option.description}</div>
-                      </div>
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Card Size</label>
-              <Select value={selectedSize} onValueChange={(v) => setSelectedSize(v as CardSize)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select size" />
-                </SelectTrigger>
-                <SelectContent>
-                  {cardSizeOptions.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+        <div className="space-y-4 py-4">
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Card Type</label>
+            <div className="grid grid-cols-2 gap-2">
+              {cardTypeOptions.map((option) => {
+                const Icon = option.icon
+                return (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() => setSelectedType(option.value)}
+                    className={`
+                      flex items-center gap-3 rounded-lg border p-3 text-left transition-colors
+                      ${selectedType === option.value
+                        ? 'border-line-focus bg-surface-selected'
+                        : 'border-line-primary hover:border-line-secondary'
+                      }
+                    `}
+                  >
+                    <Icon className="h-5 w-5 text-content-tertiary" />
+                    <div>
+                      <div className="font-medium">{option.label}</div>
+                      <div className="text-xs text-content-muted">{option.description}</div>
+                    </div>
+                  </button>
+                )
+              })}
             </div>
           </div>
 
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleAdd}>Add Card</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </>
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Card Size</label>
+            <Select value={selectedSize} onValueChange={(v) => setSelectedSize(v as CardSize)}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select size" />
+              </SelectTrigger>
+              <SelectContent>
+                {cardSizeOptions.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setIsOpen(false)}>
+            Cancel
+          </Button>
+          <Button onClick={handleAdd}>Add Card</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
-}
+})
