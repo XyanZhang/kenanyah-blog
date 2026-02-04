@@ -6,12 +6,16 @@ import Image from 'next/image'
 import { cn } from '@/lib/utils'
 import { useDashboard } from '@/hooks/useDashboard'
 import { useNavStore } from '@/store/nav-store'
+import { useAlignmentStore } from '@/store/alignment-store'
+import { useAlignmentRegistration } from '@/hooks/useAlignmentRegistration'
 import { useDrag } from '@/hooks/useDrag'
 import { useResize } from '@/hooks/useResize'
 import { NavItem } from './NavItem'
 import { navItems } from './nav-items'
 import { NavToolbar } from './NavToolbar'
 import { ResizeHandles } from '@/components/dashboard/ResizeHandles'
+
+const NAV_ELEMENT_ID = 'nav-component'
 
 export function Nav() {
   const pathname = usePathname()
@@ -40,7 +44,13 @@ export function Nav() {
   // Use shared drag hook (always vertical layout)
   const { isDragging, dragDelta, dragHandlers } = useDrag({
     onDragEnd: (delta) => {
-      updatePosition(delta, false)
+      // Read fresh snapOffset from store to avoid stale closure
+      const currentSnapOffset = useAlignmentStore.getState().snapOffset
+      const finalDelta = {
+        x: delta.x + (currentSnapOffset?.x ?? 0),
+        y: delta.y + (currentSnapOffset?.y ?? 0),
+      }
+      updatePosition(finalDelta, false)
     },
     disabled: !isEditMode,
   })
@@ -49,7 +59,6 @@ export function Nav() {
   const baseSize = config.customSize || navSize
   const {
     isResizing,
-    currentSize: resizeCurrentSize,
     positionDelta: resizePositionDelta,
     handleResizeStart,
   } = useResize({
@@ -70,6 +79,15 @@ export function Nav() {
       setResizing(true)
     }
   }, [isResizing, setResizing])
+
+  // Register with alignment system for guides and snap
+  useAlignmentRegistration({
+    id: NAV_ELEMENT_ID,
+    ref: navRef,
+    isEditMode,
+    isDragging,
+    isResizing,
+  })
 
   const handleMouseEnter = useCallback(
     (index: number, element: HTMLElement) => {
@@ -140,9 +158,6 @@ export function Nav() {
     updateIndicatorToActive()
   }, [updateIndicatorToActive])
 
-  // Calculate current size
-  const currentSize = isResizing ? resizeCurrentSize : baseSize
-
   // Only show view transition when not in edit mode and using auto layout
   const showViewTransition = !isEditMode && config.layout === 'auto'
 
@@ -177,8 +192,6 @@ export function Nav() {
         transform: `translate(calc(16px + ${totalX}px), calc(50vh + ${totalY}px)) translateY(-50%)`,
       }}
       onPointerDown={isEditMode ? dragHandlers.onPointerDown : undefined}
-      onPointerMove={isDragging ? dragHandlers.onPointerMove : undefined}
-      onPointerUp={isDragging ? dragHandlers.onPointerUp : undefined}
       onMouseLeave={handleMouseLeave}
     >
       {/* Edit mode toolbar */}
