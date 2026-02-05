@@ -73,6 +73,15 @@ export function createDefaultCard(
       showBackground: true,
       columns: 4,
     },
+    [CardType.MOTTO]: {
+      motto: 'Stay hungry, stay foolish.',
+      author: 'Steve Jobs',
+      fontStyle: 'serif',
+      textAlign: 'center',
+      showDivider: true,
+      dividerStyle: 'line',
+      textSize: 'medium',
+    },
   }
 
   return {
@@ -80,6 +89,7 @@ export function createDefaultCard(
     type,
     size,
     borderRadius: DEFAULT_BORDER_RADIUS,
+    padding: 24,
     config: { ...defaultConfigs[type], ...config },
     visible: true,
     createdAt: now,

@@ -1,6 +1,7 @@
 'use client'
 
 import * as React from 'react'
+import { createPortal } from 'react-dom'
 import { cn } from '@/lib/utils'
 import { X } from 'lucide-react'
 
@@ -83,15 +84,15 @@ function DialogContent({ children, className }: DialogContentProps) {
     e.stopPropagation()
   }
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+  const dialogContent = (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center">
       <div
         className="fixed inset-0 bg-black/50"
         onClick={() => onOpenChange(false)}
       />
       <div
         className={cn(
-          'relative z-50 w-full max-w-lg rounded-lg bg-surface-primary p-6 shadow-lg',
+          'relative z-[101] w-full max-w-lg rounded-lg bg-surface-primary p-6 shadow-lg',
           className
         )}
         onClick={stopPropagation}
@@ -111,6 +112,12 @@ function DialogContent({ children, className }: DialogContentProps) {
       </div>
     </div>
   )
+
+  if (typeof document !== 'undefined') {
+    return createPortal(dialogContent, document.body)
+  }
+
+  return null
 }
 
 interface DialogHeaderProps {

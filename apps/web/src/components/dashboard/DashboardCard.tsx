@@ -88,6 +88,7 @@ export function DashboardCard({ card, animationIndex }: DashboardCardProps) {
 
   const CardContent = cardComponents[card.type] as React.ComponentType<{ card: DashboardCardType }>
   const borderRadius = card.borderRadius ?? DEFAULT_BORDER_RADIUS
+  const padding = card.padding ?? 24
 
   // Calculate final position including drag transform and resize position delta
   const x = card.position.x + (transform?.x || 0) + positionDelta.x
@@ -105,6 +106,7 @@ export function DashboardCard({ card, animationIndex }: DashboardCardProps) {
         height: isAutoSize ? 'fit-content' : currentDimensions.height,
         zIndex: isDragging || isResizing ? 1000 : card.position.z,
         borderRadius: `${borderRadius}px`,
+        padding: `${padding}px`,
       }}
       initial={{ scale: 0, opacity: 0, x, y }}
       animate={{
@@ -135,7 +137,7 @@ export function DashboardCard({ card, animationIndex }: DashboardCardProps) {
       whileHover={!isEditMode ? { scale: 1.02 } : undefined}
       className={`
         group relative
-        bg-surface-glass border border-line-glass p-6 backdrop-blur-lg
+        bg-surface-glass border border-line-glass backdrop-blur-lg
         [box-shadow:0_20px_40px_-10px_rgba(0,0,0,0.1),inset_0_1px_0_rgba(255,255,255,0.4)]
         ${isEditMode ? 'cursor-grab active:cursor-grabbing' : ''}
         ${isSelected ? 'ring-2 ring-line-focus' : ''}

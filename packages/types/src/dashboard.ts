@@ -41,6 +41,7 @@ export interface DashboardCard {
   customDimensions?: CardDimensions
   position: CardPosition
   borderRadius: number
+  padding: number
   config: Record<string, any>
   visible: boolean
   animationPriority?: number

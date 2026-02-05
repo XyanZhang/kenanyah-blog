@@ -85,6 +85,7 @@ export function CardConfigDialog({ card, open, onOpenChange }: CardConfigDialogP
     height: String(card.customDimensions?.height ?? 300),
   })
   const [borderRadius, setBorderRadius] = useState(card.borderRadius ?? 40)
+  const [padding, setPadding] = useState(card.padding ?? 24)
   const [config, setConfig] = useState<Record<string, any>>(card.config)
 
   const handleDimensionInput = useCallback(
@@ -118,10 +119,11 @@ export function CardConfigDialog({ card, open, onOpenChange }: CardConfigDialogP
     updateCard(card.id, {
       customDimensions: { width, height },
       borderRadius,
+      padding,
       config,
     })
     onOpenChange(false)
-  }, [card.id, dimensionInputs, borderRadius, config, updateCard, onOpenChange])
+  }, [card.id, dimensionInputs, borderRadius, padding, config, updateCard, onOpenChange])
 
   const handleCancel = useCallback(() => {
     setDimensionInputs({
@@ -129,6 +131,7 @@ export function CardConfigDialog({ card, open, onOpenChange }: CardConfigDialogP
       height: String(card.customDimensions?.height ?? 300),
     })
     setBorderRadius(card.borderRadius ?? 40)
+    setPadding(card.padding ?? 24)
     setConfig(card.config)
     onOpenChange(false)
   }, [card, onOpenChange])
@@ -187,6 +190,21 @@ export function CardConfigDialog({ card, open, onOpenChange }: CardConfigDialogP
                 min={0}
                 max={100}
                 step={1}
+              />
+            </div>
+
+            {/* Padding */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="padding">Padding</Label>
+                <span className="text-sm text-content-muted">{padding}px</span>
+              </div>
+              <Slider
+                value={padding}
+                onValueChange={setPadding}
+                min={0}
+                max={64}
+                step={4}
               />
             </div>
           </div>
