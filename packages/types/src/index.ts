@@ -77,4 +77,5 @@ export type {
   SocialCardConfig,
   SocialLink,
   MottoCardConfig,
+  WeatherCardConfig,
 } from './dashboard'
