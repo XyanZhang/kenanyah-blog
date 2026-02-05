@@ -62,6 +62,17 @@ export function createDefaultCard(
       objectFit: 'cover',
       showOverlay: false,
     },
+    [CardType.SOCIAL]: {
+      layout: 'icons',
+      links: [
+        { id: '1', platform: 'github', label: 'GitHub', url: 'https://github.com/yourusername', showLabel: false },
+        { id: '2', platform: 'twitter', label: 'Twitter', url: 'https://twitter.com/yourusername', showLabel: false },
+        { id: '3', platform: 'email', label: 'Email', url: 'mailto:your@email.com', showLabel: false },
+      ],
+      iconSize: 'medium',
+      showBackground: true,
+      columns: 4,
+    },
   }
 
   return {
