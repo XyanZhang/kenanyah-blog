@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useState, useRef } from 'react'
+import { useCallback, useState, useRef, lazy, Suspense } from 'react'
 import { useDraggable } from '@dnd-kit/core'
 import { motion } from 'framer-motion'
 import { DashboardCard as DashboardCardType, CardType, CardDimensions, CardSize } from '@blog/types'
@@ -10,36 +10,31 @@ import { useAlignmentRegistration } from '@/hooks/useAlignmentRegistration'
 import { getCardDimensions, DEFAULT_BORDER_RADIUS } from '@/lib/constants/dashboard'
 import { CardToolbar } from './CardToolbar'
 import { ResizeHandles } from './ResizeHandles'
-import { ProfileCard } from './cards/ProfileCard'
-import { StatsCard } from './cards/StatsCard'
-import { CategoriesCard } from './cards/CategoriesCard'
-import { RecentPostsCard } from './cards/RecentPostsCard'
-import { TabbarCard } from './cards/TabbarCard'
-import { LatestPostsCard } from './cards/LatestPostsCard'
-import { RandomPostsCard } from './cards/RandomPostsCard'
-import { CalendarCard } from './cards/CalendarCard'
-import { ClockCard } from './cards/ClockCard'
-import { ImageCard } from './cards/ImageCard'
+
+const cardComponents = {
+  [CardType.PROFILE]: lazy(() => import('./cards/ProfileCard').then(m => ({ default: m.ProfileCard }))),
+  [CardType.STATS]: lazy(() => import('./cards/StatsCard').then(m => ({ default: m.StatsCard }))),
+  [CardType.CATEGORIES]: lazy(() => import('./cards/CategoriesCard').then(m => ({ default: m.CategoriesCard }))),
+  [CardType.RECENT_POSTS]: lazy(() => import('./cards/RecentPostsCard').then(m => ({ default: m.RecentPostsCard }))),
+  [CardType.TABBAR]: lazy(() => import('./cards/TabbarCard').then(m => ({ default: m.TabbarCard }))),
+  [CardType.LATEST_POSTS]: lazy(() => import('./cards/LatestPostsCard').then(m => ({ default: m.LatestPostsCard }))),
+  [CardType.RANDOM_POSTS]: lazy(() => import('./cards/RandomPostsCard').then(m => ({ default: m.RandomPostsCard }))),
+  [CardType.CALENDAR]: lazy(() => import('./cards/CalendarCard').then(m => ({ default: m.CalendarCard }))),
+  [CardType.CLOCK]: lazy(() => import('./cards/ClockCard').then(m => ({ default: m.ClockCard }))),
+  [CardType.IMAGE]: lazy(() => import('./cards/ImageCard').then(m => ({ default: m.ImageCard }))),
+}
+
+function CardPlaceholder() {
+  return (
+    <div className="flex h-full w-full items-center justify-center">
+      <div className="h-8 w-8 animate-spin rounded-full border-2 border-border-primary border-t-transparent" />
+    </div>
+  )
+}
 
 interface DashboardCardProps {
   card: DashboardCardType
   animationIndex: number
-}
-
-function getCardComponent(type: CardType) {
-  const registry = {
-    [CardType.PROFILE]: ProfileCard,
-    [CardType.STATS]: StatsCard,
-    [CardType.CATEGORIES]: CategoriesCard,
-    [CardType.RECENT_POSTS]: RecentPostsCard,
-    [CardType.TABBAR]: TabbarCard,
-    [CardType.LATEST_POSTS]: LatestPostsCard,
-    [CardType.RANDOM_POSTS]: RandomPostsCard,
-    [CardType.CALENDAR]: CalendarCard,
-    [CardType.CLOCK]: ClockCard,
-    [CardType.IMAGE]: ImageCard,
-  }
-  return registry[type]
 }
 
 export function DashboardCard({ card, animationIndex }: DashboardCardProps) {
@@ -89,7 +84,7 @@ export function DashboardCard({ card, animationIndex }: DashboardCardProps) {
     isResizing,
   })
 
-  const CardContent = getCardComponent(card.type)
+  const CardContent = cardComponents[card.type] as React.ComponentType<{ card: DashboardCardType }>
   const borderRadius = card.borderRadius ?? DEFAULT_BORDER_RADIUS
 
   // Calculate final position including drag transform and resize position delta
@@ -152,7 +147,9 @@ export function DashboardCard({ card, animationIndex }: DashboardCardProps) {
         className="h-full w-full overflow-hidden"
         style={{ borderRadius: `${Math.max(0, borderRadius - 24)}px` }}
       >
-        <CardContent card={card} />
+        <Suspense fallback={<CardPlaceholder />}>
+          <CardContent card={card} />
+        </Suspense>
       </div>
       {isEditMode && !isAutoSize && <ResizeHandles onResizeStart={handleResizeStart} />}
     </motion.div>

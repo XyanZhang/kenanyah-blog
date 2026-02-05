@@ -1,5 +1,5 @@
 import { CardPosition, DashboardCard } from '@blog/types'
-import { getCardDimensions } from '../constants/dashboard'
+import { CARD_DIMENSIONS, getCardDimensions } from '../constants/dashboard'
 
 interface LayoutConfig {
   radius: number
@@ -59,7 +59,7 @@ export function generateGridLayout(
   return cards.map((card, index) => {
     const row = Math.floor(index / columns)
     const col = index % columns
-    const dimensions = getCardDimensions(card.size)
+    const dimensions = getCardDimensions(card.size) ?? CARD_DIMENSIONS.medium
 
     return {
       x: col * (dimensions.width + gap),
@@ -78,8 +78,8 @@ function cardsCollide(
   card2: DashboardCard,
   pos2: CardPosition
 ): boolean {
-  const dim1 = getCardDimensions(card1.size)
-  const dim2 = getCardDimensions(card2.size)
+  const dim1 = getCardDimensions(card1.size) ?? CARD_DIMENSIONS.medium
+  const dim2 = getCardDimensions(card2.size) ?? CARD_DIMENSIONS.medium
 
   return !(
     pos1.x + dim1.width < pos2.x ||
