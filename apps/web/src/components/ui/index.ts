@@ -25,3 +25,4 @@ export {
   TooltipContent,
   TooltipProvider,
 } from './tooltip'
+export { WeatherCard, WeatherCardCompact, type WeatherCardProps } from './weather-card'

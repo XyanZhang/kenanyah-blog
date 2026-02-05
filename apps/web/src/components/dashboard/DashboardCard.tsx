@@ -24,6 +24,7 @@ const cardComponents = {
   [CardType.IMAGE]: lazy(() => import('./cards/ImageCard').then(m => ({ default: m.ImageCard }))),
   [CardType.SOCIAL]: lazy(() => import('./cards/SocialCard').then(m => ({ default: m.SocialCard }))),
   [CardType.MOTTO]: lazy(() => import('./cards/MottoCard').then(m => ({ default: m.MottoCard }))),
+  [CardType.WEATHER]: lazy(() => import('./cards/WeatherCard').then(m => ({ default: m.WeatherCard }))),
 }
 
 function CardPlaceholder() {

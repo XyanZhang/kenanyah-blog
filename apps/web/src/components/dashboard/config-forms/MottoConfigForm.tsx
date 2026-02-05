@@ -52,7 +52,7 @@ export function MottoConfigForm({ config, onChange }: MottoConfigFormProps) {
           <Label>Font Style</Label>
           <Select
             value={config.fontStyle || 'serif'}
-            onValueChange={(value: 'serif' | 'sans' | 'mono') => updateConfig('fontStyle', value)}
+            onValueChange={(value: string) => updateConfig('fontStyle', value)}
           >
             <SelectTrigger>
               <SelectValue />
@@ -69,7 +69,7 @@ export function MottoConfigForm({ config, onChange }: MottoConfigFormProps) {
           <Label>Text Size</Label>
           <Select
             value={config.textSize || 'medium'}
-            onValueChange={(value: 'small' | 'medium' | 'large') => updateConfig('textSize', value)}
+            onValueChange={(value: string) => updateConfig('textSize', value)}
           >
             <SelectTrigger>
               <SelectValue />
@@ -88,7 +88,7 @@ export function MottoConfigForm({ config, onChange }: MottoConfigFormProps) {
           <Label>Text Align</Label>
           <Select
             value={config.textAlign || 'center'}
-            onValueChange={(value: 'left' | 'center' | 'right') => updateConfig('textAlign', value)}
+            onValueChange={(value: string) => updateConfig('textAlign', value)}
           >
             <SelectTrigger>
               <SelectValue />
@@ -105,7 +105,7 @@ export function MottoConfigForm({ config, onChange }: MottoConfigFormProps) {
           <Label>Divider Style</Label>
           <Select
             value={config.dividerStyle || 'line'}
-            onValueChange={(value: 'line' | 'dots' | 'bracket') => updateConfig('dividerStyle', value)}
+            onValueChange={(value: string) => updateConfig('dividerStyle', value)}
           >
             <SelectTrigger>
               <SelectValue />

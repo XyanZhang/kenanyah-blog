@@ -82,6 +82,11 @@ export function createDefaultCard(
       dividerStyle: 'line',
       textSize: 'medium',
     },
+    [CardType.WEATHER]: {
+      city: '北京',
+      showHumidity: true,
+      showWind: true,
+    },
   }
 
   return {

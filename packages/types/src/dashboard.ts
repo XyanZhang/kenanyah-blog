@@ -26,6 +26,7 @@ export enum CardType {
   IMAGE = 'image',
   SOCIAL = 'social',
   MOTTO = 'motto',
+  WEATHER = 'weather',
 }
 
 export interface CardPosition {
@@ -144,4 +145,12 @@ export interface MottoCardConfig {
   showDivider: boolean
   dividerStyle: 'line' | 'dots' | 'bracket'
   textSize: 'small' | 'medium' | 'large'
+}
+
+export interface WeatherCardConfig {
+  city: string
+  latitude?: number
+  longitude?: number
+  showHumidity: boolean
+  showWind: boolean
 }

@@ -12,6 +12,7 @@ import categories from './routes/categories'
 import tags from './routes/tags'
 import comments from './routes/comments'
 import users from './routes/users'
+import weather from './routes/weather'
 
 const app = new Hono()
 
@@ -49,6 +50,7 @@ app.get('/', (c) => {
         tags: '/tags',
         comments: '/comments',
         users: '/users',
+        weather: '/weather',
       },
     },
   })
@@ -61,6 +63,7 @@ app.route('/categories', categories)
 app.route('/tags', tags)
 app.route('/comments', comments)
 app.route('/users', users)
+app.route('/weather', weather)
 
 const port = parseInt(env.PORT)
 
