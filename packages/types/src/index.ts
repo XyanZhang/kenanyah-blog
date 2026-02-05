@@ -74,4 +74,6 @@ export type {
   CalendarCardConfig,
   ClockCardConfig,
   ImageCardConfig,
+  SocialCardConfig,
+  SocialLink,
 } from './dashboard'

@@ -24,6 +24,7 @@ export enum CardType {
   CALENDAR = 'calendar',
   CLOCK = 'clock',
   IMAGE = 'image',
+  SOCIAL = 'social',
 }
 
 export interface CardPosition {
@@ -115,4 +116,20 @@ export interface ImageCardConfig {
   showOverlay: boolean
   overlayText?: string
   linkUrl?: string
+}
+
+export interface SocialLink {
+  id: string
+  platform: 'github' | 'twitter' | 'wechat' | 'weibo' | 'instagram' | 'linkedin' | 'email' | 'website' | 'custom'
+  label: string
+  url: string
+  showLabel: boolean
+}
+
+export interface SocialCardConfig {
+  layout: 'icons' | 'list' | 'compact'
+  links: SocialLink[]
+  iconSize: 'small' | 'medium' | 'large'
+  showBackground: boolean
+  columns: number
 }
