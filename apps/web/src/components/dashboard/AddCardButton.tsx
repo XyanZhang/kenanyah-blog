@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useImperativeHandle, forwardRef } from 'react'
-import { User, BarChart3, FolderTree, FileText, LayoutGrid, Clock, Shuffle, Calendar, Timer, ImageIcon, Link2 } from 'lucide-react'
+import { User, BarChart3, FolderTree, FileText, LayoutGrid, Clock, Shuffle, Calendar, Timer, ImageIcon, Link2, Quote } from 'lucide-react'
 import { CardType, CardSize } from '@blog/types'
 import { useDashboard } from '@/hooks/useDashboard'
 import { Button } from '@/components/ui'
@@ -27,6 +27,7 @@ const cardTypeOptions = [
   { value: CardType.CLOCK, label: 'Clock', icon: Timer, description: '透明电子时钟' },
   { value: CardType.IMAGE, label: 'Image', icon: ImageIcon, description: '封面图片卡片' },
   { value: CardType.SOCIAL, label: 'Social Links', icon: Link2, description: '社交媒体链接' },
+  { value: CardType.MOTTO, label: 'Motto', icon: Quote, description: '座右铭卡片' },
 ]
 
 const cardSizeOptions = [

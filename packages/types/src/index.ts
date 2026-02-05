@@ -76,4 +76,5 @@ export type {
   ImageCardConfig,
   SocialCardConfig,
   SocialLink,
+  MottoCardConfig,
 } from './dashboard'

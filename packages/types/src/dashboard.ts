@@ -25,6 +25,7 @@ export enum CardType {
   CLOCK = 'clock',
   IMAGE = 'image',
   SOCIAL = 'social',
+  MOTTO = 'motto',
 }
 
 export interface CardPosition {
@@ -132,4 +133,14 @@ export interface SocialCardConfig {
   iconSize: 'small' | 'medium' | 'large'
   showBackground: boolean
   columns: number
+}
+
+export interface MottoCardConfig {
+  motto: string
+  author?: string
+  fontStyle: 'serif' | 'sans' | 'mono'
+  textAlign: 'left' | 'center' | 'right'
+  showDivider: boolean
+  dividerStyle: 'line' | 'dots' | 'bracket'
+  textSize: 'small' | 'medium' | 'large'
 }
