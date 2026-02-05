@@ -9,8 +9,8 @@ export const CARD_DIMENSIONS: Record<string, CardDimensions> = {
 }
 
 export const RESIZE_CONSTRAINTS = {
-  minWidth: 150,
-  minHeight: 150,
+  minWidth: 0,
+  minHeight: 0,
   maxWidth: 800,
   maxHeight: 800,
 } as const
