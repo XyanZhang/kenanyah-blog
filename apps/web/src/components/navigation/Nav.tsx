@@ -187,9 +187,9 @@ export function Nav() {
         width: undefined,
         height: undefined,
         viewTransitionName: showViewTransition ? 'main-nav' : undefined,
-        top: 0,
-        left: 0,
-        transform: `translate(calc(16px + ${totalX}px), calc(50vh + ${totalY}px)) translateY(-50%)`,
+        left: '50%',
+        top: '50%',
+        transform: `translate(calc(-50% + ${totalX}px), calc(-50% + ${totalY}px))`,
       }}
       onPointerDown={isEditMode ? dragHandlers.onPointerDown : undefined}
       onMouseLeave={handleMouseLeave}
