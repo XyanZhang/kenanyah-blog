@@ -30,6 +30,7 @@ import { MottoConfigForm } from './config-forms/MottoConfigForm'
 import { WeatherConfigForm } from './config-forms/WeatherConfigForm'
 import { MusicConfigForm } from './config-forms/MusicConfigForm'
 import { ReadingConfigForm } from './config-forms/ReadingConfigForm'
+import { NavigateConfigForm } from './config-forms/NavigateConfigForm'
 
 interface CardConfigDialogProps {
   card: DashboardCard
@@ -217,6 +218,9 @@ export function CardConfigDialog({ card, open, onOpenChange }: CardConfigDialogP
               />
             </div>
           </div>
+
+          {/* Navigation */}
+          <NavigateConfigForm config={config} onChange={setConfig} />
 
           {/* Card-specific Settings */}
           <div className="space-y-4">
