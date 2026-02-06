@@ -28,6 +28,8 @@ import { ImageConfigForm } from './config-forms/ImageConfigForm'
 import { SocialConfigForm } from './config-forms/SocialConfigForm'
 import { MottoConfigForm } from './config-forms/MottoConfigForm'
 import { WeatherConfigForm } from './config-forms/WeatherConfigForm'
+import { MusicConfigForm } from './config-forms/MusicConfigForm'
+import { ReadingConfigForm } from './config-forms/ReadingConfigForm'
 
 interface CardConfigDialogProps {
   card: DashboardCard
@@ -50,6 +52,8 @@ function getCardTypeLabel(type: CardType): string {
     [CardType.SOCIAL]: 'Social Links',
     [CardType.MOTTO]: 'Motto',
     [CardType.WEATHER]: 'Weather',
+    [CardType.MUSIC]: 'Music',
+    [CardType.READING]: 'Reading',
   }
   return labels[type]
 }
@@ -69,6 +73,8 @@ function getConfigForm(type: CardType) {
     [CardType.SOCIAL]: SocialConfigForm,
     [CardType.MOTTO]: MottoConfigForm,
     [CardType.WEATHER]: WeatherConfigForm,
+    [CardType.MUSIC]: MusicConfigForm,
+    [CardType.READING]: ReadingConfigForm,
   }
   return forms[type]
 }

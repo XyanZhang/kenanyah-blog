@@ -78,4 +78,6 @@ export type {
   SocialLink,
   MottoCardConfig,
   WeatherCardConfig,
+  MusicCardConfig,
+  ReadingCardConfig,
 } from './dashboard'

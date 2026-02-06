@@ -87,6 +87,26 @@ export function createDefaultCard(
       showHumidity: true,
       showWind: true,
     },
+    [CardType.MUSIC]: {
+      title: '轻音乐',
+      artist: '未知艺术家',
+      autoPlay: false,
+      showProgress: true,
+      showVolume: true,
+    },
+    [CardType.READING]: {
+      bookTitle: '百年孤独',
+      author: '加西亚·马尔克斯',
+      totalPages: 360,
+      currentPage: 120,
+      status: 'reading',
+      startDate: '2024-01-01',
+      streak: 7,
+      dailyGoal: 30,
+      showStreak: true,
+      showProgress: true,
+      showAuthor: true,
+    },
   }
 
   return {
