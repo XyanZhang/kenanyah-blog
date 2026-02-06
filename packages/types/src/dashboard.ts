@@ -27,6 +27,8 @@ export enum CardType {
   SOCIAL = 'social',
   MOTTO = 'motto',
   WEATHER = 'weather',
+  MUSIC = 'music',
+  READING = 'reading',
 }
 
 export interface CardPosition {
@@ -153,4 +155,30 @@ export interface WeatherCardConfig {
   longitude?: number
   showHumidity: boolean
   showWind: boolean
+}
+
+export interface MusicCardConfig {
+  title: string
+  artist?: string
+  coverUrl?: string
+  audioUrl?: string
+  autoPlay: boolean
+  showProgress: boolean
+  showVolume: boolean
+}
+
+export interface ReadingCardConfig {
+  bookTitle: string
+  author: string
+  coverUrl?: string
+  totalPages: number
+  currentPage: number
+  status: 'reading' | 'completed' | 'paused'
+  startDate?: string
+  finishDate?: string
+  streak: number
+  dailyGoal: number
+  showStreak: boolean
+  showProgress: boolean
+  showAuthor: boolean
 }
