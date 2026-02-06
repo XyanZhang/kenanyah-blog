@@ -45,7 +45,7 @@ export function ProfileCard({ card }: ProfileCardProps) {
       )}
 
       <div className="space-y-2">
-        <h2 className="text-2xl font-bold">
+        <h2 className="font-display text-2xl font-bold tracking-tight">
           {profile.greeting} &nbsp;
           <span
             className="text-gradient"
@@ -56,7 +56,7 @@ export function ProfileCard({ card }: ProfileCardProps) {
           >{profile.name}</span>
         </h2>
         {config.showBio && (
-          <p className="text-lg font-medium text-accent-primary-dark">
+          <p className="font-sans text-lg font-medium text-accent-primary-dark tracking-wide">
             {profile.subtitle}
           </p>
         )}

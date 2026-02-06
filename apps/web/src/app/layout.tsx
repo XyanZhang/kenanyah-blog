@@ -1,10 +1,23 @@
 import type { Metadata } from 'next'
+import { Plus_Jakarta_Sans, Space_Grotesk } from 'next/font/google'
 import { Nav } from '@/components/navigation'
 import { ThemeProvider } from '@/components/providers/ThemeProvider'
 import { FloatingActionsProvider } from '@/components/providers/FloatingActionsProvider'
 import { ThemeSwitcher } from '@/components/theme/ThemeSwitcher'
 import { RootAlignmentGuides } from '@/components/layout/RootAlignmentGuides'
 import '@/styles/globals.css'
+
+const plusJakartaSans = Plus_Jakarta_Sans({
+  subsets: ['latin'],
+  variable: '--font-sans',
+  display: 'swap',
+})
+
+const spaceGrotesk = Space_Grotesk({
+  subsets: ['latin'],
+  variable: '--font-display',
+  display: 'swap',
+})
 
 const themeScript = `
   try {
@@ -32,7 +45,7 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en" data-theme="default" suppressHydrationWarning>
+    <html lang="en" data-theme="default" suppressHydrationWarning className={`${plusJakartaSans.variable} ${spaceGrotesk.variable}`}>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
