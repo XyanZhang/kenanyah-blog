@@ -1,6 +1,8 @@
 'use client'
 
 import { useCallback, useState, useRef, lazy, Suspense } from 'react'
+import { useRouter } from 'next/navigation'
+import type { Route } from 'next'
 import { useDraggable } from '@dnd-kit/core'
 import { motion } from 'framer-motion'
 import { DashboardCard as DashboardCardType, CardType, CardDimensions, CardSize } from '@blog/types'
@@ -43,10 +45,23 @@ interface DashboardCardProps {
 }
 
 export function DashboardCard({ card, animationIndex }: DashboardCardProps) {
+  const router = useRouter()
   const { isEditMode, selectedCardId, selectCard, updateCardSize } = useDashboard()
   const baseDimensions = getCardDimensions(card.size, card.customDimensions)
   const isAutoSize = card.size === CardSize.AUTO
   const isSelected = selectedCardId === card.id
+
+  const navigateTo = card.config?.navigateTo as string | undefined
+
+  const handleCardClick = useCallback(() => {
+    if (isEditMode) {
+      selectCard(card.id)
+      return
+    }
+    if (navigateTo) {
+      router.push(navigateTo as Route)
+    }
+  }, [isEditMode, selectCard, navigateTo, router, card.id])
 
   // Ref to the card element for measuring bounds
   const cardRef = useRef<HTMLDivElement>(null)
@@ -145,8 +160,9 @@ export function DashboardCard({ card, animationIndex }: DashboardCardProps) {
         ${isEditMode ? 'cursor-grab active:cursor-grabbing' : ''}
         ${isSelected ? 'ring-2 ring-line-focus' : ''}
         ${isDragging ? '[box-shadow:0_30px_50px_-15px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.4)]' : ''}
+        ${!isEditMode && navigateTo ? 'cursor-pointer' : ''}
       `}
-      onClick={() => isEditMode && selectCard(card.id)}
+      onClick={handleCardClick}
       {...(isEditMode && !isResizing ? { ...attributes, ...listeners } : {})}
     >
       {isEditMode && <CardToolbar cardId={card.id} />}
