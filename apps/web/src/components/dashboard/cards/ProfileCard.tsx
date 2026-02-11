@@ -3,6 +3,7 @@
 import Image from 'next/image'
 import { Github, Twitter, Mail } from 'lucide-react'
 import { DashboardCard, ProfileCardConfig } from '@blog/types'
+import { CursorHighlight } from '@/components/ui/cursor-highlight'
 
 interface ProfileCardProps {
   card: DashboardCard
@@ -47,13 +48,15 @@ export function ProfileCard({ card }: ProfileCardProps) {
       <div className="space-y-2">
         <h2 className="font-display text-2xl font-bold tracking-tight">
           {profile.greeting} &nbsp;
-          <span
-            className="text-gradient"
+          <CursorHighlight
+            className="text-gradient align-bottom"
             style={{
               '--gradient-from': 'var(--theme-accent-primary)',
               '--gradient-to': 'var(--theme-accent-secondary)'
             } as React.CSSProperties}
-          >{profile.name}</span>
+          >
+            {profile.name}
+          </CursorHighlight>
         </h2>
         {config.showBio && (
           <p className="font-sans text-lg font-medium text-accent-primary-dark tracking-wide">
