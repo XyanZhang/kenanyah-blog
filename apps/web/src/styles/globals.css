@@ -6,6 +6,7 @@
   /* Fonts */
   --font-sans: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
   --font-display: var(--font-display), ui-sans-serif, system-ui, sans-serif;
+  --font-motto: var(--font-motto), 'Nunito', ui-rounded, system-ui, sans-serif;
   /* Background */
   --color-bg-base: var(--theme-bg-base);
 

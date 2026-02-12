@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { Plus_Jakarta_Sans, Space_Grotesk } from 'next/font/google'
+import { Plus_Jakarta_Sans, Space_Grotesk, Nunito } from 'next/font/google'
 import { Nav } from '@/components/navigation'
 import { ThemeProvider } from '@/components/providers/ThemeProvider'
 import { FloatingActionsProvider } from '@/components/providers/FloatingActionsProvider'
@@ -18,6 +18,13 @@ const spaceGrotesk = Space_Grotesk({
   subsets: ['latin'],
   variable: '--font-display',
   display: 'swap',
+})
+
+const nunito = Nunito({
+  subsets: ['latin'],
+  variable: '--font-motto',
+  display: 'swap',
+  weight: ['300', '400', '500', '600', '700'],
 })
 
 const themeScript = `
@@ -46,7 +53,7 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en" data-theme="default" suppressHydrationWarning className={`${plusJakartaSans.variable} ${spaceGrotesk.variable}`}>
+    <html lang="en" data-theme="default" suppressHydrationWarning className={`${plusJakartaSans.variable} ${spaceGrotesk.variable} ${nunito.variable}`}>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
