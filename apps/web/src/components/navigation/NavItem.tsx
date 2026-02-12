@@ -32,7 +32,7 @@ export function NavItem({ item, isActive, isHovered, isAnyHovered, isCompact = f
     <Link
       href={item.href}
       className={cn(
-        'group relative flex items-center rounded-xl transition-all duration-300',
+        'group relative flex justify-center items-center rounded-xl transition-colors duration-150 ease-out',
         isCompact ? 'justify-center p-2' : 'gap-3 px-3 py-2',
         shouldHighlight
           ? 'text-accent-primary-dark'
@@ -42,7 +42,7 @@ export function NavItem({ item, isActive, isHovered, isAnyHovered, isCompact = f
     >
       <IconComponent
         className={cn(
-          'h-5 w-5 transition-all duration-300',
+          'h-5 w-5 transition-colors duration-150 ease-out',
           shouldHighlight
             ? 'text-accent-primary-dark fill-accent-primary-dark'
             : 'text-content-tertiary'
@@ -52,8 +52,9 @@ export function NavItem({ item, isActive, isHovered, isAnyHovered, isCompact = f
 
       <span
         className={cn(
-          'text-sm font-medium transition-all duration-300',
-          isCompact ? 'opacity-0 max-w-0 overflow-hidden' : 'opacity-100 max-w-32'
+          'text-sm font-medium transition-colors duration-150 ease-out',
+          shouldHighlight ? '' : 'text-accent-primary',
+          isCompact ? 'opacity-0 max-w-0 overflow-hidden' : 'opacity-1000'
         )}
         style={{ viewTransitionName: `nav-label-${item.id}` }}
       >
