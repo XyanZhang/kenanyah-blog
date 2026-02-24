@@ -103,6 +103,14 @@
     overflow: hidden;
   }
 
+  .hide-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
   /* Gradient text utility with dynamic colors (dual-layer gradient) */
   .text-gradient {
     --gradient-from: var(--theme-accent-primary);
