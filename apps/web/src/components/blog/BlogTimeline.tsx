@@ -180,9 +180,6 @@ export function BlogTimeline({
 
   return (
     <div className={cn('relative flex flex-col h-full', className)}>
-      <p className="text-center text-sm text-content-muted shrink-0 py-2">
-        向下滚动页面时，时间线内容横向移动展示更多
-      </p>
 
       <div
         ref={scrollRef}
@@ -197,34 +194,49 @@ export function BlogTimeline({
             minWidth: '100%',
           }}
         >
-          {/* 轨道与节点同一高度：距底约 72px，使弧线穿过节点中心 */}
+          {/* 轨道：置于底层，让节点盖住连线处 */}
           <div
-            className="absolute left-0 h-10 pointer-events-none"
-            style={{ width: trackWidth, bottom: '72px' }}
+            className="absolute left-0 h-10 pointer-events-none z-0"
+            style={{
+              width: trackWidth,
+              top: '280px',
+            }}
           >
             <CartoonTrack width={trackWidth} height={40} />
           </div>
 
-          {items.map((entry, index) => (
-            <motion.div
-              key={entry.id}
-              className="relative flex flex-col items-center shrink-0 snap-center pt-0"
-              style={{ width: cardWidth }}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4, delay: index * 0.05, ease: [0.25, 0.46, 0.45, 0.94] }}
-            >
-              {/* 卡片区：与下方时间线留足间距，避免重叠 */}
-              <div className="w-full mb-10">
-                {renderItem
-                  ? renderItem(entry, index)
-                  : <DefaultTimelineCard item={entry} />}
-              </div>
+          {items.map((entry, index) => {
+            const isEven = index % 2 === 0
+            return (
+              <motion.div
+                key={entry.id}
+                className="relative z-10 flex flex-col items-center shrink-0 pt-0"
+                style={{ width: cardWidth }}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, delay: index * 0.05, ease: [0.25, 0.46, 0.45, 0.94] }}
+              >
+                {/* 上：偶数项为卡片，奇数项为日期 */}
+                <div className="w-full min-h-[280px] flex flex-col justify-end mb-0">
+                  {isEven ? (
+                    <>
+                      {renderItem
+                        ? renderItem(entry, index)
+                        : <DefaultTimelineCard item={entry} />}
+                    </>
+                  ) : (
+                    <time
+                      dateTime={entry.date}
+                      className="text-xs font-medium text-content-muted text-center py-2"
+                    >
+                      {entry.date}
+                    </time>
+                  )}
+                </div>
 
-              {/* 节点与日期：在轨道上方，不压住卡片 */}
-              <div className="flex flex-col items-center mt-0">
+                {/* 节点：z-20 + 不透明背景，完全盖住轨道线 */}
                 <div
-                  className="relative z-10 flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border-2 border-accent-primary/40 bg-surface-glass shadow-md backdrop-blur-sm"
+                  className="relative z-20 flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border-2 border-accent-primary/40 bg-bg-base shadow-md"
                   style={{
                     boxShadow: '0 2px 10px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.5)',
                   }}
@@ -235,15 +247,27 @@ export function BlogTimeline({
                     style={{ boxShadow: '0 0 0 2px var(--theme-surface-glass)' }}
                   />
                 </div>
-                <time
-                  dateTime={entry.date}
-                  className="mt-1.5 text-xs font-medium text-content-muted"
-                >
-                  {entry.date}
-                </time>
-              </div>
-            </motion.div>
-          ))}
+
+                {/* 下：偶数项为日期，奇数项为卡片 */}
+                <div className="w-full min-h-[280px] flex flex-col justify-start mt-0">
+                  {isEven ? (
+                    <time
+                      dateTime={entry.date}
+                      className="mt-1.5 text-xs font-medium text-content-muted text-center"
+                    >
+                      {entry.date}
+                    </time>
+                  ) : (
+                    <>
+                      {renderItem
+                        ? renderItem(entry, index)
+                        : <DefaultTimelineCard item={entry} />}
+                    </>
+                  )}
+                </div>
+              </motion.div>
+            )
+          })}
         </div>
       </div>
     </div>
