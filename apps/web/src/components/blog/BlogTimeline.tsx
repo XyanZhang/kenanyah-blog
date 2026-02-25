@@ -117,52 +117,50 @@ export function BlogTimeline({
   const scrollRef = useRef<HTMLDivElement>(null)
   const contentRef = useRef<HTMLDivElement>(null)
   const [trackWidth, setTrackWidth] = useState(400)
-  const targetScrollLeft = useRef(0)
+  const translateX = useRef(0)
+  const targetX = useRef(0)
   const rafId = useRef<number | null>(null)
 
-  // 丝滑横向滚动：滚轮只更新目标位置，用 rAF 插值逼近
+  // 仅垂直滚轮驱动横向位移，用 translateX 实现（禁用左右拖拽/触摸滑动）
   useEffect(() => {
-    const el = scrollRef.current
-    if (!el) return
+    const container = scrollRef.current
+    const content = contentRef.current
+    if (!container || !content) return
 
-    const SMOOTH = 0.18 // 越大跟随越快，0.1~0.25 较丝滑
-    const SENSITIVITY = 1.1 // 滚轮灵敏度
+    const SMOOTH = 0.18
+    const SENSITIVITY = 1.2
 
     const tick = () => {
-      const maxScroll = Math.max(0, el.scrollWidth - el.clientWidth)
-      targetScrollLeft.current = Math.max(0, Math.min(maxScroll, targetScrollLeft.current))
-      const current = el.scrollLeft
-      const target = targetScrollLeft.current
+      const maxScroll = Math.max(0, content.offsetWidth - container.clientWidth)
+      targetX.current = Math.max(-maxScroll, Math.min(0, targetX.current))
+      const current = translateX.current
+      const target = targetX.current
       const diff = target - current
       if (Math.abs(diff) < 0.5) {
-        el.scrollLeft = target
+        translateX.current = target
+        content.style.transform = `translateX(${target}px)`
         rafId.current = null
         return
       }
-      el.scrollLeft = current + diff * SMOOTH
+      translateX.current = current + diff * SMOOTH
+      content.style.transform = `translateX(${translateX.current}px)`
       rafId.current = requestAnimationFrame(tick)
     }
 
     const onWheel = (e: WheelEvent) => {
-      const maxScroll = el.scrollWidth - el.clientWidth
+      const maxScroll = Math.max(0, content.offsetWidth - container.clientWidth)
       if (maxScroll <= 0) return
       if (e.deltaY !== 0) {
         e.preventDefault()
-        targetScrollLeft.current = el.scrollLeft + e.deltaY * SENSITIVITY
-        targetScrollLeft.current = Math.max(0, Math.min(maxScroll, targetScrollLeft.current))
+        targetX.current += e.deltaY * SENSITIVITY
+        targetX.current = Math.max(-maxScroll, Math.min(0, targetX.current))
         if (rafId.current == null) rafId.current = requestAnimationFrame(tick)
       }
     }
 
-    const onScroll = () => {
-      targetScrollLeft.current = el.scrollLeft
-    }
-
-    el.addEventListener('wheel', onWheel, { passive: false })
-    el.addEventListener('scroll', onScroll, { passive: true })
+    container.addEventListener('wheel', onWheel, { passive: false })
     return () => {
-      el.removeEventListener('wheel', onWheel)
-      el.removeEventListener('scroll', onScroll)
+      container.removeEventListener('wheel', onWheel)
       if (rafId.current != null) cancelAnimationFrame(rafId.current)
     }
   }, [])
@@ -181,20 +179,19 @@ export function BlogTimeline({
   const cardWidth = 300
 
   return (
-    <div className={cn('relative', className)}>
-      {/* 顶部提示：滚动以查看更多 */}
-      <p className="text-center text-sm text-content-muted mb-4">
-        向下滚动或左右滑动，时间线向左移动展示更多
+    <div className={cn('relative flex flex-col h-full', className)}>
+      <p className="text-center text-sm text-content-muted shrink-0 py-2">
+        向下滚动页面时，时间线内容横向移动展示更多
       </p>
 
       <div
         ref={scrollRef}
-        className="overflow-x-auto overflow-y-hidden pb-6 snap-x snap-mandatory hide-scrollbar"
-        style={{ scrollSnapType: 'x mandatory' }}
+        className="flex-1 min-h-0 overflow-hidden overflow-y-visible pb-4 touch-pan-y"
+        style={{ touchAction: 'pan-y' }}
       >
         <div
           ref={contentRef}
-          className="relative flex items-start gap-6 pl-6 pr-6 min-h-[420px] pb-2"
+          className="relative flex items-start gap-6 pl-6 pr-6 min-h-full pb-2 will-change-transform"
           style={{
             width: 'max-content',
             minWidth: '100%',
