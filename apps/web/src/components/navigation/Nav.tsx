@@ -27,6 +27,7 @@ export function Nav() {
   const indicatorRef = useRef<HTMLDivElement>(null)
   const [hoverIndex, setHoverIndex] = useState<number | null>(null)
   const [navSize, setNavSize] = useState({ width: 200, height: 60 })
+  const [layoutJustChanged, setLayoutJustChanged] = useState(false)
   const rafIdRef = useRef<number | null>(null)
   
   // Store current indicator position to avoid unnecessary updates
@@ -52,16 +53,15 @@ export function Nav() {
     }
   }, [config.customSize, visibleNavItems.length])
 
-  // Use shared drag hook (always vertical layout)
+  // 首页用竖向位置，非首页用横向位置
   const { isDragging, dragDelta, dragHandlers } = useDrag({
     onDragEnd: (delta) => {
-      // Read fresh snapOffset from store to avoid stale closure
       const currentSnapOffset = useAlignmentStore.getState().snapOffset
       const finalDelta = {
         x: delta.x + (currentSnapOffset?.x ?? 0),
         y: delta.y + (currentSnapOffset?.y ?? 0),
       }
-      updatePosition(finalDelta, false)
+      updatePosition(finalDelta, !isHomepage)
     },
     disabled: !isEditMode,
   })
@@ -78,7 +78,7 @@ export function Nav() {
     onResizeEnd: (size, positionDelta) => {
       updateSize(size)
       if (positionDelta.x !== 0 || positionDelta.y !== 0) {
-        updatePosition(positionDelta, false)
+        updatePosition(positionDelta, !isHomepage)
       }
       setResizing(false)
     },
@@ -198,26 +198,26 @@ export function Nav() {
     })
   }, [pathname, updateIndicatorPosition])
 
-  // Sync indicator to active item on pathname change
+  // 切换时先隐藏 indicator 并标记「布局切换中」，关闭所有 transition 避免多属性互相拉扯
   useLayoutEffect(() => {
-    // Always update on pathname change, regardless of hover state
     setHoverIndex(null)
-    // Use useLayoutEffect for synchronous update before paint
-    updateIndicatorToActive()
-  }, [pathname, updateIndicatorToActive])
-  
-  // Additional update after layout settles (for view transitions)
+    setLayoutJustChanged(true)
+    updateIndicatorPosition(0, 0, 0, 0, 1, 0)
+  }, [pathname, updateIndicatorPosition])
+
+  // 新布局 paint 后再更新 indicator，再下一帧恢复 transition
   useEffect(() => {
-    let frame1: number
-    let frame2: number
-    frame1 = requestAnimationFrame(() => {
-      frame2 = requestAnimationFrame(() => {
+    const frames: number[] = []
+    frames[0] = requestAnimationFrame(() => {
+      frames[1] = requestAnimationFrame(() => {
         updateIndicatorToActive()
+        frames[2] = requestAnimationFrame(() => {
+          setLayoutJustChanged(false)
+        })
       })
     })
     return () => {
-      if (frame1) cancelAnimationFrame(frame1)
-      if (frame2) cancelAnimationFrame(frame2)
+      frames.forEach((id) => id != null && cancelAnimationFrame(id))
     }
   }, [pathname, updateIndicatorToActive])
   
@@ -238,8 +238,8 @@ export function Nav() {
   // Only show view transition when not in edit mode and using auto layout
   const showViewTransition = !isEditMode && config.layout === 'auto'
 
-  // Calculate total offset using layout-specific position
-  const position = config.verticalPosition
+  // 首页：竖向居中；非首页：横向顶部（单一 DOM 结构，仅样式切换，减少抖动）
+  const position = isHomepage ? config.verticalPosition : config.horizontalPosition
   const totalX = position.x + dragDelta.x + (isResizing ? resizePositionDelta.x : 0)
   const totalY = position.y + dragDelta.y + (isResizing ? resizePositionDelta.y : 0)
 
@@ -254,45 +254,48 @@ export function Nav() {
         isEditMode && 'cursor-grab active:cursor-grabbing',
         isEditMode && 'ring-2 ring-accent-primary/50',
         isDragging && 'opacity-80',
-        !(isDragging || isResizing) && 'transition-all duration-300 ease-out'
+        !(isDragging || isResizing) && !layoutJustChanged && 'transition-all duration-300 ease-out'
       )}
       style={{
         display: 'flex',
-        flexDirection: 'column',
+        flexDirection: isHomepage ? 'column' : 'row',
+        alignItems: isHomepage ? undefined : 'center',
         gap: '4px',
-        padding: '12px',
+        padding: isHomepage ? '12px' : '8px 12px',
         width: undefined,
         height: undefined,
         viewTransitionName: showViewTransition ? 'main-nav' : undefined,
         left: '50%',
-        top: '50%',
-        transform: `translate(calc(-50% + ${totalX}px), calc(-50% + ${totalY}px))`,
+        top: isHomepage ? '50%' : '24px',
+        transform: isHomepage
+          ? `translate(calc(-50% + ${totalX}px), calc(-50% + ${totalY}px))`
+          : `translate(calc(-50% + ${totalX}px), ${totalY}px)`,
       }}
       onPointerDown={isEditMode ? dragHandlers.onPointerDown : undefined}
       onMouseLeave={handleMouseLeave}
     >
-      {/* Edit mode toolbar */}
       {isEditMode && <NavToolbar />}
 
-      {/* Site logo and blogger name */}
+      {/* 头像区：首页大图+名字，非首页小图 */}
       <div
         className={cn(
-          'flex flex-col items-center gap-2',
-          isHomepage && 'pb-3 mb-2 border-b border-line-glass'
+          'flex items-center shrink-0',
+          isHomepage ? 'flex-col gap-2 pb-3 mb-2 border-b border-line-glass' : 'pr-1 border-r border-line-glass'
         )}
       >
         <Image
           src="/images/avatar/avatar-pink.png"
           alt="Kenanyah"
-          width={isHomepage ? 48 : 36}
-          height={isHomepage ? 48 : 36}
-          className="rounded-full transition-all duration-300"
+          width={isHomepage ? 48 : 32}
+          height={isHomepage ? 48 : 32}
+          className={cn('rounded-full', !layoutJustChanged && 'transition-all duration-300')}
           style={{ viewTransitionName: 'nav-avatar' }}
         />
         <span
           className={cn(
-            'text-sm font-medium text-content-primary transition-all duration-300',
-            isHomepage ? 'opacity-100 max-h-6' : 'opacity-0 max-h-0 overflow-hidden'
+            'text-sm font-medium text-content-primary',
+            !layoutJustChanged && 'transition-all duration-300',
+            isHomepage ? 'opacity-100' : 'opacity-0 max-h-0 overflow-hidden'
           )}
           style={{ viewTransitionName: 'nav-name' }}
         >
@@ -300,9 +303,14 @@ export function Nav() {
         </span>
       </div>
 
-      {/* Nav items container */}
-      <div data-nav-items className={cn('relative flex flex-col justify-center', isHomepage ? 'min-w-30 gap-1' : 'gap-0 items-center')}>
-        {/* Hover indicator */}
+      {/* Nav 项：同一容器，仅 flex 方向与 isCompact 不同 */}
+      <div
+        data-nav-items
+        className={cn(
+          'relative',
+          isHomepage ? 'flex flex-col justify-center min-w-30 gap-1' : 'flex flex-row items-center gap-0'
+        )}
+      >
         {!isEditMode && (
           <div
             ref={indicatorRef}
@@ -316,12 +324,12 @@ export function Nav() {
               transform: 'translate3d(0, 0, 0) scale(1)',
               pointerEvents: 'none',
               willChange: 'transform, opacity, width, height',
-              transition: 'transform 150ms cubic-bezier(0.4, 0, 0.2, 1), opacity 150ms ease-out, width 150ms cubic-bezier(0.4, 0, 0.2, 1), height 150ms cubic-bezier(0.4, 0, 0.2, 1)',
+              transition: layoutJustChanged
+                ? 'none'
+                : 'transform 150ms cubic-bezier(0.4, 0, 0.2, 1), opacity 150ms ease-out, width 150ms cubic-bezier(0.4, 0, 0.2, 1), height 150ms cubic-bezier(0.4, 0, 0.2, 1)',
             }}
           />
         )}
-
-        {/* Nav items */}
         {visibleNavItems.map((item, index) => (
           <NavItem
             key={item.id}
@@ -334,8 +342,6 @@ export function Nav() {
           />
         ))}
       </div>
-
-      {/* Resize handles in edit mode */}
       {isEditMode && <ResizeHandles onResizeStart={handleResizeStart} />}
     </nav>
   )

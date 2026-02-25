@@ -33,12 +33,11 @@ export default function ProjectsPage() {
     <main className="min-h-screen pl-24 pr-8 py-8">
       <div className="max-w-4xl mx-auto">
         <div className="flex items-center gap-3 mb-8">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-accent-primary-light to-accent-secondary-light">
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-linear-to-br from-accent-primary-light to-accent-secondary-light">
             <FolderOpen className="h-6 w-6 text-accent-primary" />
           </div>
           <h1 className="text-3xl font-bold text-content-primary">项目</h1>
         </div>
-
         <div className="grid gap-4 md:grid-cols-2">
           {projects.map((project) => (
             <article
