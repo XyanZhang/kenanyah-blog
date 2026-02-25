@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { Plus_Jakarta_Sans, Space_Grotesk, Nunito } from 'next/font/google'
 import { Nav } from '@/components/navigation'
+import { ScrollToTop } from '@/components/layout/ScrollToTop'
 import { ThemeProvider } from '@/components/providers/ThemeProvider'
 import { FloatingActionsProvider } from '@/components/providers/FloatingActionsProvider'
 import { ThemeSwitcher } from '@/components/theme/ThemeSwitcher'
@@ -63,6 +64,7 @@ export default function RootLayout({
             <SmokeEffect />
             <div className="frosted-overlay" />
             <Nav />
+            <ScrollToTop />
             <div style={{ viewTransitionName: 'page-content' }}>{children}</div>
             <ThemeSwitcher />
             <RootAlignmentGuides />
