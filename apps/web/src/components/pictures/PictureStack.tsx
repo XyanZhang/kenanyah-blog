@@ -171,8 +171,8 @@ function DraggableCard({
 }
 
 /** 预览相框最大宽高（px），限制在视口内 */
-const PREVIEW_MAX_W = 1000
-const PREVIEW_MAX_H = 800
+const PREVIEW_MAX_W = 680
+const PREVIEW_MAX_H = 560
 
 const springTransition = { type: 'spring' as const, damping: 26, stiffness: 300 }
 const durationTransition = { duration: 0.35, ease: [0.32, 0.72, 0, 1] as const }
@@ -223,11 +223,12 @@ function PicturePreviewOverlay({
           onClick={handleBackdropClick}
           aria-hidden
         />
-        {/* 明信片/宝丽来风格：上方图钉 + 白框 + 图片 + 下方文案区 */}
+        {/* 黑色外框 + 白色卡纸 + 图片：现代画框风格 */}
         <motion.div
-          className="absolute z-10 flex flex-col overflow-visible rounded-lg bg-white"
+          className="absolute z-10 flex overflow-visible bg-black"
           style={{
-            boxShadow: '0 8px 32px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.08)',
+            boxShadow: '0 12px 40px rgba(0,0,0,0.2), 0 4px 12px rgba(0,0,0,0.12)',
+            padding: 12,
           }}
           initial={{
             position: 'fixed' as const,
@@ -267,20 +268,9 @@ function PicturePreviewOverlay({
           transition={springTransition}
           onClick={(e) => e.stopPropagation()}
         >
-          {/* 顶部图钉 */}
-          <div
-            className="absolute left-1/2 -top-1.5 z-10 h-4 w-4 -translate-x-1/2 rounded-full shadow-md"
-            style={{
-              background: 'linear-gradient(160deg, #7dd3fc 0%, #38bdf8 50%, #0ea5e9 100%)',
-              boxShadow: '0 2px 6px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.5)',
-            }}
-            aria-hidden
-          />
-          {/* 上方留白（图钉区域） */}
-          <div className="h-5 shrink-0" aria-hidden />
-          {/* 图片区 */}
-          <div className="relative min-h-0 flex-1 px-3 pt-0.5">
-            <div className="relative h-full w-full overflow-hidden rounded-sm bg-neutral-100">
+          {/* 白色卡纸（passe-partout） */}
+          <div className="relative flex-1 min-h-0 min-w-0 bg-white p-6 sm:p-8 md:p-10">
+            <div className="relative h-full w-full overflow-hidden bg-neutral-100">
               <Image
                 src={item.src}
                 alt=""
@@ -290,13 +280,6 @@ function PicturePreviewOverlay({
                 sizes={`${PREVIEW_MAX_W}px`}
               />
             </div>
-          </div>
-          {/* 下方文案区（明信片签名/日期） */}
-          <div
-            className="shrink-0 border-t border-neutral-200/80 px-4 py-3 text-center text-sm text-neutral-600"
-            style={{ fontFamily: 'ui-rounded, "Hiragino Maru Gothic ProN", "Comic Sans MS", cursive' }}
-          >
-            {item.date}
           </div>
         </motion.div>
     </motion.div>
