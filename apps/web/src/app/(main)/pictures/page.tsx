@@ -18,7 +18,7 @@ const mockPictures: PictureStackItem[] = [
 
 export default function PicturesPage() {
   return (
-    <main className="h-screen w-full flex flex-col">
+    <main className="h-[calc(100vh-80px)] w-full flex flex-col">
       <div className="flex-1 flex flex-col min-h-0 w-full">
         <div className="flex-1 min-h-0 min-w-0">
           <PictureStack items={mockPictures} className="h-full" />

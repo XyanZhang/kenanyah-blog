@@ -1,5 +1,4 @@
 import type { Metadata } from 'next'
-import { User } from 'lucide-react'
 
 export const metadata: Metadata = {
   title: '关于',
@@ -9,12 +8,6 @@ export default function AboutPage() {
   return (
     <main className="min-h-screen pl-24 pr-8 py-8">
       <div className="max-w-4xl mx-auto">
-        <div className="flex items-center gap-3 mb-8">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-linear-to-br from-accent-primary-light to-accent-secondary-light">
-            <User className="h-6 w-6 text-accent-primary" />
-          </div>
-          <h1 className="text-3xl font-bold text-content-primary">关于</h1>
-        </div>
         <div className="rounded-2xl border border-line-primary bg-surface-glass p-8 backdrop-blur-sm">
           <div className="prose prose-gray max-w-none">
             <p className="text-lg text-content-secondary leading-relaxed">

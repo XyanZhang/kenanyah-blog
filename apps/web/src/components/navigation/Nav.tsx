@@ -304,9 +304,8 @@ export function Nav() {
               transform: undefined,
             }
           : {
-              left: '50%',
-              top: '24px',
-              transform: `translate(calc(-50% + ${totalX}px), ${totalY}px)`,
+              left: '20px',
+              top: '20px',
             }),
       }}
       onPointerDown={isEditMode ? dragHandlers.onPointerDown : undefined}
