@@ -118,6 +118,17 @@ export const useNavStore = create<NavState>()(
     {
       name: 'nav-config',
       version: 2,
+      merge: (persistedState, currentState) => {
+        const persisted = persistedState as { config?: NavConfig }
+        const current = currentState as NavState
+        return {
+          ...current,
+          ...persisted,
+          config: persisted?.config
+            ? { ...persisted.config, visibleItems: DEFAULT_CONFIG.visibleItems }
+            : current.config,
+        }
+      },
       migrate: (persistedState: unknown, version: number) => {
         if (version < 2) {
           const old = persistedState as { config?: { position?: { x: number; y: number } } }
@@ -133,7 +144,15 @@ export const useNavStore = create<NavState>()(
         }
         return persistedState
       },
-      partialize: (state) => ({ config: state.config }),
+      // 只持久化位置、尺寸、布局，不持久化 visibleItems，每次加载都用默认「全部显示」
+      partialize: (state) => ({
+        config: {
+          horizontalPosition: state.config.horizontalPosition,
+          verticalPosition: state.config.verticalPosition,
+          layout: state.config.layout,
+          customSize: state.config.customSize,
+        },
+      }),
     }
   )
 )

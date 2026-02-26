@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { Home, FileText, User, Camera, Images, FolderOpen, LucideIcon } from 'lucide-react'
+import { Home, FileText, User, Camera, FolderOpen, LucideIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { NavItem as NavItemType } from './nav-items'
 
@@ -10,7 +10,6 @@ const iconMap: Record<string, LucideIcon> = {
   FileText,
   User,
   Camera,
-  Images,
   FolderOpen,
 }
 
