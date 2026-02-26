@@ -1,5 +1,4 @@
 import type { Metadata } from 'next'
-import { FileText } from 'lucide-react'
 import { BlogTimeline, type BlogTimelineItem } from '@/components/blog/BlogTimeline'
 
 export const metadata: Metadata = {
@@ -56,11 +55,8 @@ const mockPosts: BlogTimelineItem[] = [
 
 export default function BlogPage() {
   return (
-    <main className="h-screen w-full flex flex-col">
+    <main className="h-[calc(100vh-80px)] w-full flex flex-col">
       <div className="flex-1 flex flex-col min-h-0 w-full">
-        <div className="flex items-center gap-3 shrink-0 pt-6 pb-2 px-4">
-          
-        </div>
         <div className="flex-1 min-h-0 min-w-0">
           <BlogTimeline items={mockPosts} className="h-full" />
         </div>
