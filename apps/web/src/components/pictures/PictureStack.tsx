@@ -20,7 +20,9 @@ interface PictureStackProps {
 
 const PAD = 24
 
-// 从中心向外层排列：index 0 在中心，index 越大离中心越远
+// 图片较少时（≤4 张）均匀分布在圆周上不堆叠；较多时从中心向外层排列
+const FEW_ITEMS_THRESHOLD = 4
+
 function getStackStyle(
   index: number,
   id: string,
@@ -37,18 +39,30 @@ function getStackStyle(
   const maxRadiusY = Math.max(0, (containerHeight - CARD_HEIGHT) / 2 - PAD)
   const maxRadius = Math.min(maxRadiusX, maxRadiusY)
 
-  // 从中心向外：第 0 张在中心，后续按半径递增
-  const radius =
-    totalCount <= 1 ? 0 : (index / Math.max(1, totalCount - 1)) * maxRadius
-  // 用 id 做种子分散角度，避免重叠；黄金角分布
-  const angleDeg = (idSeed * 37 + index * 137.5) % 360
+  let radius: number
+  let angleDeg: number
+
+  if (totalCount <= 1) {
+    radius = 0
+    angleDeg = 0
+  } else if (totalCount <= FEW_ITEMS_THRESHOLD) {
+    // 少量图片：均匀分布在圆周上，不堆叠
+    radius = maxRadius * 0.65
+    angleDeg = (360 / totalCount) * index
+  } else {
+    // 多张图片：从中心向外，黄金角分布
+    radius = (index / Math.max(1, totalCount - 1)) * maxRadius
+    angleDeg = (idSeed * 37 + index * 137.5) % 360
+  }
+
   const angleRad = (angleDeg * Math.PI) / 180
   const dx = radius * Math.cos(angleRad)
   const dy = radius * Math.sin(angleRad)
 
   const left = centerLeft + dx
   const top = centerTop + dy
-  const rotate = -12 + (s1 * 24 % 24)
+  // 每张卡片倾斜角在 [-45, 45] 度内，用 id 种子保证同张图不变
+  const rotate = -45 + (s1 % 91)
 
   const maxLeft = Math.max(0, containerWidth - CARD_WIDTH - PAD)
   const maxTop = Math.max(0, containerHeight - CARD_HEIGHT - PAD)
@@ -156,15 +170,12 @@ function DraggableCard({
   )
 }
 
-const FALLBACK_WIDTH = 800
-const FALLBACK_HEIGHT = 600
-
 /** 预览相框最大宽高（px），限制在视口内 */
-const PREVIEW_MAX_W = 720
-const PREVIEW_MAX_H = 540
+const PREVIEW_MAX_W = 1000
+const PREVIEW_MAX_H = 800
 
 const springTransition = { type: 'spring' as const, damping: 26, stiffness: 300 }
-const durationTransition = { duration: 0.35, ease: [0.32, 0.72, 0, 1] }
+const durationTransition = { duration: 0.35, ease: [0.32, 0.72, 0, 1] as const }
 
 function PicturePreviewOverlay({
   item,
@@ -212,10 +223,12 @@ function PicturePreviewOverlay({
           onClick={handleBackdropClick}
           aria-hidden
         />
-        {/* 相框 + 图片：从卡片位置动画到居中 */}
+        {/* 明信片/宝丽来风格：上方图钉 + 白框 + 图片 + 下方文案区 */}
         <motion.div
-          className="absolute z-10 flex items-center justify-center rounded-xl border-10 border-white/95 bg-white/90 p-3 shadow-2xl"
-          style={{ boxShadow: '0 25px 80px -12px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.8)' }}
+          className="absolute z-10 flex flex-col overflow-visible rounded-lg bg-white"
+          style={{
+            boxShadow: '0 8px 32px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.08)',
+          }}
           initial={{
             position: 'fixed' as const,
             left: fromRect.left,
@@ -226,15 +239,21 @@ function PicturePreviewOverlay({
             y: 0,
             opacity: 1,
           }}
-          animate={{
-            left: '50%',
-            top: '50%',
-            x: '-50%',
-            y: '-50%',
-            width: Math.min(PREVIEW_MAX_W, fromRect.width * 2.2),
-            height: Math.min(PREVIEW_MAX_H, fromRect.height * 2.2),
-            opacity: 1,
-          }}
+          animate={(() => {
+            const scale = Math.min(
+              PREVIEW_MAX_W / fromRect.width,
+              PREVIEW_MAX_H / fromRect.height
+            )
+            return {
+              left: '50%',
+              top: '50%',
+              x: '-50%',
+              y: '-50%',
+              width: fromRect.width * scale,
+              height: fromRect.height * scale,
+              opacity: 1,
+            }
+          })()}
           exit={{
             left: fromRect.left,
             top: fromRect.top,
@@ -248,15 +267,36 @@ function PicturePreviewOverlay({
           transition={springTransition}
           onClick={(e) => e.stopPropagation()}
         >
-          <div className="relative h-full w-full overflow-hidden rounded-lg bg-neutral-100">
-            <Image
-              src={item.src}
-              alt=""
-              fill
-              className="object-contain"
-              unoptimized={item.src.startsWith('http')}
-              sizes={`${PREVIEW_MAX_W}px`}
-            />
+          {/* 顶部图钉 */}
+          <div
+            className="absolute left-1/2 -top-1.5 z-10 h-4 w-4 -translate-x-1/2 rounded-full shadow-md"
+            style={{
+              background: 'linear-gradient(160deg, #7dd3fc 0%, #38bdf8 50%, #0ea5e9 100%)',
+              boxShadow: '0 2px 6px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.5)',
+            }}
+            aria-hidden
+          />
+          {/* 上方留白（图钉区域） */}
+          <div className="h-5 shrink-0" aria-hidden />
+          {/* 图片区 */}
+          <div className="relative min-h-0 flex-1 px-3 pt-0.5">
+            <div className="relative h-full w-full overflow-hidden rounded-sm bg-neutral-100">
+              <Image
+                src={item.src}
+                alt=""
+                fill
+                className="object-contain"
+                unoptimized={item.src.startsWith('http')}
+                sizes={`${PREVIEW_MAX_W}px`}
+              />
+            </div>
+          </div>
+          {/* 下方文案区（明信片签名/日期） */}
+          <div
+            className="shrink-0 border-t border-neutral-200/80 px-4 py-3 text-center text-sm text-neutral-600"
+            style={{ fontFamily: 'ui-rounded, "Hiragino Maru Gothic ProN", "Comic Sans MS", cursive' }}
+          >
+            {item.date}
           </div>
         </motion.div>
     </motion.div>
