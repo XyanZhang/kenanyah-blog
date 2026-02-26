@@ -14,8 +14,8 @@
 ::view-transition-new(nav-icon-blog),
 ::view-transition-old(nav-icon-about),
 ::view-transition-new(nav-icon-about),
-::view-transition-old(nav-icon-photography),
-::view-transition-new(nav-icon-photography),
+::view-transition-old(nav-icon-pictures),
+::view-transition-new(nav-icon-pictures),
 ::view-transition-old(nav-icon-projects),
 ::view-transition-new(nav-icon-projects) {
   animation-duration: 350ms;
@@ -48,7 +48,7 @@
 ::view-transition-old(nav-label-home),
 ::view-transition-old(nav-label-blog),
 ::view-transition-old(nav-label-about),
-::view-transition-old(nav-label-photography),
+::view-transition-old(nav-label-pictures),
 ::view-transition-old(nav-label-projects) {
   animation: label-fade-out 200ms ease-out both;
 }
@@ -56,7 +56,7 @@
 ::view-transition-new(nav-label-home),
 ::view-transition-new(nav-label-blog),
 ::view-transition-new(nav-label-about),
-::view-transition-new(nav-label-photography),
+::view-transition-new(nav-label-pictures),
 ::view-transition-new(nav-label-projects) {
   animation: label-fade-in 200ms ease-out 150ms both;
 }

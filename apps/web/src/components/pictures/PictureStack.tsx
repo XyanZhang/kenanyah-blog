@@ -20,28 +20,38 @@ interface PictureStackProps {
 
 const PAD = 24
 
-// Deterministic random stacking, constrained so the whole card stays inside the container
+// 从中心向外层排列：index 0 在中心，index 越大离中心越远
 function getStackStyle(
   index: number,
   id: string,
   containerWidth: number,
-  containerHeight: number
+  containerHeight: number,
+  totalCount: number
 ) {
   const idSeed = id.split('').reduce((s, c) => s + c.charCodeAt(0), 0)
   const s1 = (idSeed * 17 + index * 31) % 997
-  const s2 = (idSeed * 23 + index * 41) % 991
-  const s3 = (idSeed * 13 + index * 19) % 983
-  const s4 = (idSeed * 29 + index * 7) % 977
+
+  const centerLeft = (containerWidth - CARD_WIDTH) / 2
+  const centerTop = (containerHeight - CARD_HEIGHT) / 2
+  const maxRadiusX = Math.max(0, (containerWidth - CARD_WIDTH) / 2 - PAD)
+  const maxRadiusY = Math.max(0, (containerHeight - CARD_HEIGHT) / 2 - PAD)
+  const maxRadius = Math.min(maxRadiusX, maxRadiusY)
+
+  // 从中心向外：第 0 张在中心，后续按半径递增
+  const radius =
+    totalCount <= 1 ? 0 : (index / Math.max(1, totalCount - 1)) * maxRadius
+  // 用 id 做种子分散角度，避免重叠；黄金角分布
+  const angleDeg = (idSeed * 37 + index * 137.5) % 360
+  const angleRad = (angleDeg * Math.PI) / 180
+  const dx = radius * Math.cos(angleRad)
+  const dy = radius * Math.sin(angleRad)
+
+  const left = centerLeft + dx
+  const top = centerTop + dy
+  const rotate = -12 + (s1 * 24 % 24)
 
   const maxLeft = Math.max(0, containerWidth - CARD_WIDTH - PAD)
   const maxTop = Math.max(0, containerHeight - CARD_HEIGHT - PAD)
-  const rangeW = maxLeft - PAD
-  const rangeH = maxTop - PAD
-
-  const left = rangeW > 0 ? PAD + (s1 % rangeW) + ((s3 % 5) - 2) * 20 : PAD
-  const top = rangeH > 0 ? PAD + (s2 % rangeH) + ((s4 % 5) - 2) * 15 : PAD
-  const rotate = -18 + (s1 * 37 % 36)
-
   return {
     left: Math.max(PAD, Math.min(maxLeft, left)),
     top: Math.max(PAD, Math.min(maxTop, top)),
@@ -59,6 +69,7 @@ const ENTRANCE_DURATION = 0.4
 function DraggableCard({
   item,
   index,
+  totalCount,
   offset,
   onOffsetChange,
   onSelect,
@@ -68,6 +79,7 @@ function DraggableCard({
 }: {
   item: PictureStackItem
   index: number
+  totalCount: number
   offset: { x: number; y: number }
   onOffsetChange: (delta: { x: number; y: number }) => void
   onSelect?: (item: PictureStackItem, rect: DOMRect) => void
@@ -77,8 +89,8 @@ function DraggableCard({
 }) {
   const cardRef = useRef<HTMLDivElement>(null)
   const { left, top, rotate } = useMemo(
-    () => getStackStyle(index, item.id, containerWidth, containerHeight),
-    [index, item.id, containerWidth, containerHeight]
+    () => getStackStyle(index, item.id, containerWidth, containerHeight, totalCount),
+    [index, item.id, containerWidth, containerHeight, totalCount]
   )
 
   const minTx = PAD - left
@@ -303,10 +315,11 @@ export function PictureStack({ items, className }: PictureStackProps) {
               key={item.id}
               item={item}
               index={index}
+              totalCount={sorted.length}
               offset={offsets[item.id] ?? { x: 0, y: 0 }}
               onOffsetChange={(delta) => handleOffsetChange(item.id, delta)}
               onSelect={handleSelect}
-              zIndex={index}
+              zIndex={sorted.length - 1 - index}
               containerWidth={size.width}
               containerHeight={size.height}
             />
