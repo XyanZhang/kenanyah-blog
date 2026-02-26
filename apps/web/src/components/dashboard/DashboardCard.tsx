@@ -9,6 +9,7 @@ import { DashboardCard as DashboardCardType, CardType, CardDimensions, CardSize 
 import { useDashboard } from '@/hooks/useDashboard'
 import { useCardResize } from '@/hooks/useCardResize'
 import { useAlignmentRegistration } from '@/hooks/useAlignmentRegistration'
+import { useHomeCanvasStore } from '@/store/home-canvas-store'
 import { getCardDimensions, DEFAULT_BORDER_RADIUS } from '@/lib/constants/dashboard'
 import { CardToolbar } from './CardToolbar'
 import { ResizeHandles } from './ResizeHandles'
@@ -69,11 +70,16 @@ export function DashboardCard({ card, animationIndex }: DashboardCardProps) {
   // Track if initial animation has completed
   const [hasAnimated, setHasAnimated] = useState(false)
 
+  const scale = useHomeCanvasStore((s) => s.scale)
   const handleResizeEnd = useCallback(
     (dimensions: CardDimensions, positionDelta: { x: number; y: number }) => {
-      updateCardSize(card.id, dimensions, positionDelta)
+      const canvasDelta = {
+        x: positionDelta.x / scale,
+        y: positionDelta.y / scale,
+      }
+      updateCardSize(card.id, dimensions, canvasDelta)
     },
-    [card.id, updateCardSize]
+    [card.id, updateCardSize, scale]
   )
 
   const { isResizing, currentDimensions, positionDelta, handleResizeStart } = useCardResize({
@@ -108,9 +114,9 @@ export function DashboardCard({ card, animationIndex }: DashboardCardProps) {
   const borderRadius = card.borderRadius ?? DEFAULT_BORDER_RADIUS
   const padding = card.padding ?? 24
 
-  // Calculate final position including drag transform and resize position delta
-  const x = card.position.x + (transform?.x || 0) + positionDelta.x
-  const y = card.position.y + (transform?.y || 0) + positionDelta.y
+  // 画布坐标：card.position 为画布坐标，transform 与 positionDelta 为视口像素需除以 scale
+  const x = card.position.x + (transform?.x ?? 0) / scale + positionDelta.x / scale
+  const y = card.position.y + (transform?.y ?? 0) / scale + positionDelta.y / scale
 
   // Animation delay based on priority
   const animationDelay = animationIndex * 0.15

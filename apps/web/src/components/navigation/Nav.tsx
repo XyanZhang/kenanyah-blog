@@ -7,6 +7,8 @@ import { cn } from '@/lib/utils'
 import { useDashboard } from '@/hooks/useDashboard'
 import { useNavStore } from '@/store/nav-store'
 import { useAlignmentStore } from '@/store/alignment-store'
+import { useHomeCanvasStore } from '@/store/home-canvas-store'
+import { CANVAS_WIDTH, CANVAS_HEIGHT } from '@/lib/constants/dashboard'
 import { useAlignmentRegistration } from '@/hooks/useAlignmentRegistration'
 import { useDrag } from '@/hooks/useDrag'
 import { useResize } from '@/hooks/useResize'
@@ -23,7 +25,17 @@ export function Nav() {
   const { config, updatePosition, updateSize, setResizing } = useNavStore()
 
   const isHomepage = pathname === '/'
+  const { scale, translateX, translateY, setViewportSize } = useHomeCanvasStore()
   const navRef = useRef<HTMLElement>(null)
+
+  // 首页时同步监听窗口 resize，确保缩小/放大窗口时 store 更新、布局跟随
+  useEffect(() => {
+    if (!isHomepage) return
+    const sync = () => setViewportSize(window.innerWidth, window.innerHeight)
+    sync()
+    window.addEventListener('resize', sync)
+    return () => window.removeEventListener('resize', sync)
+  }, [isHomepage, setViewportSize])
   const indicatorRef = useRef<HTMLDivElement>(null)
   const [hoverIndex, setHoverIndex] = useState<number | null>(null)
   const [navSize, setNavSize] = useState({ width: 200, height: 60 })
@@ -53,15 +65,23 @@ export function Nav() {
     }
   }, [config.customSize, visibleNavItems.length])
 
-  // 首页用竖向位置，非首页用横向位置
+  // 首页用竖向位置（画布坐标），非首页用横向位置；首页拖拽 delta 需除以 scale 转为画布坐标
   const { isDragging, dragDelta, dragHandlers } = useDrag({
     onDragEnd: (delta) => {
       const currentSnapOffset = useAlignmentStore.getState().snapOffset
-      const finalDelta = {
+      const finalViewportDelta = {
         x: delta.x + (currentSnapOffset?.x ?? 0),
         y: delta.y + (currentSnapOffset?.y ?? 0),
       }
-      updatePosition(finalDelta, !isHomepage)
+      if (isHomepage) {
+        const canvasDelta = {
+          x: finalViewportDelta.x / scale,
+          y: finalViewportDelta.y / scale,
+        }
+        updatePosition(canvasDelta, false)
+      } else {
+        updatePosition(finalViewportDelta, true)
+      }
     },
     disabled: !isEditMode,
   })
@@ -78,7 +98,14 @@ export function Nav() {
     onResizeEnd: (size, positionDelta) => {
       updateSize(size)
       if (positionDelta.x !== 0 || positionDelta.y !== 0) {
-        updatePosition(positionDelta, !isHomepage)
+        if (isHomepage) {
+          updatePosition(
+            { x: positionDelta.x / scale, y: positionDelta.y / scale },
+            false
+          )
+        } else {
+          updatePosition(positionDelta, true)
+        }
       }
       setResizing(false)
     },
@@ -238,8 +265,13 @@ export function Nav() {
   // Only show view transition when not in edit mode and using auto layout
   const showViewTransition = !isEditMode && config.layout === 'auto'
 
-  // 首页：竖向居中；非首页：横向顶部（单一 DOM 结构，仅样式切换，减少抖动）
+  // 首页：画布坐标系，左上角为原点；非首页：横向顶部
   const position = isHomepage ? config.verticalPosition : config.horizontalPosition
+  const baseSizeForPosition = config.customSize || navSize
+  const navCanvasLeft = CANVAS_WIDTH / 2 + position.x - baseSizeForPosition.width / 2
+  const navCanvasTop = CANVAS_HEIGHT / 2 + position.y - baseSizeForPosition.height / 2
+  const homeLeft = translateX + navCanvasLeft * scale + dragDelta.x + (isResizing ? resizePositionDelta.x : 0)
+  const homeTop = translateY + navCanvasTop * scale + dragDelta.y + (isResizing ? resizePositionDelta.y : 0)
   const totalX = position.x + dragDelta.x + (isResizing ? resizePositionDelta.x : 0)
   const totalY = position.y + dragDelta.y + (isResizing ? resizePositionDelta.y : 0)
 
@@ -265,11 +297,17 @@ export function Nav() {
         width: undefined,
         height: undefined,
         viewTransitionName: showViewTransition ? 'main-nav' : undefined,
-        left: '50%',
-        top: isHomepage ? '50%' : '24px',
-        transform: isHomepage
-          ? `translate(calc(-50% + ${totalX}px), calc(-50% + ${totalY}px))`
-          : `translate(calc(-50% + ${totalX}px), ${totalY}px)`,
+        ...(isHomepage
+          ? {
+              left: homeLeft,
+              top: homeTop,
+              transform: undefined,
+            }
+          : {
+              left: '50%',
+              top: '24px',
+              transform: `translate(calc(-50% + ${totalX}px), ${totalY}px)`,
+            }),
       }}
       onPointerDown={isEditMode ? dragHandlers.onPointerDown : undefined}
       onMouseLeave={handleMouseLeave}
@@ -286,21 +324,28 @@ export function Nav() {
         <Image
           src="/images/avatar/avatar-pink.png"
           alt="Kenanyah"
-          width={isHomepage ? 48 : 32}
-          height={isHomepage ? 48 : 32}
-          className={cn('rounded-full', !layoutJustChanged && 'transition-all duration-300')}
+          width={48}
+          height={48}
+          className={cn('rounded-full', !layoutJustChanged && 'transition-all duration-300',
+            isHomepage ? '' : 'mr-2'
+          )}
           style={{ viewTransitionName: 'nav-avatar' }}
         />
-        <span
-          className={cn(
-            'text-sm font-medium text-content-primary',
-            !layoutJustChanged && 'transition-all duration-300',
-            isHomepage ? 'opacity-100' : 'opacity-0 max-h-0 overflow-hidden'
-          )}
-          style={{ viewTransitionName: 'nav-name' }}
-        >
-          Kenanyah
-        </span>
+
+        {
+          isHomepage && (
+            <span
+              className={cn(
+                'text-sm font-medium text-content-primary',
+                !layoutJustChanged && 'transition-all duration-300',
+                isHomepage ? 'opacity-100' : 'opacity-0 max-h-0 overflow-hidden'
+              )}
+              style={{ viewTransitionName: 'nav-name' }}
+            >
+              Kenanyah
+            </span>
+          )
+        }
       </div>
 
       {/* Nav 项：同一容器，仅 flex 方向与 isCompact 不同 */}

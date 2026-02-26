@@ -10,6 +10,8 @@ import {
 } from '@dnd-kit/core'
 import { useDashboard } from '@/hooks/useDashboard'
 import { useAlignmentStore } from '@/store/alignment-store'
+import { useHomeCanvasStore } from '@/store/home-canvas-store'
+import { CANVAS_WIDTH, CANVAS_HEIGHT } from '@/lib/constants/dashboard'
 import { DashboardCard } from './DashboardCard'
 import { EditModeToggle } from './EditModeToggle'
 import { AddCardDialog, AddCardDialogHandle } from './AddCardButton'
@@ -18,6 +20,8 @@ import { LayoutTemplatePickerDialog, LayoutTemplatePickerHandle } from './Layout
 export function Dashboard() {
   const { layout, isLoading, initializeLayout, updateCardPosition } = useDashboard()
   const { setActiveElement } = useAlignmentStore()
+  const { scale, setViewportSize, translateX, translateY } = useHomeCanvasStore()
+  const viewportRef = useRef<HTMLDivElement>(null)
 
   // Dialog refs
   const addCardDialogRef = useRef<AddCardDialogHandle>(null)
@@ -44,17 +48,43 @@ export function Dashboard() {
     initializeLayout()
   }, [initializeLayout])
 
+  // 同步视口尺寸到 home canvas store，窗口缩放/resize 时更新平移使画布居中对齐
+  useEffect(() => {
+    const syncSize = () => {
+      const w = typeof window !== 'undefined' ? window.innerWidth : 1920
+      const h = typeof window !== 'undefined' ? window.innerHeight : 1080
+      setViewportSize(w, h)
+    }
+    const el = viewportRef.current
+    if (el) {
+      syncSize()
+      const ro = new ResizeObserver(syncSize)
+      ro.observe(el)
+      const onResize = () => syncSize()
+      window.addEventListener('resize', onResize)
+      return () => {
+        ro.disconnect()
+        window.removeEventListener('resize', onResize)
+      }
+    }
+    syncSize()
+  }, [setViewportSize])
+
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, delta } = event
 
     if (delta.x !== 0 || delta.y !== 0) {
-      // Read fresh snapOffset from store to avoid stale closure
       const currentSnapOffset = useAlignmentStore.getState().snapOffset
-      const finalDelta = {
+      const finalViewportDelta = {
         x: delta.x + (currentSnapOffset?.x ?? 0),
         y: delta.y + (currentSnapOffset?.y ?? 0),
       }
-      updateCardPosition(active.id as string, finalDelta)
+      // 视口像素 → 画布坐标（除以 scale）
+      const canvasDelta = {
+        x: finalViewportDelta.x / scale,
+        y: finalViewportDelta.y / scale,
+      }
+      updateCardPosition(active.id as string, canvasDelta)
     }
 
     setActiveElement(null)
@@ -92,6 +122,7 @@ export function Dashboard() {
 
   return (
     <div
+      ref={viewportRef}
       className="relative h-screen w-full overflow-hidden"
       style={{ background: 'var(--theme-bg-base)' }}
     >
@@ -105,20 +136,31 @@ export function Dashboard() {
       <div className="bokeh-orb bokeh-orb-7 absolute bottom-[35%] right-[30%] h-40 w-40 rounded-full opacity-45 blur-2xl" style={{ background: 'var(--theme-bg-orb-7)' }} />
       <div className="bokeh-orb bokeh-orb-8 absolute top-[60%] left-[65%] h-36 w-36 rounded-full opacity-50 blur-2xl" style={{ background: 'var(--theme-bg-orb-8)' }} />
 
-      <DndContext
-        sensors={sensors}
-        onDragEnd={handleDragEnd}
+      {/* 画布外容器：transform 使缩放时居中对齐，左上角为坐标原点 */}
+      <div
+        className="absolute left-0 top-0"
+        style={{
+          width: CANVAS_WIDTH,
+          height: CANVAS_HEIGHT,
+          transform: `translate(${translateX}px, ${translateY}px) scale(${scale})`,
+          transformOrigin: '0 0',
+        }}
       >
-        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
-          {visibleCards.map((card) => (
-            <DashboardCard
-              key={card.id}
-              card={card}
-              animationIndex={animationIndexMap.get(card.id) ?? 0}
-            />
-          ))}
-        </div>
-      </DndContext>
+        <DndContext
+          sensors={sensors}
+          onDragEnd={handleDragEnd}
+        >
+          <div className="relative w-full h-full" style={{ position: 'relative' }}>
+            {visibleCards.map((card) => (
+              <DashboardCard
+                key={card.id}
+                card={card}
+                animationIndex={animationIndexMap.get(card.id) ?? 0}
+              />
+            ))}
+          </div>
+        </DndContext>
+      </div>
 
       <EditModeToggle onAddCard={handleAddCard} onSelectLayout={handleSelectLayout} />
       <AddCardDialog ref={addCardDialogRef} />
