@@ -1,7 +1,8 @@
 'use client'
 
 import Link from 'next/link'
-import { Home, FileText, User, Camera, FolderOpen, LucideIcon } from 'lucide-react'
+import type { Route } from 'next'
+import { Home, FileText, User, Camera, FolderOpen, LayoutGrid, LucideIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { NavItem as NavItemType } from './nav-items'
 
@@ -11,6 +12,7 @@ const iconMap: Record<string, LucideIcon> = {
   User,
   Camera,
   FolderOpen,
+  LayoutGrid,
 }
 
 interface NavItemProps {
@@ -30,7 +32,7 @@ export function NavItem({ item, isActive, isHovered, isAnyHovered, isCompact = f
 
   return (
     <Link
-      href={item.href}
+      href={item.href as Route}
       className={cn(
         'group relative flex justify-center items-center rounded-xl transition-colors duration-150 ease-out',
         isCompact ? 'justify-center p-2' : 'gap-3 px-3 py-2',
