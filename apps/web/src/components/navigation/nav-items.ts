@@ -1,4 +1,4 @@
-export type NavHref = '/' | '/blog' | '/about' | '/pictures' | '/projects' | '/works'
+export type NavHref = '/' | '/blog' | '/about' | '/pictures' | '/projects' | '/works' | '/thoughts'
 
 export interface NavItem {
   id: string
@@ -14,4 +14,5 @@ export const navItems: NavItem[] = [
   { id: 'pictures', label: '摄影', href: '/pictures', icon: 'Camera' },
   { id: 'projects', label: '项目', href: '/projects', icon: 'FolderOpen' },
   { id: 'works', label: '作品', href: '/works', icon: 'LayoutGrid' },
+  { id: 'thoughts', label: '思考', href: '/thoughts', icon: 'MessageCircle' },
 ]
