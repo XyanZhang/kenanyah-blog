@@ -2,8 +2,12 @@
 
 import { useCallback, useRef, useState } from 'react'
 
+const TAP_THRESHOLD = 5
+
 interface UseDragOptions {
   onDragEnd?: (delta: { x: number; y: number }) => void
+  /** Called when pointer is released with minimal movement (treated as tap/click) */
+  onTap?: () => void
   disabled?: boolean
 }
 
@@ -15,12 +19,18 @@ interface UseDragReturn {
   }
 }
 
-export function useDrag({ onDragEnd, disabled = false }: UseDragOptions = {}): UseDragReturn {
+export function useDrag({
+  onDragEnd,
+  onTap,
+  disabled = false,
+}: UseDragOptions = {}): UseDragReturn {
   const [isDragging, setIsDragging] = useState(false)
   const [dragDelta, setDragDelta] = useState({ x: 0, y: 0 })
   const dragStartRef = useRef({ x: 0, y: 0 })
   const onDragEndRef = useRef(onDragEnd)
+  const onTapRef = useRef(onTap)
   onDragEndRef.current = onDragEnd
+  onTapRef.current = onTap
 
   const handlePointerDown = useCallback(
     (e: React.PointerEvent) => {
@@ -53,8 +63,11 @@ export function useDrag({ onDragEnd, disabled = false }: UseDragOptions = {}): U
           y: upEvent.clientY - dragStartRef.current.y,
         }
 
-        if (finalDelta.x !== 0 || finalDelta.y !== 0) {
+        const moved = Math.abs(finalDelta.x) > TAP_THRESHOLD || Math.abs(finalDelta.y) > TAP_THRESHOLD
+        if (moved) {
           onDragEndRef.current?.(finalDelta)
+        } else {
+          onTapRef.current?.()
         }
 
         setIsDragging(false)

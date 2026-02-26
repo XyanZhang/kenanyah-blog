@@ -11,13 +11,14 @@ import {
 import { Button, Label, Switch } from '@/components/ui'
 import { useNavStore, type NavLayout } from '@/store/nav-store'
 import { navItems } from './nav-items'
-import { Home, FileText, User, Camera, FolderOpen, LucideIcon } from 'lucide-react'
+import { Home, FileText, User, Camera, Images, FolderOpen, LucideIcon } from 'lucide-react'
 
 const iconMap: Record<string, LucideIcon> = {
   Home,
   FileText,
   User,
   Camera,
+  Images,
   FolderOpen,
 }
 

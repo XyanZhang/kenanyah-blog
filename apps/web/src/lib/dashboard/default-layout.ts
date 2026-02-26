@@ -1,6 +1,12 @@
 import { DashboardCard, DashboardLayout, CardType, CardSize } from '@blog/types'
 import { generateCircularLayout } from './layout-algorithms'
-import { DEFAULT_LAYOUT_CONFIG, LAYOUT_VERSION, DEFAULT_BORDER_RADIUS } from '../constants/dashboard'
+import {
+  DEFAULT_LAYOUT_CONFIG,
+  LAYOUT_VERSION,
+  DEFAULT_BORDER_RADIUS,
+  CANVAS_WIDTH,
+  CANVAS_HEIGHT,
+} from '../constants/dashboard'
 
 /**
  * Create a default dashboard card
@@ -144,9 +150,14 @@ export function createDefaultLayout(): DashboardLayout {
     DEFAULT_LAYOUT_CONFIG
   )
 
+  // 画布坐标系：左上角为原点，圆形布局中心对应画布中心
   const cards: DashboardCard[] = cardsWithoutPosition.map((card, index) => ({
     ...card,
-    position: positions[index],
+    position: {
+      ...positions[index],
+      x: positions[index].x + CANVAS_WIDTH / 2,
+      y: positions[index].y + CANVAS_HEIGHT / 2,
+    },
   }))
 
   return {

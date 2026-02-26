@@ -34,6 +34,10 @@ export const DEFAULT_LAYOUT_CONFIG = {
 } as const
 
 export const STORAGE_KEY = 'dashboard-layout'
-export const LAYOUT_VERSION = 1
+export const LAYOUT_VERSION = 2
+
+/** Home 画布尺寸，左上角为坐标原点 (0,0) */
+export const CANVAS_WIDTH = 1920
+export const CANVAS_HEIGHT = 1080
 
 export const DEFAULT_BORDER_RADIUS = 40
