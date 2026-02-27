@@ -90,6 +90,7 @@ export function Nav() {
   const baseSize = config.customSize || navSize
   const {
     isResizing,
+    currentSize,
     positionDelta: resizePositionDelta,
     handleResizeStart,
   } = useResize({
@@ -272,8 +273,10 @@ export function Nav() {
   const navCanvasTop = CANVAS_HEIGHT / 2 + position.y - baseSizeForPosition.height / 2
   const homeLeft = translateX + navCanvasLeft * scale + dragDelta.x + (isResizing ? resizePositionDelta.x : 0)
   const homeTop = translateY + navCanvasTop * scale + dragDelta.y + (isResizing ? resizePositionDelta.y : 0)
-  const totalX = position.x + dragDelta.x + (isResizing ? resizePositionDelta.x : 0)
-  const totalY = position.y + dragDelta.y + (isResizing ? resizePositionDelta.y : 0)
+
+  // 有自定义尺寸或正在缩放时，使用固定宽高，使内部可自适应；否则由内容撑开
+  const useFixedSize = Boolean(config.customSize) || isResizing
+  const displaySize = useFixedSize ? currentSize : undefined
 
   return (
     <nav
@@ -294,8 +297,11 @@ export function Nav() {
         alignItems: isHomepage ? undefined : 'center',
         gap: '4px',
         padding: isHomepage ? '12px' : '8px 12px',
-        width: undefined,
-        height: undefined,
+        width: isHomepage ? displaySize?.width : undefined,
+        height: isHomepage ? displaySize?.height : undefined,
+        minWidth: isHomepage ? undefined : 48,
+        minHeight: 48,
+        overflow: useFixedSize && !isEditMode ? 'hidden' : 'visible',
         viewTransitionName: showViewTransition ? 'main-nav' : undefined,
         ...(isHomepage
           ? {
@@ -347,12 +353,12 @@ export function Nav() {
         }
       </div>
 
-      {/* Nav 项：同一容器，仅 flex 方向与 isCompact 不同 */}
+      {/* Nav 项：同一容器，min-w-0 + flex-1 使宽度随 nav 容器自适应 */}
       <div
         data-nav-items
         className={cn(
-          'relative',
-          isHomepage ? 'flex flex-col justify-center min-w-30 gap-1' : 'flex flex-row items-center gap-0'
+          'relative min-w-0 flex-1 flex overflow-hidden',
+          isHomepage ? 'flex-col justify-center min-w-30 gap-1' : 'flex-row items-center gap-0'
         )}
       >
         {!isEditMode && (
