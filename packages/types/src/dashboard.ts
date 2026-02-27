@@ -157,6 +157,13 @@ export interface WeatherCardConfig {
   showWind: boolean
 }
 
+export interface MusicTrack {
+  audioUrl: string
+  title: string
+  artist?: string
+  coverUrl?: string
+}
+
 export interface MusicCardConfig {
   title: string
   artist?: string
@@ -165,6 +172,7 @@ export interface MusicCardConfig {
   autoPlay: boolean
   showProgress: boolean
   showVolume: boolean
+  playlist?: MusicTrack[]
 }
 
 export interface ReadingCardConfig {

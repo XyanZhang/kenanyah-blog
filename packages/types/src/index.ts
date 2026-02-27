@@ -73,6 +73,7 @@ export type {
   RandomPostsCardConfig,
   CalendarCardConfig,
   ClockCardConfig,
+  MusicTrack,
   ImageCardConfig,
   SocialCardConfig,
   SocialLink,
