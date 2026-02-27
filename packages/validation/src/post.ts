@@ -9,6 +9,8 @@ export const createPostSchema = z.object({
   excerpt: z.string().max(500, 'Excerpt must be at most 500 characters').optional(),
   coverImage: z.string().url('Invalid cover image URL').optional(),
   published: z.boolean().default(false),
+  publishedAt: z.string().datetime().optional(),
+  isFeatured: z.boolean().default(false),
   categoryIds: z.array(z.string().cuid()).optional(),
   tagIds: z.array(z.string().cuid()).optional(),
 })
