@@ -7,6 +7,7 @@ export interface Post {
   coverImage: string | null
   published: boolean
   publishedAt: Date | null
+   isFeatured: boolean
   viewCount: number
   authorId: string
   createdAt: Date
@@ -15,7 +16,7 @@ export interface Post {
 
 export type CreatePostDto = Pick<
   Post,
-  'title' | 'content' | 'excerpt' | 'coverImage' | 'published'
+  'title' | 'content' | 'excerpt' | 'coverImage' | 'published' | 'publishedAt' | 'isFeatured'
 > & {
   categoryIds?: string[]
   tagIds?: string[]

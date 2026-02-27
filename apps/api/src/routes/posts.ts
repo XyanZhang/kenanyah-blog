@@ -174,7 +174,12 @@ posts.post('/', authMiddleware, validateBody(createPostSchema), async (c) => {
       content: data.content,
       coverImage: data.coverImage,
       published: data.published || false,
-      publishedAt: data.published ? new Date() : null,
+      publishedAt: data.published
+        ? data.publishedAt
+          ? new Date(data.publishedAt)
+          : new Date()
+        : null,
+      isFeatured: data.isFeatured ?? false,
       authorId: userId,
       categories: data.categoryIds
         ? {
@@ -252,10 +257,15 @@ posts.patch('/:id', authMiddleware, validateBody(updatePostSchema), async (c) =>
   if (data.coverImage !== undefined) updateData.coverImage = data.coverImage
   if (data.published !== undefined) {
     updateData.published = data.published
-    if (data.published && !existingPost.publishedAt) {
-      updateData.publishedAt = new Date()
+    if (data.published) {
+      updateData.publishedAt = data.publishedAt
+        ? new Date(data.publishedAt)
+        : existingPost.publishedAt ?? new Date()
+    } else {
+      updateData.publishedAt = null
     }
   }
+  if (data.isFeatured !== undefined) updateData.isFeatured = data.isFeatured
 
   const post = await prisma.post.update({
     where: { id },
