@@ -1,8 +1,9 @@
 'use client'
 
 import { useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Edit3, Eye, Plus, LayoutTemplate } from 'lucide-react'
+import { Edit3, Eye, Plus, LayoutTemplate, PenSquare } from 'lucide-react'
 import { useDashboard } from '@/hooks/useDashboard'
 import { useFloatingActions } from '@/components/providers/FloatingActionsProvider'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui'
@@ -14,9 +15,28 @@ interface EditModeActionsProps {
 
 function EditModeActions({ onAddCard, onSelectLayout }: EditModeActionsProps) {
   const { isEditMode, toggleEditMode } = useDashboard()
+  const router = useRouter()
+
+  const handleGoToBlogEditor = () => {
+    router.push('/blog/editor')
+  }
 
   return (
     <div className="flex flex-col items-center gap-3">
+      {/* 博客编辑入口：始终展示 */}
+      <motion.button
+        type="button"
+        onClick={handleGoToBlogEditor}
+        initial={{ scale: 0, opacity: 0, y: 12 }}
+        animate={{ scale: 1, opacity: 1, y: 0 }}
+        transition={{ delay: 0.25, type: 'spring', stiffness: 260, damping: 20 }}
+        className="flex items-center gap-1.5 rounded-full bg-accent-primary px-3 py-1.5 text-xs font-medium text-white shadow-lg hover:bg-accent-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary/70"
+        aria-label="写文章"
+      >
+        <PenSquare className="h-3.5 w-3.5" />
+        <span>写文章</span>
+      </motion.button>
+
       {/* 编辑模式下显示的额外按钮 - 在编辑按钮上方 */}
       <AnimatePresence>
         {isEditMode && (

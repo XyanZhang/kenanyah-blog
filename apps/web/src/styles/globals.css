@@ -87,6 +87,178 @@
   }
 }
 
+@layer components {
+  /* 专用于 Markdown 预览的排版样式，结合主题色，不受全局 reset 影响 */
+  .md-content {
+    color: var(--color-content-primary);
+    font-size: 0.95rem;
+    line-height: 1.8;
+  }
+
+  .md-content > *:first-child {
+    margin-top: 0;
+  }
+
+  .md-content > *:last-child {
+    margin-bottom: 0;
+  }
+
+  .md-content h1,
+  .md-content h2,
+  .md-content h3,
+  .md-content h4,
+  .md-content h5,
+  .md-content h6 {
+    color: var(--color-content-primary);
+    font-weight: 650;
+    line-height: 1.3;
+    margin-top: 1.5rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .md-content h1 {
+    font-size: 1.7rem;
+    letter-spacing: -0.03em;
+  }
+
+  .md-content h2 {
+    font-size: 1.4rem;
+    letter-spacing: -0.02em;
+  }
+
+  .md-content h3 {
+    font-size: 1.2rem;
+  }
+
+  .md-content h4 {
+    font-size: 1.05rem;
+  }
+
+  .md-content h5 {
+    font-size: 0.95rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--color-content-muted);
+  }
+
+  .md-content h6 {
+    font-size: 0.9rem;
+    color: var(--color-content-muted);
+  }
+
+  .md-content p {
+    margin-top: 0.5rem;
+    margin-bottom: 0.5rem;
+    color: var(--color-content-secondary);
+  }
+
+  .md-content a {
+    color: var(--color-accent-primary);
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 3px;
+  }
+
+  .md-content a:hover {
+    color: var(--color-accent-secondary);
+  }
+
+  .md-content ul,
+  .md-content ol,
+  .md-content menu {
+    padding-left: 1.5rem;
+    margin-top: 0.5rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .md-content ul {
+    list-style: disc;
+  }
+
+  .md-content ol {
+    list-style: decimal;
+  }
+
+  .md-content li {
+    margin-top: 0.25rem;
+    margin-bottom: 0.25rem;
+  }
+
+  .md-content blockquote {
+    margin: 1rem 0;
+    padding: 0.75rem 1rem;
+    border-left: 3px solid var(--color-accent-primary-muted);
+    background-color: color-mix(in srgb, var(--color-accent-primary-subtle) 60%, transparent);
+    border-radius: 0.5rem;
+    color: var(--color-content-secondary);
+    font-style: italic;
+  }
+
+  .md-content code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+      'Liberation Mono', 'Courier New', monospace;
+    font-size: 0.85em;
+    padding: 0.1em 0.35em;
+    border-radius: 0.25rem;
+    background-color: color-mix(in srgb, var(--color-surface-tertiary) 70%, transparent);
+  }
+
+  .md-content pre {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+      'Liberation Mono', 'Courier New', monospace;
+    font-size: 0.85rem;
+    line-height: 1.7;
+    margin: 1rem 0;
+    padding: 0.75rem 1rem;
+    border-radius: 0.75rem;
+    background: radial-gradient(circle at top left, var(--theme-shadow-accent), transparent 55%),
+      radial-gradient(circle at bottom right, rgba(0, 0, 0, 0.08), transparent 60%),
+      rgba(0, 0, 0, 0.82);
+    color: #f9fafb;
+    overflow-x: auto;
+  }
+
+  .md-content pre code {
+    background: transparent;
+    padding: 0;
+  }
+
+  .md-content hr {
+    border: none;
+    border-top: 1px dashed var(--color-line-secondary);
+    margin: 1.75rem 0;
+  }
+
+  .md-content img {
+    max-width: 100%;
+    border-radius: 0.75rem;
+    margin: 0.75rem 0;
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.08);
+  }
+
+  .md-content table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+    margin: 1rem 0;
+    border-radius: 0.75rem;
+    overflow: hidden;
+    background-color: var(--color-surface-primary);
+  }
+
+  .md-content th,
+  .md-content td {
+    padding: 0.5rem 0.75rem;
+    border-bottom: 1px solid var(--color-line-primary);
+  }
+
+  .md-content th {
+    background-color: color-mix(in srgb, var(--color-accent-primary-subtle) 70%, transparent);
+    font-weight: 600;
+    text-align: left;
+  }
+}
+
 @layer utilities {
   .card-shadow {
     box-shadow: 0 10px 30px -5px var(--theme-shadow-color);
