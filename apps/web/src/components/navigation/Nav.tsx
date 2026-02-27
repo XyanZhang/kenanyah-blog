@@ -279,7 +279,7 @@ export function Nav() {
     <nav
       ref={navRef}
       className={cn(
-        'fixed z-50 group',
+        'fixed z-50 group left-0 top-0',
         'rounded-2xl bg-surface-glass backdrop-blur-lg',
         'border border-line-glass',
         '[box-shadow:0_20px_40px_-10px_rgba(0,0,0,0.1)]',

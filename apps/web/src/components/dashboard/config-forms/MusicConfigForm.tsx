@@ -176,7 +176,24 @@ export function MusicConfigForm({ config, onChange }: MusicConfigFormProps) {
           checked={config.showVolume ?? true}
           onCheckedChange={(checked) => handleToggle('showVolume', checked)}
         />
+      <div className="flex items-center justify-between">
+        <Label htmlFor="showVolume">Show Volume Control</Label>
+        <Switch
+          checked={config.showVolume ?? true}
+          onCheckedChange={(checked) => handleToggle('showVolume', checked)}
+        />
       </div>
+      <div className="border-t pt-4 mt-4">
+        <div className="flex items-center justify-between">
+          <Label htmlFor="simplifiedMode">Simplified Mode</Label>
+          <Switch
+            checked={config.simplifiedMode ?? false}
+            onCheckedChange={(checked) => handleToggle('simplifiedMode', checked)}
+          />
+        </div>
+        <p className="text-xs text-muted-foreground mt-1">Show compact player with music icon, title, and progress</p>
+      </div>
+    </div>
     </div>
   )
 }

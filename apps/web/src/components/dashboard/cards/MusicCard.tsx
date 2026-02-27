@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { MusicMiniPlayer } from './MusicMiniPlayer';
+import { motion, useAnimationControls, useMotionValue, useTransform } from 'framer-motion';
 import { FiPlay, FiPause, FiVolume2, FiVolumeX, FiSkipBack, FiSkipForward, FiMusic } from 'react-icons/fi';
 import { DashboardCard as DashboardCardType, MusicCardConfig } from '@blog/types';
 
@@ -27,7 +28,7 @@ function MusicVisualizer({ isPlaying, color }: MusicVisualizerProps) {
           }}
           transition={{
             duration: isPlaying ? 0.8 : 0.3,
-            repeat: Infinity,
+            repeat: isPlaying ? Infinity : 0,
             ease: 'easeInOut',
             delay: i * 0.1,
           }}
@@ -38,14 +39,24 @@ function MusicVisualizer({ isPlaying, color }: MusicVisualizerProps) {
 }
 
 function RotatingDisc({ isPlaying, coverUrl }: { isPlaying: boolean; coverUrl?: string }) {
+  const controls = useAnimationControls();
+
+  useEffect(() => {
+    if (isPlaying) {
+      controls.start({
+        rotate: 360,
+        transition: { duration: 10, repeat: Infinity, ease: 'linear' },
+      });
+    } else {
+      controls.stop();
+    }
+  }, [isPlaying, controls]);
+
   return (
     <div className="relative">
       <motion.div
         className="w-20 h-20 rounded-full overflow-hidden shadow-lg border-4 border-white/20"
-        animate={{ rotate: isPlaying ? 360 : 0 }}
-        transition={{
-          rotate: { duration: isPlaying ? 10 : 0.3, repeat: Infinity, ease: 'linear' },
-        }}
+        animate={controls}
       >
         {coverUrl ? (
           <img src={coverUrl} alt="Cover" className="w-full h-full object-cover" />
@@ -57,8 +68,8 @@ function RotatingDisc({ isPlaying, coverUrl }: { isPlaying: boolean; coverUrl?: 
       </motion.div>
       <motion.div
         className="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-white shadow-lg flex items-center justify-center"
-        animate={{ scale: isPlaying ? [1, 1.1, 1] : 1 }}
-        transition={{ duration: isPlaying ? 1 : 0.3, repeat: Infinity }}
+        animate={isPlaying ? { scale: [1, 1.1, 1] } : {}}
+        transition={isPlaying ? { duration: 1, repeat: Infinity } : {}}
       >
         <div className="w-2 h-2 rounded-full bg-theme-accent-primary" />
       </motion.div>
@@ -172,6 +183,11 @@ export function MusicCard({ card }: MusicCardProps) {
     }
   };
 
+  // 简化模式
+  if (config.simplifiedMode) {
+    return <MusicMiniPlayer config={config} />;
+  }
+
   return (
     <motion.div
       className="w-full h-full rounded-3xl relative overflow-hidden"
@@ -224,7 +240,7 @@ export function MusicCard({ card }: MusicCardProps) {
           className="flex items-center gap-3 mb-4"
         >
           <div className="p-2 rounded-xl bg-white/20 backdrop-blur-sm">
-            <FiMusic className="text-white" size={20} />
+            <FiMusic className={isPlaying ? 'text-white' : 'text-white/60'} size={20} />
           </div>
           <span className="text-white/80 font-medium text-sm">
             {hasPlaylist
@@ -236,14 +252,10 @@ export function MusicCard({ card }: MusicCardProps) {
         <div className="flex-1 flex flex-col items-center justify-center gap-4">
           <RotatingDisc isPlaying={isPlaying} coverUrl={currentCoverUrl} />
 
-          <motion.div
-            className="text-center"
-            animate={{ y: isPlaying ? [0, -3, 0] : 0 }}
-            transition={{ duration: isPlaying ? 3 : 0.3, repeat: Infinity }}
-          >
+          <div className="text-center">
             <h3 className="text-lg font-bold text-white mb-1 truncate max-w-[200px]">{currentTitle}</h3>
             {currentArtist && <p className="text-sm text-white/70">{currentArtist}</p>}
-          </motion.div>
+          </div>
 
           <MusicVisualizer isPlaying={isPlaying} color="rgba(255,255,255,0.6)" />
         </div>
@@ -285,7 +297,11 @@ export function MusicCard({ card }: MusicCardProps) {
 
                   <motion.button
                     onClick={() => setIsPlaying(!isPlaying)}
-                    className="w-12 h-12 rounded-full bg-white text-theme-accent-primary flex items-center justify-center shadow-lg hover:shadow-xl transition-shadow"
+                    className={`w-12 h-12 rounded-full flex items-center justify-center shadow-lg hover:shadow-xl transition-all ${
+                      isPlaying
+                        ? 'bg-white text-theme-accent-primary ring-2 ring-white/50'
+                        : 'bg-white text-theme-accent-primary'
+                    }`}
                     whileTap={{ scale: 0.95 }}
                     whileHover={{ scale: 1.05 }}
                   >
@@ -313,7 +329,11 @@ export function MusicCard({ card }: MusicCardProps) {
 
                   <motion.button
                     onClick={() => setIsPlaying(!isPlaying)}
-                    className="w-12 h-12 rounded-full bg-white text-theme-accent-primary flex items-center justify-center shadow-lg hover:shadow-xl transition-shadow"
+                    className={`w-12 h-12 rounded-full flex items-center justify-center shadow-lg hover:shadow-xl transition-all ${
+                      isPlaying
+                        ? 'bg-white text-theme-accent-primary ring-2 ring-white/50'
+                        : 'bg-white text-theme-accent-primary'
+                    }`}
                     whileTap={{ scale: 0.95 }}
                     whileHover={{ scale: 1.05 }}
                   >
@@ -361,12 +381,14 @@ export function MusicCard({ card }: MusicCardProps) {
         </motion.div>
       </div>
 
-      <motion.div
+      <div
         className="absolute top-3 right-3 w-10 h-10 opacity-40"
-        animate={{ rotate: isPlaying ? 360 : 0 }}
-        transition={{ duration: isPlaying ? 20 : 0.3, repeat: Infinity, ease: 'linear' }}
+        style={{
+          animation: 'spin 20s linear infinite',
+          animationPlayState: isPlaying ? 'running' : 'paused',
+        }}
       >
-        <svg viewBox="0 0 24 24" fill="currentColor" className="text-white">
+        <svg viewBox="0 0 24 24" fill="currentColor" className="text-white w-full h-full">
           <circle cx="12" cy="12" r="3" />
           <circle cx="12" cy="5" r="2" />
           <circle cx="12" cy="19" r="2" />
@@ -377,7 +399,7 @@ export function MusicCard({ card }: MusicCardProps) {
           <circle cx="6.5" cy="17.5" r="1.5" />
           <circle cx="17.5" cy="17.5" r="1.5" />
         </svg>
-      </motion.div>
+      </div>
     </motion.div>
   );
 }

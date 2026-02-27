@@ -173,6 +173,7 @@ export interface MusicCardConfig {
   showProgress: boolean
   showVolume: boolean
   playlist?: MusicTrack[]
+  simplifiedMode?: boolean
 }
 
 export interface ReadingCardConfig {
