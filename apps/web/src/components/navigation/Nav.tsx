@@ -311,7 +311,7 @@ export function Nav() {
       onPointerDown={isEditMode ? dragHandlers.onPointerDown : undefined}
       onMouseLeave={handleMouseLeave}
     >
-      {isEditMode && <NavToolbar />}
+      {isEditMode && <NavToolbar isHomepage={isHomepage} />}
 
       {/* 头像区：首页大图+名字，非首页小图 */}
       <div

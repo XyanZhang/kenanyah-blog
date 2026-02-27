@@ -7,13 +7,24 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui'
 import { useNavStore } from '@/store/nav-store'
 import { NavConfigDialog } from './NavConfigDialog'
 
-export function NavToolbar() {
+interface NavToolbarProps {
+  /** 是否是首页（影响工具栏位置） */
+  isHomepage?: boolean
+}
+
+export function NavToolbar({ isHomepage = true }: NavToolbarProps) {
   const { config, resetConfig, updateSize } = useNavStore()
   const [isConfigOpen, setIsConfigOpen] = useState(false)
 
+  // 首页工具栏在上方，非首页在下方
+  const toolbarPositionClass = isHomepage ? '-top-12' : '-bottom-12'
+
   return (
     <>
-      <div className="absolute -top-12 left-1/2 -translate-x-1/2 flex items-center gap-1 rounded-lg bg-surface-primary/90 p-1 shadow-lg backdrop-blur-sm">
+      <div
+        className={`absolute ${toolbarPositionClass} left-1/2 -translate-x-1/2 flex items-center gap-1 rounded-lg bg-surface-primary/90 p-1 shadow-lg backdrop-blur-sm`}
+        onPointerDown={(e) => e.stopPropagation()}
+      >
         <Tooltip>
           <TooltipTrigger asChild>
             <Button

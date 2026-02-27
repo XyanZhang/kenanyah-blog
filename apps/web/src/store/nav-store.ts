@@ -117,7 +117,7 @@ export const useNavStore = create<NavState>()(
     }),
     {
       name: 'nav-config',
-      version: 2,
+      version: 3,
       merge: (persistedState, currentState) => {
         const persisted = persistedState as { config?: NavConfig }
         const current = currentState as NavState
@@ -125,7 +125,14 @@ export const useNavStore = create<NavState>()(
           ...current,
           ...persisted,
           config: persisted?.config
-            ? { ...persisted.config, visibleItems: DEFAULT_CONFIG.visibleItems }
+            ? {
+                ...DEFAULT_CONFIG,
+                ...persisted.config,
+                // 如果持久化的 visibleItems 为空或不存在，使用默认值
+                visibleItems: persisted.config.visibleItems?.length
+                  ? persisted.config.visibleItems
+                  : DEFAULT_CONFIG.visibleItems,
+              }
             : current.config,
         }
       },
@@ -144,13 +151,14 @@ export const useNavStore = create<NavState>()(
         }
         return persistedState
       },
-      // 只持久化位置、尺寸、布局，不持久化 visibleItems，每次加载都用默认「全部显示」
+      // 持久化 visibleItems，支持用户自定义导航项显示/隐藏
       partialize: (state) => ({
         config: {
           horizontalPosition: state.config.horizontalPosition,
           verticalPosition: state.config.verticalPosition,
           layout: state.config.layout,
           customSize: state.config.customSize,
+          visibleItems: state.config.visibleItems,
         },
       }),
     }

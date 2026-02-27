@@ -11,7 +11,17 @@ import {
 import { Button, Label, Switch } from '@/components/ui'
 import { useNavStore, type NavLayout } from '@/store/nav-store'
 import { navItems } from './nav-items'
-import { Home, FileText, User, Camera, Images, FolderOpen, LucideIcon } from 'lucide-react'
+import {
+  Home,
+  FileText,
+  User,
+  Camera,
+  Images,
+  FolderOpen,
+  LayoutGrid,
+  MessageCircle,
+  type LucideIcon,
+} from 'lucide-react'
 
 const iconMap: Record<string, LucideIcon> = {
   Home,
@@ -20,6 +30,8 @@ const iconMap: Record<string, LucideIcon> = {
   Camera,
   Images,
   FolderOpen,
+  LayoutGrid,
+  MessageCircle,
 }
 
 interface NavConfigDialogProps {
@@ -47,13 +59,13 @@ export function NavConfigDialog({ open, onOpenChange }: NavConfigDialogProps) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
+      <DialogContent className="flex max-h-[90vh] max-w-md flex-col">
+        <DialogHeader className="shrink-0">
           <DialogTitle>导航配置</DialogTitle>
           <DialogDescription>自定义导航栏的布局和显示项目</DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-6 py-4">
+        <div className="min-h-0 flex-1 space-y-6 overflow-y-auto py-4">
           {/* Layout mode */}
           <div className="space-y-3">
             <Label className="text-sm font-medium">布局模式</Label>
