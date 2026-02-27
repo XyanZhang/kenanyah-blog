@@ -52,6 +52,22 @@ export {
   type UpdateTagInput,
 } from './tag'
 
+// AI validation
+export {
+  aiRewriteSchema,
+  aiExpandSchema,
+  aiShrinkSchema,
+  aiHeadingsSchema,
+  aiSummarySchema,
+  aiGenerateArticleSchema,
+  type AiRewriteInput,
+  type AiExpandInput,
+  type AiShrinkInput,
+  type AiHeadingsInput,
+  type AiSummaryInput,
+  type AiGenerateArticleInput,
+} from './ai'
+
 // Dashboard validation
 export {
   cardSizeSchema,

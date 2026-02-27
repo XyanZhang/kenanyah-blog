@@ -13,6 +13,7 @@ import tags from './routes/tags'
 import comments from './routes/comments'
 import users from './routes/users'
 import weather from './routes/weather'
+import ai from './routes/ai'
 
 const app = new Hono()
 
@@ -51,6 +52,7 @@ app.get('/', (c) => {
         comments: '/comments',
         users: '/users',
         weather: '/weather',
+        ai: '/ai',
       },
     },
   })
@@ -58,6 +60,7 @@ app.get('/', (c) => {
 
 // API routes
 app.route('/auth', auth)
+app.route('/ai', ai)
 app.route('/posts', posts)
 app.route('/categories', categories)
 app.route('/tags', tags)
