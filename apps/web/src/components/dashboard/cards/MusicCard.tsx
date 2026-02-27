@@ -68,13 +68,57 @@ function RotatingDisc({ isPlaying, coverUrl }: { isPlaying: boolean; coverUrl?: 
 
 export function MusicCard({ card }: MusicCardProps) {
   const config = card.config as MusicCardConfig;
+  
+  // 播放列表支持
+  const playlist = config.playlist || [];
+  const hasPlaylist = playlist.length > 0;
+  const [currentIndex, setCurrentIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
   const [volume, setVolume] = useState(80);
   const [isMuted, setIsMuted] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
-  const [duration] = useState(215);
+  const [duration, setDuration] = useState(215);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  
+  // 获取当前播放的音频
+  const currentTrack = hasPlaylist ? playlist[currentIndex] : null;
+  const currentAudioUrl = currentTrack?.audioUrl || config.audioUrl || '';
+  const currentTitle = currentTrack?.title || config.title || '未知曲目';
+  const currentArtist = currentTrack?.artist || config.artist;
+  const currentCoverUrl = currentTrack?.coverUrl || config.coverUrl;
+  
+  // 播放下一首
+  const playNext = () => {
+    if (hasPlaylist && playlist.length > 1) {
+      setCurrentIndex((prev) => (prev + 1) % playlist.length);
+      setIsPlaying(true);
+    }
+  };
+  
+  // 播放上一首
+  const playPrevious = () => {
+    if (hasPlaylist && playlist.length > 1) {
+      setCurrentIndex((prev) => (prev - 1 + playlist.length) % playlist.length);
+      setIsPlaying(true);
+    }
+  };
+  
+  // 音频加载时获取时长
+  const handleLoadedMetadata = () => {
+    if (audioRef.current) {
+      setDuration(audioRef.current.duration || 215);
+    }
+  };
+  
+  // 播放完毕时自动播放下一首
+  const handleEnded = () => {
+    if (hasPlaylist && playlist.length > 1) {
+      playNext();
+    } else {
+      setIsPlaying(false);
+    }
+  };
 
   useEffect(() => {
     if (audioRef.current) {
@@ -135,7 +179,13 @@ export function MusicCard({ card }: MusicCardProps) {
       animate={{ opacity: 1, scale: 1 }}
       whileHover={{ scale: 1.02 }}
     >
-      <audio ref={audioRef} src={config.audioUrl} onTimeUpdate={handleProgress} onEnded={() => setIsPlaying(false)} />
+      <audio
+        ref={audioRef}
+        src={currentAudioUrl}
+        onTimeUpdate={handleProgress}
+        onLoadedMetadata={handleLoadedMetadata}
+        onEnded={handleEnded}
+      />
 
       <div className="absolute inset-0 bg-gradient-to-br from-theme-accent-primary/90 via-theme-accent-secondary/80 to-theme-accent-tertiary/70" />
 
@@ -176,19 +226,23 @@ export function MusicCard({ card }: MusicCardProps) {
           <div className="p-2 rounded-xl bg-white/20 backdrop-blur-sm">
             <FiMusic className="text-white" size={20} />
           </div>
-          <span className="text-white/80 font-medium text-sm">Now Playing</span>
+          <span className="text-white/80 font-medium text-sm">
+            {hasPlaylist
+              ? `播放列表 ${currentIndex + 1} / ${playlist.length}`
+              : 'Now Playing'}
+          </span>
         </motion.div>
 
         <div className="flex-1 flex flex-col items-center justify-center gap-4">
-          <RotatingDisc isPlaying={isPlaying} coverUrl={config.coverUrl} />
+          <RotatingDisc isPlaying={isPlaying} coverUrl={currentCoverUrl} />
 
           <motion.div
             className="text-center"
             animate={{ y: isPlaying ? [0, -3, 0] : 0 }}
             transition={{ duration: isPlaying ? 3 : 0.3, repeat: Infinity }}
           >
-            <h3 className="text-lg font-bold text-white mb-1 truncate max-w-[200px]">{config.title || '未知曲目'}</h3>
-            {config.artist && <p className="text-sm text-white/70">{config.artist}</p>}
+            <h3 className="text-lg font-bold text-white mb-1 truncate max-w-[200px]">{currentTitle}</h3>
+            {currentArtist && <p className="text-sm text-white/70">{currentArtist}</p>}
           </motion.div>
 
           <MusicVisualizer isPlaying={isPlaying} color="rgba(255,255,255,0.6)" />
@@ -218,30 +272,63 @@ export function MusicCard({ card }: MusicCardProps) {
             <span className="text-xs font-mono">{formatTime(currentTime)}</span>
 
             <div className="flex items-center gap-4">
-              <button
-                onClick={skipBackward}
-                className="hover:text-white transition-colors p-1"
-                aria-label="Skip backward 10 seconds"
-              >
-                <FiSkipBack size={18} />
-              </button>
+              {hasPlaylist ? (
+                <>
+                  <button
+                    onClick={playPrevious}
+                    disabled={playlist.length <= 1}
+                    className="hover:text-white transition-colors p-1 disabled:opacity-30"
+                    aria-label="Previous track"
+                  >
+                    <FiSkipBack size={18} />
+                  </button>
 
-              <motion.button
-                onClick={() => setIsPlaying(!isPlaying)}
-                className="w-12 h-12 rounded-full bg-white text-theme-accent-primary flex items-center justify-center shadow-lg hover:shadow-xl transition-shadow"
-                whileTap={{ scale: 0.95 }}
-                whileHover={{ scale: 1.05 }}
-              >
-                {isPlaying ? <FiPause size={22} /> : <FiPlay size={22} className="ml-1" />}
-              </motion.button>
+                  <motion.button
+                    onClick={() => setIsPlaying(!isPlaying)}
+                    className="w-12 h-12 rounded-full bg-white text-theme-accent-primary flex items-center justify-center shadow-lg hover:shadow-xl transition-shadow"
+                    whileTap={{ scale: 0.95 }}
+                    whileHover={{ scale: 1.05 }}
+                  >
+                    {isPlaying ? <FiPause size={22} /> : <FiPlay size={22} className="ml-1" />}
+                  </motion.button>
 
-              <button
-                onClick={skipForward}
-                className="hover:text-white transition-colors p-1"
-                aria-label="Skip forward 10 seconds"
-              >
-                <FiSkipForward size={18} />
-              </button>
+                  <button
+                    onClick={playNext}
+                    disabled={playlist.length <= 1}
+                    className="hover:text-white transition-colors p-1 disabled:opacity-30"
+                    aria-label="Next track"
+                  >
+                    <FiSkipForward size={18} />
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    onClick={skipBackward}
+                    className="hover:text-white transition-colors p-1"
+                    aria-label="Skip backward 10 seconds"
+                  >
+                    <FiSkipBack size={18} />
+                  </button>
+
+                  <motion.button
+                    onClick={() => setIsPlaying(!isPlaying)}
+                    className="w-12 h-12 rounded-full bg-white text-theme-accent-primary flex items-center justify-center shadow-lg hover:shadow-xl transition-shadow"
+                    whileTap={{ scale: 0.95 }}
+                    whileHover={{ scale: 1.05 }}
+                  >
+                    {isPlaying ? <FiPause size={22} /> : <FiPlay size={22} className="ml-1" />}
+                  </motion.button>
+
+                  <button
+                    onClick={skipForward}
+                    className="hover:text-white transition-colors p-1"
+                    aria-label="Skip forward 10 seconds"
+                  >
+                    <FiSkipForward size={18} />
+                  </button>
+                </>
+              )}
             </div>
 
             {config.showVolume !== false && (
