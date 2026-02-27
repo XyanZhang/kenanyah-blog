@@ -7,6 +7,8 @@ import { Wand2, Expand, Shrink, Heading, FileText, Loader2, Sparkles } from 'luc
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Switch } from '@/components/ui/switch'
 import {
   streamAiRewrite,
   streamAiExpand,
@@ -22,6 +24,9 @@ interface BlogEditorProps {
     content: string
     coverImage?: string
     images: string[]
+    published: boolean
+    publishedAt?: string
+    isFeatured: boolean
   }) => void
 }
 
@@ -33,6 +38,11 @@ export function BlogEditor({ onSubmit }: BlogEditorProps) {
   const [coverImage, setCoverImage] = useState<string | undefined>(undefined)
   const [images, setImages] = useState<string[]>([])
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [published, setPublished] = useState(true)
+  const [publishedAt, setPublishedAt] = useState(
+    () => new Date().toISOString().slice(0, 16) // YYYY-MM-DDTHH:mm for datetime-local
+  )
+  const [isFeatured, setIsFeatured] = useState(false)
   const [aiLoading, setAiLoading] = useState(false)
   const [aiResult, setAiResult] = useState('')
   const [aiError, setAiError] = useState<string | null>(null)
@@ -196,6 +206,9 @@ export function BlogEditor({ onSubmit }: BlogEditorProps) {
       content: content,
       coverImage,
       images,
+      published,
+      publishedAt: published ? new Date(publishedAt).toISOString() : undefined,
+      isFeatured,
     })
     // 先保持简单：提交后不清空内容，方便继续编辑
     setIsSubmitting(false)
@@ -442,6 +455,49 @@ export function BlogEditor({ onSubmit }: BlogEditorProps) {
                 ))}
               </div>
             )}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="flex flex-col gap-2">
+            <Label className="text-sm font-medium text-content-secondary">
+              发表时间
+            </Label>
+            <Input
+              type="datetime-local"
+              value={publishedAt}
+              onChange={(e) => setPublishedAt(e.target.value)}
+              disabled={!published}
+            />
+            <p className="text-xs text-content-tertiary">
+              默认当前时间，可以调整为过去或未来的时间（仅在发布时生效）。
+            </p>
+          </div>
+
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center justify-between">
+              <div className="flex flex-col gap-1">
+                <span className="text-sm font-medium text-content-secondary">
+                  立即发布
+                </span>
+                <span className="text-xs text-content-tertiary">
+                  关闭后作为草稿保存，不设置发表时间。
+                </span>
+              </div>
+              <Switch checked={published} onCheckedChange={setPublished} />
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div className="flex flex-col gap-1">
+                <span className="text-sm font-medium text-content-secondary">
+                  推荐位
+                </span>
+                <span className="text-xs text-content-tertiary">
+                  开启后文章会被标记为精选，用于首页推荐区域。
+                </span>
+              </div>
+              <Switch checked={isFeatured} onCheckedChange={setIsFeatured} />
+            </div>
           </div>
         </div>
 
