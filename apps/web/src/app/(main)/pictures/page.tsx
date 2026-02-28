@@ -5,7 +5,11 @@ export const metadata: Metadata = {
   title: '图片',
 }
 
+/** 粉色花瓣图（项目内资源：仅花瓣，非整朵花） */
+const PINK_PETAL_IMAGE = '/images/pink-petal.png'
+
 const mockPictures: PictureStackItem[] = [
+  { id: 'petal', src: PINK_PETAL_IMAGE, date: '2026-02-26' },
   { id: '1', src: 'https://picsum.photos/seed/p1/440/360', date: '2026-02-25' },
   { id: '2', src: 'https://picsum.photos/seed/p2/440/360', date: '2026-02-22' },
   { id: '3', src: 'https://picsum.photos/seed/p3/440/360', date: '2026-02-18' },

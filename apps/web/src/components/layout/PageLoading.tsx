@@ -27,8 +27,11 @@ export function PageLoading() {
           <span className="page-loading-spinner-ring" />
           <span className="page-loading-spinner-ring page-loading-spinner-ring--delay" />
         </div>
-        <span className="text-sm text-content-tertiary motion-reduce:hidden">
-          加载中…
+        <span
+          className="page-loading-text text-sm font-medium tracking-wider text-content-tertiary motion-reduce:opacity-100"
+          aria-hidden
+        >
+          loading
         </span>
       </div>
     </div>

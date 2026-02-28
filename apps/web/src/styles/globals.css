@@ -1,3 +1,9 @@
+/* 博客详情页用字体：之前用的霞鹜文楷（已注释）
+@import url('https://fonts.googleapis.com/css2?family=LXGW+WenKai:wght@300;400;700&display=swap');
+*/
+/* 博客详情页用字体：站酷快乐体（ZCOOL KuaiLe）可爱圆润 */
+@import url('https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&display=swap');
+
 @import 'tailwindcss';
 @import './view-transitions.css';
 @import './themes.css';
@@ -7,6 +13,8 @@
   --font-sans: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
   --font-display: var(--font-display), ui-sans-serif, system-ui, sans-serif;
   --font-motto: var(--font-motto), 'Nunito', ui-rounded, system-ui, sans-serif;
+  /* --font-wenkai: 'LXGW WenKai', serif; */
+  --font-blog: 'ZCOOL KuaiLe', cursive;
   /* Background */
   --color-bg-base: var(--theme-bg-base);
 
@@ -531,11 +539,33 @@
   animation-direction: reverse;
 }
 
+/* loading 文案：轻微呼吸 + 字间距动效 */
+@keyframes page-loading-text {
+  0%,
+  100% {
+    opacity: 0.5;
+    letter-spacing: 0.15em;
+  }
+  50% {
+    opacity: 1;
+    letter-spacing: 0.25em;
+  }
+}
+
+.page-loading-text {
+  animation: page-loading-text 1.4s ease-in-out infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .page-loading-bar,
   .page-loading-spinner-ring,
-  .page-loading-spinner-ring--delay {
+  .page-loading-spinner-ring--delay,
+  .page-loading-text {
     animation: none;
+  }
+  .page-loading-text {
+    opacity: 1;
+    letter-spacing: 0.2em;
   }
   .page-loading-spinner-ring {
     border-top-color: var(--theme-accent-primary);
