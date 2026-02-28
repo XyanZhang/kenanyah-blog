@@ -16,7 +16,7 @@ export function MusicMiniPlayer({ config }: MusicMiniPlayerProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(config.autoPlay || false);
   const [progress, setProgress] = useState(0);
-  const [currentTime, setCurrentTime] = useState(0);
+  const [, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(215);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
