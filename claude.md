@@ -33,10 +33,12 @@ packages/config/    # Shared configs
 ## Database
 
 ```bash
-pnpm docker:up      # Start PostgreSQL
+pnpm docker:up      # Start PostgreSQL (使用 pgvector/pgvector:pg16 以支持语义搜索)
 pnpm db:migrate     # Run migrations
 pnpm db:studio      # Open Prisma Studio
 ```
+
+语义搜索依赖 pgvector 扩展；docker-compose 已配置为 `pgvector/pgvector:pg16`。首次启用或迁移后可为已有文章建索引：`pnpm --filter api index-posts`。
 
 ## Current Progress
 

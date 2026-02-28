@@ -7,6 +7,7 @@ import { FloatingActionsProvider } from '@/components/providers/FloatingActionsP
 import { ThemeSwitcher } from '@/components/theme/ThemeSwitcher'
 import { RootAlignmentGuides } from '@/components/layout/RootAlignmentGuides'
 import { SmokeEffect } from '@/components/background/SmokeEffect'
+import { GlobalSearch } from '@/components/search/GlobalSearch'
 import '@/styles/globals.css'
 
 const plusJakartaSans = Plus_Jakarta_Sans({
@@ -64,6 +65,7 @@ export default function RootLayout({
             <SmokeEffect />
             <div className="frosted-overlay" />
             <Nav />
+            <GlobalSearch />
             <ScrollToTop />
             <div style={{ viewTransitionName: 'page-content' }}>{children}</div>
             <ThemeSwitcher />

@@ -141,6 +141,38 @@ POST /posts/:postId/comments
 { "content": "文章正文" }
 ```
 
+## 语义搜索（Semantic Search）
+
+基于文章向量化（pgvector + OpenAI Embedding）的语义检索，无需登录。
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| GET | /search/semantic | No | 按关键词语义搜索博客文章 |
+
+### Query 参数
+
+- `q`（必填）：搜索关键词，1～500 字符。
+- `limit`（可选）：返回条数，默认 10，最大 20。
+
+### 响应示例
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "postId": "clxx...",
+      "title": "文章标题",
+      "slug": "article-slug",
+      "snippet": "匹配到的摘要或正文片段",
+      "score": 0.92
+    }
+  ]
+}
+```
+
+**说明**：需配置 `OPENAI_API_KEY` 与（可选）`OPENAI_EMBEDDING_MODEL`（默认 `text-embedding-3-small`）。数据库需启用 pgvector 扩展（见 docker-compose 使用 `pgvector/pgvector:pg16` 镜像）。新文章发布/更新时会自动建索引；已有文章可运行 `pnpm --filter api index-posts` 全量建索引。
+
 ## Response Format
 
 ```json

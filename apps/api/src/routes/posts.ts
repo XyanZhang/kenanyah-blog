@@ -12,6 +12,7 @@ import {
 } from '@blog/validation'
 import { generateSlug } from '@blog/utils'
 import { NotFoundError, ForbiddenError } from '../middleware/error'
+import { indexPost, removePostFromIndex } from '../lib/semantic-search'
 
 const posts = new Hono()
 
@@ -218,6 +219,10 @@ posts.post('/', authMiddleware, validateBody(createPostSchema), async (c) => {
     },
   })
 
+  indexPost(post.id).catch((err) =>
+    console.error('[semantic-search] index post failed:', err)
+  )
+
   return c.json(
     {
       success: true,
@@ -292,6 +297,10 @@ posts.patch('/:id', authMiddleware, validateBody(updatePostSchema), async (c) =>
     },
   })
 
+  indexPost(post.id).catch((err) =>
+    console.error('[semantic-search] index post failed:', err)
+  )
+
   return c.json({
     success: true,
     data: post,
@@ -316,6 +325,9 @@ posts.delete('/:id', authMiddleware, async (c) => {
     throw new ForbiddenError('You can only delete your own posts')
   }
 
+  await removePostFromIndex(id).catch((err) =>
+    console.error('[semantic-search] remove from index failed:', err)
+  )
   await prisma.post.delete({
     where: { id },
   })

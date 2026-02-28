@@ -1,64 +1,88 @@
-import type { Metadata } from 'next'
-import { BlogTimeline, type BlogTimelineItem } from '@/components/blog/BlogTimeline'
+'use client'
 
-export const metadata: Metadata = {
-  title: '博客',
+import { useEffect, useState } from 'react'
+import { BlogTimeline, type BlogTimelineItem } from '@/components/blog/BlogTimeline'
+import { apiClient } from '@/lib/api-client'
+import type { ApiResponse } from '@/lib/api-client'
+
+type PostFromApi = {
+  id: string
+  slug: string
+  title: string
+  excerpt: string | null
+  coverImage: string | null
+  publishedAt: string | null
+  createdAt: string
 }
 
-const mockPosts: BlogTimelineItem[] = [
-  {
-    id: '1',
-    title: '文章标题 1',
-    excerpt:
-      '这是一篇示例文章的摘要内容，用于展示博客列表的布局效果。时间线让文章按时间顺序更清晰呈现。',
-    date: '2026-02-20',
-    readTimeMinutes: 5,
-    coverImage: 'https://picsum.photos/seed/blog1/760/475',
-  },
-  {
-    id: '2',
-    title: '文章标题 2',
-    excerpt:
-      '这是一篇示例文章的摘要内容，用于展示博客列表的布局效果。',
-    date: '2026-02-15',
-    readTimeMinutes: 8,
-    coverImage: 'https://picsum.photos/seed/blog2/760/475',
-  },
-  {
-    id: '3',
-    title: '文章标题 3',
-    excerpt:
-      '这是一篇示例文章的摘要内容，用于展示博客列表的布局效果。时间线组件与主题色完美融合。',
-    date: '2026-02-08',
-    readTimeMinutes: 12,
-    coverImage: 'https://picsum.photos/seed/blog3/760/475',
-  },
-  {
-    id: '4',
-    title: '文章标题 4',
-    excerpt:
-      '这是一篇示例文章的摘要内容，用于展示博客列表的布局效果。',
-    date: '2026-01-28',
-    readTimeMinutes: 5,
-    coverImage: 'https://picsum.photos/seed/blog4/760/475',
-  },
-  {
-    id: '5',
-    title: '文章标题 5',
-    excerpt:
-      '这是一篇示例文章的摘要内容，用于展示博客列表的布局效果。',
-    date: '2026-01-20',
-    readTimeMinutes: 6,
-    coverImage: 'https://picsum.photos/seed/blog5/760/475',
-  },
-]
+function mapPostToTimelineItem(post: PostFromApi): BlogTimelineItem {
+  const date = post.publishedAt ?? post.createdAt
+  return {
+    id: post.id,
+    title: post.title,
+    excerpt: post.excerpt ?? '',
+    date: date.slice(0, 10),
+    slug: post.slug,
+    coverImage: post.coverImage ?? undefined,
+  }
+}
 
 export default function BlogPage() {
+  const [items, setItems] = useState<BlogTimelineItem[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    setLoading(true)
+    setError(null)
+    apiClient
+      .get('posts', { searchParams: { published: true, limit: 50 } })
+      .json<ApiResponse<PostFromApi[]>>()
+      .then((res) => {
+        if (cancelled) return
+        if (res.success && res.data) {
+          setItems(res.data.map(mapPostToTimelineItem))
+        } else {
+          setError(res.error ?? '加载失败')
+        }
+      })
+      .catch((err) => {
+        if (cancelled) return
+        setError(err?.message ?? '加载失败')
+        setItems([])
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  if (loading) {
+    return (
+      <main className="h-[calc(100vh-80px)] w-full flex flex-col items-center justify-center">
+        <p className="text-content-secondary">加载中…</p>
+      </main>
+    )
+  }
+
+  if (error) {
+    return (
+      <main className="h-[calc(100vh-80px)] w-full flex flex-col items-center justify-center">
+        <p className="text-red-600 dark:text-red-400" role="alert">
+          {error}
+        </p>
+      </main>
+    )
+  }
+
   return (
     <main className="h-[calc(100vh-80px)] w-full flex flex-col">
       <div className="flex-1 flex flex-col min-h-0 w-full">
         <div className="flex-1 min-h-0 min-w-0">
-          <BlogTimeline items={mockPosts} className="h-full" />
+          <BlogTimeline items={items} className="h-full" />
         </div>
       </div>
     </main>
