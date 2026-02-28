@@ -1,8 +1,8 @@
 import { PageBackground } from '@/components/background/PageBackground'
 import { FallingParticles } from '@/components/background/FallingParticles'
 
-/** 花瓣类型使用的图片（项目内资源） */
-const PETAL_IMAGE = '/images/pink-petal.png'
+/** 花瓣类型使用的图片（项目内资源，位于 public/images/particle/） */
+const PETAL_IMAGE = '/images/particle/petal_2.png'
 
 /**
  * 非首页的公共 layout：为固定在上方的 Nav 预留顶部间距，背景与首页一致（主题底色 + bokeh 光球）。

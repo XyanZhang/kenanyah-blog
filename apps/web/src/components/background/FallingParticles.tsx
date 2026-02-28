@@ -227,6 +227,9 @@ export function FallingParticles({
     if (!ctx) return
 
     const typeConfig = PARTICLE_TYPE_MAP.get(type)
+
+    console.log('typeConfig', typeConfig)
+
     if (!typeConfig) return
     const config = typeConfig
 
