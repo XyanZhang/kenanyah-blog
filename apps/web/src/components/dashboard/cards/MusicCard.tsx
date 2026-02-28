@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { MusicMiniPlayer } from './MusicMiniPlayer';
-import { motion, useAnimationControls, useMotionValue, useTransform } from 'framer-motion';
+import { motion, useAnimationControls } from 'framer-motion';
 import { FiPlay, FiPause, FiVolume2, FiVolumeX, FiSkipBack, FiSkipForward, FiMusic } from 'react-icons/fi';
 import { DashboardCard as DashboardCardType, MusicCardConfig } from '@blog/types';
 

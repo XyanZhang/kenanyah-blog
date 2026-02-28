@@ -2,13 +2,8 @@
 
 import { cn } from '@/lib/utils'
 import { motion } from 'framer-motion'
-import Image from 'next/image'
-import {
-  useRef,
-  type ReactNode,
-  useEffect,
-  useState,
-} from 'react'
+import Link from 'next/link'
+import type { ReactNode } from 'react'
 
 export interface BlogTimelineItem {
   id: string
@@ -27,247 +22,114 @@ interface BlogTimelineProps {
   renderItem?: (item: BlogTimelineItem, index: number) => ReactNode
 }
 
-/** 卡通圆弧风格：横向轨道用 SVG 圆角线，略带弧度 */
-function CartoonTrack({ width, height }: { width: number; height: number }) {
-  const pad = 24
-  const y = height / 2
-  // 轻微向下弯的弧线（二次贝塞尔）
-  const cpY = y + 8
-  const pathD = `M ${pad} ${y} Q ${width / 2} ${cpY} ${width - pad} ${y}`
-  return (
-    <svg
-      className="absolute inset-0 w-full h-full pointer-events-none"
-      preserveAspectRatio="none"
-      viewBox={`0 0 ${width} ${height}`}
-    >
-      <defs>
-        <linearGradient id="timeline-track-fill" x1="0%" y1="0%" x2="100%" y2="0%">
-          <stop offset="0%" stopColor="var(--theme-accent-primary)" stopOpacity={0.35} />
-          <stop offset="100%" stopColor="var(--theme-accent-primary)" stopOpacity={0.85} />
-        </linearGradient>
-        <filter id="timeline-soft-shadow" x="-20%" y="-20%" width="140%" height="140%">
-          <feDropShadow dx={0} dy={2} stdDeviation={4} floodOpacity={0.2} />
-        </filter>
-      </defs>
-      <path
-        d={pathD}
-        fill="none"
-        stroke="url(#timeline-track-fill)"
-        strokeWidth="14"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        filter="url(#timeline-soft-shadow)"
+/** 日期 YYYY-MM-DD -> MM/DD */
+function formatShortDate(iso: string): string {
+  return iso.slice(5, 10).replace('-', '/')
+}
+
+function DefaultTimelineRow({ item }: { item: BlogTimelineItem }) {
+  const meta = (
+    <>
+      <span className="text-content-muted text-sm tabular-nums shrink-0 w-14">
+        {formatShortDate(item.date)}
+      </span>
+      {item.readTimeMinutes != null && (
+        <span className="text-content-tertiary text-sm">
+          · {item.readTimeMinutes} 分钟阅读
+        </span>
+      )}
+    </>
+  )
+  const title = (
+    <span className="font-medium text-content-primary group-hover:text-accent-primary transition-colors duration-200 relative inline-block">
+      {item.title}
+      {/* 悬停时的主题色下划线 */}
+      <span
+        className="absolute left-0 bottom-0 h-0.5 bg-accent-primary origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-200"
+        style={{ width: '100%' }}
+        aria-hidden
       />
-    </svg>
+    </span>
   )
-}
 
-function DefaultTimelineCard({ item }: { item: BlogTimelineItem }) {
-  const Wrapper = item.slug ? 'a' : 'div'
-  const wrapperProps = item.slug ? { href: `/posts/${item.slug}` } : {}
-
+  if (item.slug) {
+    return (
+      <Link
+        href={`/posts/${item.slug}`}
+        className="group flex items-center gap-4 min-w-0"
+      >
+        {meta}
+        {title}
+      </Link>
+    )
+  }
   return (
-    <Wrapper
-      {...wrapperProps}
-      className={cn(
-        'block overflow-hidden rounded-[1.75rem] border-2 border-line-primary bg-surface-glass p-0 backdrop-blur-sm transition-all shadow-lg',
-        'hover:border-line-hover hover:shadow-xl hover:shadow-accent-primary/10 hover:-translate-y-0.5',
-        item.slug && 'cursor-pointer'
-      )}
-    >
-      {/* 封面图：较小比例 */}
-      {item.coverImage && (
-        <div className="relative w-full aspect-2/1 max-h-32 bg-surface-tertiary overflow-hidden">
-          <Image
-            src={item.coverImage}
-            alt=""
-            fill
-            className="object-cover"
-            sizes="320px"
-            onError={(e) => {
-              e.currentTarget.style.display = 'none'
-            }}
-          />
-        </div>
-      )}
-      <div className="p-4">
-        <h2 className="text-base font-semibold text-content-primary mb-1.5 line-clamp-2">
-          {item.title}
-        </h2>
-        <p className="text-content-tertiary text-sm mb-4 line-clamp-2">{item.excerpt}</p>
-        <div className="flex items-center gap-3 text-xs text-content-muted">
-          <time dateTime={item.date}>{item.date}</time>
-          {item.readTimeMinutes != null && (
-            <>
-              <span aria-hidden>·</span>
-              <span>{item.readTimeMinutes} min read</span>
-            </>
-          )}
-        </div>
-      </div>
-    </Wrapper>
+    <div className="flex items-center gap-4 min-w-0 text-content-primary">
+      {meta}
+      {title}
+    </div>
   )
 }
+
+/** 竖线 + 节点统一左对齐：用固定宽度列画线，节点在列内居中于线 */
+const LINE_WIDTH_PX = 10
+const LINE_CENTER_PX = 1
 
 export function BlogTimeline({
   items,
   className,
   renderItem,
 }: BlogTimelineProps) {
-  const scrollRef = useRef<HTMLDivElement>(null)
-  const contentRef = useRef<HTMLDivElement>(null)
-  const [trackWidth, setTrackWidth] = useState(400)
-  const translateX = useRef(0)
-  const targetX = useRef(0)
-  const rafId = useRef<number | null>(null)
-
-  // 仅垂直滚轮驱动横向位移，用 translateX 实现（禁用左右拖拽/触摸滑动）
-  useEffect(() => {
-    const container = scrollRef.current
-    const content = contentRef.current
-    if (!container || !content) return
-
-    const SMOOTH = 0.18
-    const SENSITIVITY = 1.2
-
-    const tick = () => {
-      const maxScroll = Math.max(0, content.offsetWidth - container.clientWidth)
-      targetX.current = Math.max(-maxScroll, Math.min(0, targetX.current))
-      const current = translateX.current
-      const target = targetX.current
-      const diff = target - current
-      if (Math.abs(diff) < 0.5) {
-        translateX.current = target
-        content.style.transform = `translateX(${target}px)`
-        rafId.current = null
-        return
-      }
-      translateX.current = current + diff * SMOOTH
-      content.style.transform = `translateX(${translateX.current}px)`
-      rafId.current = requestAnimationFrame(tick)
-    }
-
-    const onWheel = (e: WheelEvent) => {
-      const maxScroll = Math.max(0, content.offsetWidth - container.clientWidth)
-      if (maxScroll <= 0) return
-      if (e.deltaY !== 0) {
-        e.preventDefault()
-        targetX.current += e.deltaY * SENSITIVITY
-        targetX.current = Math.max(-maxScroll, Math.min(0, targetX.current))
-        if (rafId.current == null) rafId.current = requestAnimationFrame(tick)
-      }
-    }
-
-    container.addEventListener('wheel', onWheel, { passive: false })
-    return () => {
-      container.removeEventListener('wheel', onWheel)
-      if (rafId.current != null) cancelAnimationFrame(rafId.current)
-    }
-  }, [])
-
-  useEffect(() => {
-    const el = contentRef.current
-    if (!el) return
-    const ro = new ResizeObserver(() => {
-      if (el) setTrackWidth(el.offsetWidth)
-    })
-    ro.observe(el)
-    setTrackWidth(el.offsetWidth)
-    return () => ro.disconnect()
-  }, [items.length])
-
-  const cardWidth = 300
-
   return (
-    <div className={cn('relative flex flex-col h-full', className)}>
-
-      <div
-        ref={scrollRef}
-        className="flex-1 min-h-0 overflow-hidden overflow-y-visible pb-4 touch-pan-y"
-        style={{ touchAction: 'pan-y' }}
-      >
-        <div
-          ref={contentRef}
-          className="relative flex items-start gap-6 pl-6 pr-6 min-h-full pb-2 will-change-transform"
-          style={{
-            width: 'max-content',
-            minWidth: '100%',
-          }}
-        >
-          {/* 轨道：置于底层，让节点盖住连线处 */}
+    <div className={cn('relative', className)}>
+      <div className="max-w-2xl mx-auto">
+        <div className="relative">
+          {/* 竖线：独立一条，贯穿整个列表 */}
           <div
-            className="absolute left-0 h-10 pointer-events-none z-0"
-            style={{
-              width: trackWidth,
-              top: '280px',
-            }}
-          >
-            <CartoonTrack width={trackWidth} height={40} />
-          </div>
+            className="absolute top-0 bottom-0 bg-line-primary/60"
+            style={{ left: LINE_CENTER_PX - 1, width: 2 }}
+            aria-hidden
+          />
 
-          {items.map((entry, index) => {
-            const isEven = index % 2 === 0
-            return (
-              <motion.div
-                key={entry.id}
-                className="relative z-10 flex flex-col items-center shrink-0 pt-0"
-                style={{ width: cardWidth }}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.4, delay: index * 0.05, ease: [0.25, 0.46, 0.45, 0.94] }}
-              >
-                {/* 上：偶数项为卡片，奇数项为日期 */}
-                <div className="w-full min-h-[280px] flex flex-col justify-end mb-0">
-                  {isEven ? (
-                    <>
-                      {renderItem
-                        ? renderItem(entry, index)
-                        : <DefaultTimelineCard item={entry} />}
-                    </>
-                  ) : (
-                    <time
-                      dateTime={entry.date}
-                      className="text-xs font-medium text-content-muted text-center py-2"
-                    >
-                      {entry.date}
-                    </time>
-                  )}
-                </div>
-
-                {/* 节点：z-20 + 不透明背景，完全盖住轨道线 */}
+          {items.map((entry, index) => (
+            <motion.div
+              key={entry.id}
+              className="grid items-center min-h-10"
+              style={{ gridTemplateColumns: `${LINE_WIDTH_PX}px 1fr` }}
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{
+                duration: 0.3,
+                delay: index * 0.03,
+                ease: [0.25, 0.46, 0.45, 0.94],
+              }}
+            >
+              {/* 节点列：与文本共享同一行高度，节点用 50% 垂直居中 */}
+              <div className="relative h-full">
                 <div
-                  className="relative z-20 flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border-2 border-accent-primary/40 bg-bg-base shadow-md"
+                  className="absolute rounded-full border-2 border-accent-primary/60 bg-bg-base shadow-sm flex items-center justify-center"
                   style={{
-                    boxShadow: '0 2px 10px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.5)',
+                    left: LINE_CENTER_PX,
+                    top: '50%',
+                    transform: 'translate(-50%, -50%)',
+                    width: 16,
+                    height: 16,
                   }}
                   aria-hidden
                 >
                   <span
-                    className="h-2 w-2 rounded-full bg-accent-primary"
-                    style={{ boxShadow: '0 0 0 2px var(--theme-surface-glass)' }}
+                    className="rounded-full bg-accent-primary/80"
+                    style={{ width: 6, height: 6 }}
                   />
                 </div>
+              </div>
 
-                {/* 下：偶数项为日期，奇数项为卡片 */}
-                <div className="w-full min-h-[280px] flex flex-col justify-start mt-0">
-                  {isEven ? (
-                    <time
-                      dateTime={entry.date}
-                      className="mt-1.5 text-xs font-medium text-content-muted text-center"
-                    >
-                      {entry.date}
-                    </time>
-                  ) : (
-                    <>
-                      {renderItem
-                        ? renderItem(entry, index)
-                        : <DefaultTimelineCard item={entry} />}
-                    </>
-                  )}
-                </div>
-              </motion.div>
-            )
-          })}
+              {/* 文案列 */}
+              <div className="pl-5 py-2.5 min-w-0">
+                {renderItem ? renderItem(entry, index) : <DefaultTimelineRow item={entry} />}
+              </div>
+            </motion.div>
+          ))}
         </div>
       </div>
     </div>
