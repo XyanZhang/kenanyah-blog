@@ -4,6 +4,15 @@ import { useEffect, useRef } from 'react'
 
 export type FallingParticleType = 'snow' | 'petals' | 'leaves'
 
+/** 按类型管理的配置：尺寸范围与内置绘制函数 */
+type ParticleDrawer = (
+  ctx: CanvasRenderingContext2D,
+  size: number,
+  width: number,
+  height: number,
+  color: string
+) => void
+
 function parseCssColor(value: string, alpha: number): string {
   const v = value.trim()
   if (!v) return `rgba(156,163,175,${alpha})`
@@ -49,9 +58,8 @@ interface Particle {
   height: number
 }
 
-/** 在 ctx 上绘制六瓣雪花（当前已 translate 到中心） */
-function drawSnowflake(ctx: CanvasRenderingContext2D, size: number) {
-  ctx.strokeStyle = ctx.fillStyle as string
+function drawSnowflakeShape(ctx: CanvasRenderingContext2D, size: number, _w: number, _h: number, color: string) {
+  ctx.strokeStyle = color
   ctx.lineWidth = Math.max(0.8, size * 0.25)
   ctx.lineCap = 'round'
   for (let i = 0; i < 6; i++) {
@@ -73,8 +81,8 @@ function drawSnowflake(ctx: CanvasRenderingContext2D, size: number) {
   }
 }
 
-/** 在 ctx 上绘制花瓣形状（泪滴形：一端圆一端略尖，当前已 translate 到中心并旋转） */
-function drawPetal(ctx: CanvasRenderingContext2D, w: number, h: number) {
+function drawPetalShape(ctx: CanvasRenderingContext2D, _size: number, w: number, h: number, color: string) {
+  ctx.fillStyle = color
   ctx.beginPath()
   ctx.moveTo(0, h)
   ctx.quadraticCurveTo(w, 0, 0, -h)
@@ -82,8 +90,8 @@ function drawPetal(ctx: CanvasRenderingContext2D, w: number, h: number) {
   ctx.fill()
 }
 
-/** 在 ctx 上绘制叶子形状（长椭圆一端略尖，当前已 translate 到中心并旋转） */
-function drawLeaf(ctx: CanvasRenderingContext2D, w: number, h: number) {
+function drawLeafShape(ctx: CanvasRenderingContext2D, _size: number, w: number, h: number, color: string) {
+  ctx.fillStyle = color
   ctx.beginPath()
   ctx.moveTo(0, h)
   ctx.bezierCurveTo(w * 0.8, h * 0.3, w * 0.8, -h * 0.3, 0, -h)
@@ -91,36 +99,141 @@ function drawLeaf(ctx: CanvasRenderingContext2D, w: number, h: number) {
   ctx.fill()
 }
 
+/** 多种类型用 Map 管理：类型 -> 内置绘制函数 + 尺寸范围 */
+export const PARTICLE_TYPE_MAP = new Map<FallingParticleType, { drawer: ParticleDrawer; sizeRange: [number, number]; widthScale: number; heightScale: number }>([
+  ['snow', { drawer: drawSnowflakeShape, sizeRange: [2.5, 5], widthScale: 1, heightScale: 1 }],
+  ['petals', { drawer: drawPetalShape, sizeRange: [4, 22], widthScale: 1.6, heightScale: 1.1 }],
+  ['leaves', { drawer: drawLeafShape, sizeRange: [6, 14], widthScale: 2, heightScale: 0.55 }],
+])
+
 export interface FallingParticlesProps {
   /** 飘落类型：雪花 / 花瓣 / 叶子 */
   type?: FallingParticleType
-  /** 粒子数量，建议 8–25，过多会显得杂乱 */
+  /** 可选：按类型映射图片 URL，传入后该类型使用图片绘制而非内置形状 */
+  images?: Partial<Record<FallingParticleType, string>>
+  /** 粒子数量，建议 8–25 */
   count?: number
   /** 整体不透明度 0–1 */
   opacity?: number
-  /** 是否启用（可配合季节/节日关闭） */
+  /** 是否启用 */
   enabled?: boolean
 }
 
 export function FallingParticles({
   type = 'petals',
+  images: imagesProp,
   count = 18,
   opacity = 0.85,
   enabled = true,
 }: FallingParticlesProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const imagesLoadedRef = useRef<Map<FallingParticleType, HTMLImageElement>>(new Map())
+
+  /** 将图片中与背景色、马赛克/棋盘格相近的像素设为透明 */
+  const stripImageBackground = (img: HTMLImageElement): Promise<HTMLImageElement> => {
+    return new Promise<HTMLImageElement>((resolve) => {
+      const w = img.naturalWidth
+      const h = img.naturalHeight
+      if (!w || !h) {
+        resolve(img)
+        return
+      }
+      const off = document.createElement('canvas')
+      off.width = w
+      off.height = h
+      const octx = off.getContext('2d', { willReadFrequently: false })
+      if (!octx) {
+        resolve(img)
+        return
+      }
+      octx.drawImage(img, 0, 0)
+      const data = octx.getImageData(0, 0, w, h)
+      const d = data.data
+      const sample = (x: number, y: number) => {
+        const i = (y * w + x) * 4
+        return [d[i], d[i + 1], d[i + 2], d[i + 3]] as const
+      }
+      const tolerance = 36
+      const alphaTolerance = 40
+      const corners: Array<readonly [number, number, number, number]> = [
+        sample(0, 0),
+        sample(w - 1, 0),
+        sample(0, h - 1),
+        sample(w - 1, h - 1),
+      ]
+      const bgColors = [...corners]
+      const isSimilar = (
+        r: number,
+        g: number,
+        b: number,
+        a: number,
+        r0: number,
+        g0: number,
+        b0: number,
+        a0: number
+      ) =>
+        Math.abs(r - r0) <= tolerance &&
+        Math.abs(g - g0) <= tolerance &&
+        Math.abs(b - b0) <= tolerance &&
+        (a0 < alphaTolerance || Math.abs(a - a0) <= alphaTolerance)
+      const isBackground = (r: number, g: number, b: number, a: number) => {
+        if (a < 16) return true
+        for (const [r0, g0, b0, a0] of bgColors) {
+          if (isSimilar(r, g, b, a, r0, g0, b0, a0)) return true
+        }
+        const lum = (r * 299 + g * 587 + b * 114) / 1000
+        if (lum >= 240 && Math.abs(r - g) < 20 && Math.abs(g - b) < 20) return true
+        if (lum >= 200 && lum < 240 && Math.abs(r - g) < 25 && Math.abs(g - b) < 25) return true
+        return false
+      }
+      for (let i = 0; i < d.length; i += 4) {
+        if (isBackground(d[i], d[i + 1], d[i + 2], d[i + 3])) d[i + 3] = 0
+      }
+      octx.putImageData(data, 0, 0)
+      const out = new Image()
+      out.onload = () => resolve(out)
+      out.onerror = () => resolve(img)
+      try {
+        out.src = off.toDataURL('image/png')
+      } catch {
+        resolve(img)
+      }
+    })
+  }
+
+  useEffect(() => {
+    const map = imagesLoadedRef.current
+    map.clear()
+    if (!imagesProp || Object.keys(imagesProp).length === 0) return
+
+    (Object.entries(imagesProp) as [FallingParticleType, string][]).forEach(([key, src]) => {
+      if (!src) return
+      const img = new Image()
+      img.crossOrigin = 'anonymous'
+      img.onload = () => {
+        stripImageBackground(img).then((cleaned) => map.set(key, cleaned))
+      }
+      img.src = src
+    })
+    return () => map.clear()
+  }, [imagesProp])
 
   useEffect(() => {
     if (!enabled) return
     const canvas = canvasRef.current
     if (!canvas) return
 
-    const ctx = canvas.getContext('2d')
+    const ctx = canvas.getContext('2d', { alpha: true })
     if (!ctx) return
+
+    const typeConfig = PARTICLE_TYPE_MAP.get(type)
+    if (!typeConfig) return
+    const config = typeConfig
 
     let animationId: number
     let particles: Particle[] = []
     let time = 0
+    const imageMap = imagesLoadedRef.current
 
     const resize = () => {
       canvas.width = window.innerWidth
@@ -133,16 +246,13 @@ export function FallingParticles({
       const w = canvas!.width
       const h = canvas!.height
       const baseCount = Math.min(count, Math.floor((w * h) / 35000))
-      const spawnZone = h * 1.2
+      const [sizeMin, sizeMax] = config.sizeRange
+      const spawnZone = Math.min(h * 0.4, 280)
 
       for (let i = 0; i < baseCount; i++) {
-        const size = type === 'snow'
-          ? 2.5 + Math.random() * 2.5
-          : type === 'petals'
-            ? 5 + Math.random() * 6
-            : 6 + Math.random() * 8
-        const width = type === 'snow' ? size : type === 'petals' ? size * 1.6 : size * 2
-        const height = type === 'snow' ? size : type === 'petals' ? size * 1.1 : size * 0.55
+        const size = sizeMin + Math.random() * (sizeMax - sizeMin)
+        const width = size * config.widthScale
+        const height = size * config.heightScale
         particles.push({
           x: Math.random() * w,
           y: -height * 2 - Math.random() * spawnZone,
@@ -189,14 +299,12 @@ export function FallingParticles({
         ctx.globalAlpha = Math.min(1, alpha)
         ctx.translate(p.x, p.y)
         ctx.rotate(p.rotation)
-        ctx.fillStyle = color
 
-        if (p.type === 'snow') {
-          drawSnowflake(ctx, p.size)
-        } else if (p.type === 'petals') {
-          drawPetal(ctx, p.width / 2, p.height / 2)
+        const img = imageMap.get(p.type)
+        if (img?.complete && img.naturalWidth > 0) {
+          ctx.drawImage(img, -p.width / 2, -p.height / 2, p.width, p.height)
         } else {
-          drawLeaf(ctx, p.width / 2, p.height / 2)
+          config.drawer(ctx, p.size, p.width / 2, p.height / 2, color)
         }
 
         ctx.restore()
@@ -220,7 +328,7 @@ export function FallingParticles({
   return (
     <canvas
       ref={canvasRef}
-      className="fixed inset-0 pointer-events-none z-[1]"
+      className="fixed inset-0 pointer-events-none z-1"
       style={{ width: '100%', height: '100%' }}
       aria-hidden
     />

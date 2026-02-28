@@ -113,7 +113,7 @@ export default function PostPage() {
         返回博客
       </Link>
 
-      <article className="overflow-hidden rounded-2xl border border-line-glass bg-surface-glass/60 shadow-lg backdrop-blur-sm">
+      <article className="font-blog overflow-hidden rounded-2xl border border-line-glass bg-surface-glass/60 shadow-lg backdrop-blur-sm">
         <header className="p-6 sm:p-8 pb-4">
           <h1 className="text-2xl sm:text-3xl md:text-4xl font-semibold leading-tight text-content-primary tracking-tight">
             {post.title}
