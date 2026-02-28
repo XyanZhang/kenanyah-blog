@@ -20,6 +20,7 @@ import {
   FolderOpen,
   LayoutGrid,
   MessageCircle,
+  Search,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -32,6 +33,7 @@ const iconMap: Record<string, LucideIcon> = {
   FolderOpen,
   LayoutGrid,
   MessageCircle,
+  Search,
 }
 
 interface NavConfigDialogProps {
