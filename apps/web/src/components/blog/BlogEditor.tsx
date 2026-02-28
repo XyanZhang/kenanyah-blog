@@ -3,7 +3,21 @@
 import { useState, useRef, useCallback, ChangeEvent, FormEvent } from 'react'
 import Image from 'next/image'
 import ReactMarkdown from 'react-markdown'
-import { Wand2, Expand, Shrink, Heading, FileText, Loader2, Sparkles } from 'lucide-react'
+import {
+  Wand2,
+  Expand,
+  Shrink,
+  Heading,
+  FileText,
+  Loader2,
+  Sparkles,
+  Type,
+  ImageIcon,
+  Calendar,
+  Send,
+  Eye,
+  BookOpen,
+} from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -220,34 +234,46 @@ export function BlogEditor({ onSubmit }: BlogEditorProps) {
   }
 
   return (
-    <div className="flex flex-col gap-6 h-full">
+    <div className="flex flex-col gap-8 h-full">
       <form
         onSubmit={handleSubmit}
-        className="flex flex-col gap-5 bg-card/80 rounded-2xl p-5 shadow-md"
+        className="flex flex-col gap-8 rounded-2xl border border-line-glass bg-surface-glass/60 p-6 sm:p-8 shadow-lg backdrop-blur-sm"
       >
-        <div className="flex flex-col gap-2">
-          <label className="text-sm font-medium text-content-secondary">
-            标题
-          </label>
+        {/* 标题 */}
+        <section className="flex flex-col gap-3">
+          <div className="flex items-center gap-2">
+            <Type className="h-4 w-4 text-accent-primary" aria-hidden />
+            <label className="text-sm font-medium text-content-secondary">
+              标题
+            </label>
+          </div>
           <Input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="输入文章标题"
+            className="rounded-xl border-line-primary bg-surface-primary/90 text-content-primary placeholder:text-content-dim"
           />
-        </div>
+        </section>
 
-        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] gap-4">
-          <div className="flex flex-col gap-3 min-h-[320px]">
+        {/* 正文 + 预览 */}
+        <section className="grid grid-cols-1 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] gap-6">
+          <div className="flex flex-col gap-4 min-h-[360px]">
             <div className="flex items-center justify-between gap-2">
-              <span className="text-sm font-medium text-content-secondary">
-                正文（Markdown）
-              </span>
+              <div className="flex items-center gap-2">
+                <BookOpen className="h-4 w-4 text-accent-primary" aria-hidden />
+                <span className="text-sm font-medium text-content-secondary">
+                  正文（Markdown）
+                </span>
+              </div>
               <span className="text-xs text-content-tertiary">
-                支持基础 Markdown 语法，右侧实时预览
+                右侧实时预览
               </span>
             </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-xs text-content-tertiary mr-1">AI：</span>
+            <div className="flex flex-wrap items-center gap-2 rounded-xl border border-line-primary/50 bg-surface-secondary/50 px-3 py-2.5">
+              <span className="text-xs text-content-tertiary mr-1 flex items-center gap-1">
+                <Wand2 className="h-3.5 w-3.5 text-accent-primary" />
+                AI
+              </span>
               <Button
                 type="button"
                 variant="outline"
@@ -349,13 +375,13 @@ export function BlogEditor({ onSubmit }: BlogEditorProps) {
               </div>
             </div>
             {(aiError || aiResult || aiLoading) && (
-              <div className="rounded-xl bg-muted/50 px-3 py-2 min-h-[60px]">
+              <div className="rounded-xl border border-line-primary/50 bg-accent-primary-subtle/40 px-4 py-3 min-h-[60px]">
                 {aiError && (
-                  <p className="text-sm text-red-600 dark:text-red-400 mb-2">{aiError}</p>
+                  <p className="text-sm text-ui-destructive mb-2">{aiError}</p>
                 )}
                 {(aiResult || aiLoading) && (
                   <>
-                    <div className="text-sm text-content-secondary whitespace-pre-wrap mb-2 max-h-40 overflow-auto">
+                    <div className="text-sm text-content-secondary whitespace-pre-wrap mb-3 max-h-40 overflow-auto rounded-lg bg-surface-primary/60 px-3 py-2">
                       {aiResult || (aiLoading ? '生成中…' : '')}
                     </div>
                     {aiResult && !aiLoading && (
@@ -363,7 +389,7 @@ export function BlogEditor({ onSubmit }: BlogEditorProps) {
                         type="button"
                         variant="default"
                         size="sm"
-                        className="h-8"
+                        className="h-8 rounded-lg"
                         onClick={applyAiResult}
                       >
                         应用到正文
@@ -373,49 +399,61 @@ export function BlogEditor({ onSubmit }: BlogEditorProps) {
                 )}
               </div>
             )}
-            <div className="flex-1 min-h-[260px] rounded-xl bg-background/70 px-3 py-2 shadow-inner">
+            <div className="flex-1 min-h-[280px] rounded-xl border border-line-primary/60 bg-surface-primary/80 px-4 py-4 shadow-inner focus-within:ring-2 focus-within:ring-accent-primary/20 focus-within:border-accent-primary/40 transition-colors">
               <textarea
                 ref={textareaRef}
-                className="h-full w-full border-0 bg-transparent text-sm text-content-primary resize-none focus-visible:outline-none focus-visible:ring-0"
+                className="h-full w-full border-0 bg-transparent text-sm text-content-primary resize-none focus-visible:outline-none focus-visible:ring-0 placeholder:text-content-dim"
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
-                placeholder="在这里编写文章内容，支持 Markdown 语法..."
+                placeholder="在这里编写文章内容，支持 Markdown 语法…"
               />
             </div>
           </div>
 
-          <div className="flex flex-col gap-3 min-h-[320px]">
+          <div className="flex flex-col gap-4 min-h-[360px]">
             <div className="flex items-center justify-between gap-2">
-              <span className="text-sm font-medium text-content-secondary">
-                预览
-              </span>
+              <div className="flex items-center gap-2">
+                <Eye className="h-4 w-4 text-accent-primary" aria-hidden />
+                <span className="text-sm font-medium text-content-secondary">
+                  预览
+                </span>
+              </div>
               <span className="text-xs text-content-tertiary">
-                自动根据当前内容渲染
+                实时渲染
               </span>
             </div>
-            <div className="flex-1 min-h-[260px] rounded-xl bg-surface-glass/80 px-4 py-3 overflow-auto">
+            <div className="flex-1 min-h-[280px] rounded-xl border border-line-primary/60 bg-surface-secondary/80 px-5 py-5 overflow-auto md-content-wrapper">
               <article className="md-content max-w-none">
                 {content.trim() ? (
                   <ReactMarkdown>{content}</ReactMarkdown>
                 ) : (
-                  <p className="text-content-tertiary">
+                  <p className="text-content-tertiary text-sm">
                     开始输入内容以查看预览…
                   </p>
                 )}
               </article>
             </div>
           </div>
-        </div>
+        </section>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="flex flex-col gap-2">
-            <label className="text-sm font-medium text-content-secondary">
-              封面图片
-            </label>
-            <div className="flex items-center gap-3 rounded-xl bg-muted/40 px-3 py-2">
-              <Input type="file" accept="image/*" onChange={handleCoverChange} />
+        {/* 图片 */}
+        <section className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center gap-2">
+              <ImageIcon className="h-4 w-4 text-accent-primary" aria-hidden />
+              <label className="text-sm font-medium text-content-secondary">
+                封面图片
+              </label>
+            </div>
+            <div className="flex items-center gap-4 rounded-xl border border-line-primary/50 bg-surface-secondary/50 px-4 py-3">
+              <Input
+                type="file"
+                accept="image/*"
+                onChange={handleCoverChange}
+                className="rounded-lg border-line-primary bg-surface-primary text-content-primary file:mr-2 file:rounded-lg file:border-0 file:bg-accent-primary/10 file:px-3 file:py-1.5 file:text-sm file:text-accent-primary file:hover:bg-accent-primary/20"
+              />
               {coverImage && (
-                <div className="relative h-16 w-24 rounded-md overflow-hidden bg-muted shadow-sm">
+                <div className="relative h-16 w-24 shrink-0 rounded-lg overflow-hidden border border-line-primary/60 bg-surface-tertiary shadow-sm">
                   <Image
                     src={coverImage}
                     alt="封面预览"
@@ -429,23 +467,27 @@ export function BlogEditor({ onSubmit }: BlogEditorProps) {
             </div>
           </div>
 
-          <div className="flex flex-col gap-2">
-            <label className="text-sm font-medium text-content-secondary">
-              插图上传
-            </label>
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center gap-2">
+              <ImageIcon className="h-4 w-4 text-accent-primary" aria-hidden />
+              <label className="text-sm font-medium text-content-secondary">
+                插图上传
+              </label>
+            </div>
             <Input
               type="file"
               accept="image/*"
               multiple
               onChange={handleImagesChange}
+              className="rounded-xl border-line-primary bg-surface-primary text-content-primary file:mr-2 file:rounded-lg file:border-0 file:bg-accent-primary/10 file:px-3 file:py-1.5 file:text-sm file:text-accent-primary file:hover:bg-accent-primary/20"
             />
             {images.length > 0 && (
-              <div className="mt-2 grid grid-cols-3 gap-1 rounded-xl bg-muted/40 p-1">
+              <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 rounded-xl border border-line-primary/50 bg-surface-secondary/50 p-3">
                 {images.map((src, index) => (
                   <div
                     key={index}
                     className={cn(
-                      'relative aspect-4/3 bg-muted rounded-md overflow-hidden',
+                      'relative aspect-square rounded-lg overflow-hidden border border-line-primary/50 bg-surface-tertiary',
                     )}
                   >
                     <Image
@@ -461,56 +503,70 @@ export function BlogEditor({ onSubmit }: BlogEditorProps) {
               </div>
             )}
           </div>
-        </div>
+        </section>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="flex flex-col gap-2">
-            <Label className="text-sm font-medium text-content-secondary">
-              发表时间
-            </Label>
+        {/* 发布设置 */}
+        <section className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="flex flex-col gap-3 rounded-xl border border-line-primary/50 bg-surface-secondary/50 p-4">
+            <div className="flex items-center gap-2">
+              <Calendar className="h-4 w-4 text-accent-primary" aria-hidden />
+              <Label className="text-sm font-medium text-content-secondary">
+                发表时间
+              </Label>
+            </div>
             <Input
               type="datetime-local"
               value={publishedAt}
               onChange={(e) => setPublishedAt(e.target.value)}
               disabled={!published}
+              className="rounded-lg border-line-primary bg-surface-primary text-content-primary"
             />
-            <p className="text-xs text-content-tertiary">
-              默认当前时间，可以调整为过去或未来的时间（仅在发布时生效）。
+            <p className="text-xs text-content-tertiary leading-relaxed">
+              默认当前时间，可调整为过去或未来（仅发布时生效）。
             </p>
           </div>
 
-          <div className="flex flex-col gap-3">
-            <div className="flex items-center justify-between">
-              <div className="flex flex-col gap-1">
+          <div className="flex flex-col gap-4 rounded-xl border border-line-primary/50 bg-surface-secondary/50 p-4">
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex flex-col gap-0.5">
                 <span className="text-sm font-medium text-content-secondary">
                   立即发布
                 </span>
                 <span className="text-xs text-content-tertiary">
-                  关闭后作为草稿保存，不设置发表时间。
+                  关闭后作为草稿保存
                 </span>
               </div>
               <Switch checked={published} onCheckedChange={setPublished} />
             </div>
-
-            <div className="flex items-center justify-between">
-              <div className="flex flex-col gap-1">
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex flex-col gap-0.5">
                 <span className="text-sm font-medium text-content-secondary">
                   推荐位
                 </span>
                 <span className="text-xs text-content-tertiary">
-                  开启后文章会被标记为精选，用于首页推荐区域。
+                  精选文章用于首页推荐
                 </span>
               </div>
               <Switch checked={isFeatured} onCheckedChange={setIsFeatured} />
             </div>
           </div>
-        </div>
+        </section>
 
-        <div className="flex justify-end gap-3 pt-2 mt-2">
-          <Button type="button" variant="outline" size="sm">
+        <div className="flex justify-end gap-3 pt-2 border-t border-line-primary/50">
+          <Button type="button" variant="outline" size="sm" className="rounded-lg">
             保存草稿
           </Button>
-          <Button type="submit" size="sm" disabled={isSubmitting}>
+          <Button
+            type="submit"
+            size="sm"
+            disabled={isSubmitting}
+            className="rounded-lg gap-2"
+          >
+            {isSubmitting ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Send className="h-4 w-4" />
+            )}
             {isSubmitting ? '发布中…' : '发布文章'}
           </Button>
         </div>
