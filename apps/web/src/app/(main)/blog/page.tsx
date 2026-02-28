@@ -91,7 +91,7 @@ export default function BlogPage() {
   if (loading) {
     return (
       <main className="min-h-[calc(100vh-80px)] w-full">
-        <PageLoading />
+        <PageLoading hideTopBar />
       </main>
     )
   }
