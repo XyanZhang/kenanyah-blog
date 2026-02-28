@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { BlogTimeline, type BlogTimelineItem } from '@/components/blog/BlogTimeline'
+import { PageLoading } from '@/components/layout/PageLoading'
 import { apiClient } from '@/lib/api-client'
 import type { ApiResponse } from '@/lib/api-client'
 
@@ -89,8 +90,8 @@ export default function BlogPage() {
 
   if (loading) {
     return (
-      <main className="h-[calc(100vh-80px)] w-full flex flex-col items-center justify-center">
-        <p className="text-content-secondary">加载中…</p>
+      <main className="min-h-[calc(100vh-80px)] w-full">
+        <PageLoading />
       </main>
     )
   }
