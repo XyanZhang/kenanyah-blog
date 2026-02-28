@@ -27,7 +27,7 @@ interface BlogEditorProps {
     published: boolean
     publishedAt?: string
     isFeatured: boolean
-  }) => void
+  }) => void | Promise<void>
 }
 
 type AiAction = 'rewrite' | 'expand' | 'shrink' | 'headings' | 'summary' | 'generateArticle' | null
@@ -196,22 +196,27 @@ export function BlogEditor({ onSubmit }: BlogEditorProps) {
     setCoverImage(url)
   }
 
-  const handleSubmit = (event: FormEvent) => {
+  const handleSubmit = async (event: FormEvent) => {
     event.preventDefault()
     if (!title.trim() || !content.trim()) return
 
     setIsSubmitting(true)
-    onSubmit?.({
-      title: title.trim(),
-      content: content,
-      coverImage,
-      images,
-      published,
-      publishedAt: published ? new Date(publishedAt).toISOString() : undefined,
-      isFeatured,
-    })
-    // 先保持简单：提交后不清空内容，方便继续编辑
-    setIsSubmitting(false)
+    try {
+      const result = onSubmit?.({
+        title: title.trim(),
+        content: content,
+        coverImage,
+        images,
+        published,
+        publishedAt: published ? new Date(publishedAt).toISOString() : undefined,
+        isFeatured,
+      })
+      if (result && typeof (result as Promise<unknown>)?.then === 'function') {
+        await (result as Promise<unknown>)
+      }
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (

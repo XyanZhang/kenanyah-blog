@@ -1,6 +1,7 @@
 services:
   postgres:
-    image: postgres:16-alpine
+    # pgvector 扩展用于语义搜索；若不需要语义搜索可改回 postgres:16-alpine
+    image: pgvector/pgvector:pg16
     container_name: blog-postgres
     restart: unless-stopped
     ports:

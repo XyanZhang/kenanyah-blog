@@ -18,11 +18,11 @@
     "docker:down": "docker-compose down",
     "docker:logs": "docker-compose logs -f",
     "docker:reset": "docker-compose down -v && docker-compose up -d",
-    "db:migrate": "pnpm --filter api prisma migrate dev",
+    "db:migrate": "pnpm --filter api run prisma:migrate",
     "db:push": "pnpm --filter api prisma db push",
     "db:seed": "pnpm --filter api prisma db seed",
     "db:studio": "pnpm --filter api prisma studio",
-    "db:reset": "pnpm --filter api prisma migrate reset",
+    "db:reset": "pnpm --filter api run prisma:reset",
     "db:generate": "pnpm --filter api prisma generate",
     "init": "pnpm install && pnpm docker:up && sleep 5 && pnpm db:generate && pnpm db:migrate && pnpm --filter api prisma:seed"
   },

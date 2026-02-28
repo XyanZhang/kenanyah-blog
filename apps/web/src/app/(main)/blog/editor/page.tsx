@@ -1,11 +1,51 @@
-import type { Metadata } from 'next'
-import { BlogEditor } from '@/components/blog/BlogEditor'
+'use client'
 
-export const metadata: Metadata = {
-  title: '写文章',
-}
+import { useRouter } from 'next/navigation'
+import { useState } from 'react'
+import { BlogEditor } from '@/components/blog/BlogEditor'
+import { apiClient } from '@/lib/api-client'
 
 export default function BlogEditorPage() {
+  const router = useRouter()
+  const [submitError, setSubmitError] = useState<string | null>(null)
+
+  const handleSubmit = async (data: {
+    title: string
+    content: string
+    coverImage?: string
+    published: boolean
+    publishedAt?: string
+    isFeatured: boolean
+  }) => {
+    setSubmitError(null)
+    try {
+      const body = {
+        title: data.title,
+        content: data.content,
+        excerpt: data.content.slice(0, 500).trim() || undefined,
+        published: data.published,
+        publishedAt: data.published ? data.publishedAt : undefined,
+        isFeatured: data.isFeatured,
+        coverImage:
+          data.coverImage?.startsWith('http') ? data.coverImage : undefined,
+      }
+      const res = await apiClient
+        .post('posts', { json: body })
+        .json<{ success: boolean; data?: { slug: string }; error?: string }>()
+      if (res.success && res.data?.slug) {
+        router.push(`/posts/${res.data.slug}` as import('next').Route)
+        return
+      }
+      setSubmitError(res.error ?? '发布失败')
+    } catch (err: unknown) {
+      const message =
+        err && typeof err === 'object' && 'message' in err
+          ? String((err as { message: string }).message)
+          : '发布失败，请检查登录状态或稍后重试'
+      setSubmitError(message)
+    }
+  }
+
   return (
     <main className="min-h-[calc(100vh-80px)] w-full flex flex-col">
       <div className="flex-1 flex flex-col min-h-0 w-full">
@@ -19,7 +59,12 @@ export default function BlogEditorPage() {
               写作助手能力。
             </p>
           </div>
-          <BlogEditor />
+          {submitError && (
+            <p className="text-sm text-red-600 dark:text-red-400" role="alert">
+              {submitError}
+            </p>
+          )}
+          <BlogEditor onSubmit={handleSubmit} />
         </div>
       </div>
     </main>
