@@ -489,3 +489,60 @@
   animation: horizontal-shine 4s ease-in-out 1s infinite;
   will-change: transform;
 }
+
+/* ========== 全局页面加载动效 (PageLoading) ========== */
+@keyframes page-loading-bar {
+  0% {
+    transform: translateX(-100%);
+  }
+  50% {
+    transform: translateX(200%);
+  }
+  100% {
+    transform: translateX(-100%);
+  }
+}
+
+@keyframes page-loading-spinner {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.page-loading-bar {
+  animation: page-loading-bar 1.2s ease-in-out infinite;
+}
+
+.page-loading-spinner-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 3px solid transparent;
+  border-top-color: var(--theme-accent-primary);
+  border-right-color: var(--theme-accent-secondary);
+  animation: page-loading-spinner 1.1s linear infinite;
+}
+
+.page-loading-spinner-ring--delay {
+  inset: 6px;
+  border-top-color: var(--theme-accent-tertiary);
+  border-right-color: var(--theme-accent-primary);
+  animation-duration: 0.9s;
+  animation-direction: reverse;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page-loading-bar,
+  .page-loading-spinner-ring,
+  .page-loading-spinner-ring--delay {
+    animation: none;
+  }
+  .page-loading-spinner-ring {
+    border-top-color: var(--theme-accent-primary);
+    border-right-color: var(--theme-accent-primary);
+    opacity: 0.6;
+  }
+  .page-loading-spinner-ring--delay {
+    opacity: 0.3;
+  }
+}
