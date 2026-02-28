@@ -6,7 +6,7 @@ export const metadata: Metadata = {
 }
 
 /** 粉色花瓣图（项目内资源：仅花瓣，非整朵花） */
-const PINK_PETAL_IMAGE = '/images/pink-petal.png'
+const PINK_PETAL_IMAGE = '/images/petal_2.png'
 
 const mockPictures: PictureStackItem[] = [
   { id: 'petal', src: PINK_PETAL_IMAGE, date: '2026-02-26' },
