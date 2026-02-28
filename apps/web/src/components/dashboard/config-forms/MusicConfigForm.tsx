@@ -176,13 +176,15 @@ export function MusicConfigForm({ config, onChange }: MusicConfigFormProps) {
           checked={config.showVolume ?? true}
           onCheckedChange={(checked) => handleToggle('showVolume', checked)}
         />
+      </div>
       <div className="flex items-center justify-between">
-        <Label htmlFor="showVolume">Show Volume Control</Label>
+        <Label>切换页面时继续播放</Label>
         <Switch
-          checked={config.showVolume ?? true}
-          onCheckedChange={(checked) => handleToggle('showVolume', checked)}
+          checked={config.persistAcrossPages ?? false}
+          onCheckedChange={(checked) => handleToggle('persistAcrossPages', checked)}
         />
       </div>
+      <p className="text-xs text-muted-foreground">开启后，在站内切换页面时音乐不会中断，底部会显示迷你播放条</p>
       <div className="border-t pt-4 mt-4">
         <div className="flex items-center justify-between">
           <Label htmlFor="simplifiedMode">Simplified Mode</Label>
@@ -193,7 +195,6 @@ export function MusicConfigForm({ config, onChange }: MusicConfigFormProps) {
         </div>
         <p className="text-xs text-muted-foreground mt-1">Show compact player with music icon, title, and progress</p>
       </div>
-    </div>
     </div>
   )
 }

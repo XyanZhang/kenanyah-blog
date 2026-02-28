@@ -12,6 +12,7 @@ import { useAlignmentRegistration } from '@/hooks/useAlignmentRegistration'
 import { useHomeCanvasStore } from '@/store/home-canvas-store'
 import { getCardDimensions, DEFAULT_BORDER_RADIUS } from '@/lib/constants/dashboard'
 import { CardToolbar } from './CardToolbar'
+import { CardConfigDialog } from './CardConfigDialog'
 import { ResizeHandles } from './ResizeHandles'
 
 const cardComponents = {
@@ -47,7 +48,9 @@ interface DashboardCardProps {
 
 export function DashboardCard({ card, animationIndex }: DashboardCardProps) {
   const router = useRouter()
-  const { isEditMode, selectedCardId, selectCard, updateCardSize } = useDashboard()
+  const { isEditMode, selectedCardId, selectCard, updateCardSize, layout } = useDashboard()
+  const [openConfigCardId, setOpenConfigCardId] = useState<string | null>(null)
+  const configCard = layout?.cards.find((c) => c.id === openConfigCardId)
   const baseDimensions = getCardDimensions(card.size, card.customDimensions)
   const isAutoSize = card.size === CardSize.AUTO
   const isSelected = selectedCardId === card.id
@@ -110,8 +113,11 @@ export function DashboardCard({ card, animationIndex }: DashboardCardProps) {
     isResizing,
   })
 
-  const CardContent = cardComponents[card.type] as React.ComponentType<{ card: DashboardCardType }>
+  const CardContent = cardComponents[card.type] as React.ComponentType<
+    { card: DashboardCardType; onOpenConfig?: () => void }
+  >
   const borderRadius = card.borderRadius ?? DEFAULT_BORDER_RADIUS
+  const handleOpenConfig = useCallback(() => setOpenConfigCardId(card.id), [card.id])
   const padding = card.padding ?? 24
 
   // 画布坐标：card.position 为画布坐标，transform 与 positionDelta 为视口像素需除以 scale
@@ -171,15 +177,31 @@ export function DashboardCard({ card, animationIndex }: DashboardCardProps) {
       onClick={handleCardClick}
       {...(isEditMode && !isResizing ? { ...attributes, ...listeners } : {})}
     >
-      {isEditMode && <CardToolbar cardId={card.id} />}
       <div
-        className="h-full w-full overflow-hidden"
+        className="h-full w-full overflow-hidden relative z-0"
         style={{ borderRadius: `${Math.max(0, borderRadius - 24)}px` }}
       >
         <Suspense fallback={<CardPlaceholder />}>
-          <CardContent card={card} />
+          <CardContent
+            card={card}
+            onOpenConfig={isEditMode ? handleOpenConfig : undefined}
+          />
         </Suspense>
       </div>
+      {isEditMode && (
+        <div className="absolute right-2 top-2 z-20 pointer-events-none">
+          <div className="pointer-events-auto">
+            <CardToolbar cardId={card.id} onOpenConfig={handleOpenConfig} />
+          </div>
+        </div>
+      )}
+      {configCard && (
+        <CardConfigDialog
+          card={configCard}
+          open={openConfigCardId !== null}
+          onOpenChange={(open) => !open && setOpenConfigCardId(null)}
+        />
+      )}
       {isEditMode && !isAutoSize && <ResizeHandles onResizeStart={handleResizeStart} />}
     </motion.div>
   )

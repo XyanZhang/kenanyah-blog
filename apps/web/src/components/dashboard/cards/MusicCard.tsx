@@ -5,6 +5,7 @@ import { MusicMiniPlayer } from './MusicMiniPlayer';
 import { motion, useAnimationControls } from 'framer-motion';
 import { FiPlay, FiPause, FiVolume2, FiVolumeX, FiSkipBack, FiSkipForward, FiMusic } from 'react-icons/fi';
 import { DashboardCard as DashboardCardType, MusicCardConfig } from '@blog/types';
+import { useMusicPlayerStore } from '@/store/music-player-store';
 
 interface MusicCardProps {
   card: DashboardCardType;
@@ -77,10 +78,222 @@ function RotatingDisc({ isPlaying, coverUrl }: { isPlaying: boolean; coverUrl?: 
   );
 }
 
+/** 跨页播放时使用 store 的完整播放器 UI */
+function MusicCardPersistedView({
+  config,
+  playlist,
+  hasPlaylist,
+}: {
+  config: MusicCardConfig;
+  playlist: MusicCardConfig['playlist'];
+  hasPlaylist: boolean;
+}) {
+  const currentIndex = useMusicPlayerStore((s) => s.currentIndex);
+  const isPlaying = useMusicPlayerStore((s) => s.isPlaying);
+  const progress = useMusicPlayerStore((s) => s.progress);
+  const currentTime = useMusicPlayerStore((s) => s.currentTime);
+  const volume = useMusicPlayerStore((s) => s.volume);
+  const isMuted = useMusicPlayerStore((s) => s.isMuted);
+  const toggle = useMusicPlayerStore((s) => s.toggle);
+  const seek = useMusicPlayerStore((s) => s.seek);
+  const nextTrack = useMusicPlayerStore((s) => s.nextTrack);
+  const prevTrack = useMusicPlayerStore((s) => s.prevTrack);
+  const setVolume = useMusicPlayerStore((s) => s.setVolume);
+  const setMuted = useMusicPlayerStore((s) => s.setMuted);
+
+  const list = playlist || [];
+  const currentTrack = hasPlaylist ? list[currentIndex] : null;
+  const currentTitle = currentTrack?.title || config.title || '未知曲目';
+  const currentArtist = currentTrack?.artist || config.artist;
+  const currentCoverUrl = currentTrack?.coverUrl || config.coverUrl;
+
+  const handleSeek = (e: React.MouseEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const percentage = (e.clientX - rect.left) / rect.width;
+    seek(percentage);
+  };
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  return (
+    <motion.div
+      className="w-full h-full rounded-3xl relative overflow-hidden"
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      whileHover={{ scale: 1.02 }}
+    >
+      <div className="absolute inset-0 bg-gradient-to-br from-theme-accent-primary/90 via-theme-accent-secondary/80 to-theme-accent-tertiary/70" />
+      <div className="absolute inset-0 overflow-hidden">
+        {[...Array(8)].map((_, i) => (
+          <motion.div
+            key={i}
+            className="absolute rounded-full bg-white/10 blur-xl"
+            style={{
+              width: 30 + Math.random() * 50,
+              height: 30 + Math.random() * 50,
+              left: `${Math.random() * 100}%`,
+              top: `${Math.random() * 60}%`,
+            }}
+            animate={{
+              x: [0, 20, -20, 0],
+              y: [0, -15, 15, 0],
+              scale: [1, 1.3, 0.8, 1],
+              opacity: [0.3, 0.6, 0.3],
+            }}
+            transition={{
+              duration: 6 + Math.random() * 4,
+              repeat: Infinity,
+              ease: 'easeInOut',
+              delay: i * 0.3,
+            }}
+          />
+        ))}
+      </div>
+      <div className="relative z-10 h-full flex flex-col p-5">
+        <motion.div
+          initial={{ y: -20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ delay: 0.1 }}
+          className="flex items-center gap-3 mb-4"
+        >
+          <div className="p-2 rounded-xl bg-white/20 backdrop-blur-sm">
+            <FiMusic className={isPlaying ? 'text-white' : 'text-white/60'} size={20} />
+          </div>
+          <span className="text-white/80 font-medium text-sm">
+            {hasPlaylist ? `播放列表 ${currentIndex + 1} / ${list.length}` : 'Now Playing'}
+          </span>
+        </motion.div>
+        <div className="flex-1 flex flex-col items-center justify-center gap-4">
+          <RotatingDisc isPlaying={isPlaying} coverUrl={currentCoverUrl} />
+          <div className="text-center">
+            <h3 className="text-lg font-bold text-white mb-1 truncate max-w-[200px]">{currentTitle}</h3>
+            {currentArtist && <p className="text-sm text-white/70">{currentArtist}</p>}
+          </div>
+          <MusicVisualizer isPlaying={isPlaying} color="rgba(255,255,255,0.6)" />
+        </div>
+        <motion.div
+          initial={{ y: 20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ delay: 0.2 }}
+          className="mt-4"
+        >
+          {config.showProgress !== false && (
+            <div
+              className="h-1.5 bg-white/30 rounded-full cursor-pointer overflow-hidden mb-3"
+              onClick={handleSeek}
+            >
+              <motion.div
+                className="h-full bg-white rounded-full"
+                style={{ width: `${progress}%` }}
+                transition={{ duration: 0.1 }}
+              />
+            </div>
+          )}
+          <div className="flex items-center justify-between text-white/80">
+            <span className="text-xs font-mono">{formatTime(currentTime)}</span>
+            <div className="flex items-center gap-4">
+              {hasPlaylist && list.length > 1 ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={prevTrack}
+                    disabled={list.length <= 1}
+                    className="hover:text-white transition-colors p-1 disabled:opacity-30"
+                    aria-label="Previous track"
+                  >
+                    <FiSkipBack size={18} />
+                  </button>
+                  <motion.button
+                    onClick={toggle}
+                    className={`w-12 h-12 rounded-full flex items-center justify-center shadow-lg hover:shadow-xl transition-all ${
+                      isPlaying ? 'bg-white text-theme-accent-primary ring-2 ring-white/50' : 'bg-white text-theme-accent-primary'
+                    }`}
+                    whileTap={{ scale: 0.95 }}
+                    whileHover={{ scale: 1.05 }}
+                  >
+                    {isPlaying ? <FiPause size={22} /> : <FiPlay size={22} className="ml-1" />}
+                  </motion.button>
+                  <button
+                    type="button"
+                    onClick={nextTrack}
+                    disabled={list.length <= 1}
+                    className="hover:text-white transition-colors p-1 disabled:opacity-30"
+                    aria-label="Next track"
+                  >
+                    <FiSkipForward size={18} />
+                  </button>
+                </>
+              ) : (
+                <motion.button
+                  onClick={toggle}
+                  className={`w-12 h-12 rounded-full flex items-center justify-center shadow-lg hover:shadow-xl transition-all ${
+                    isPlaying ? 'bg-white text-theme-accent-primary ring-2 ring-white/50' : 'bg-white text-theme-accent-primary'
+                  }`}
+                  whileTap={{ scale: 0.95 }}
+                  whileHover={{ scale: 1.05 }}
+                >
+                  {isPlaying ? <FiPause size={22} /> : <FiPlay size={22} className="ml-1" />}
+                </motion.button>
+              )}
+              {config.showVolume !== false && (
+                <div className="flex items-center gap-2 group">
+                  <button
+                    type="button"
+                    onClick={() => setMuted(!isMuted)}
+                    className="hover:text-white transition-colors p-1"
+                  >
+                    {isMuted ? <FiVolumeX size={16} /> : <FiVolume2 size={16} />}
+                  </button>
+                  <motion.div
+                    className="w-0 overflow-hidden group-hover:w-20 transition-all duration-300"
+                    animate={{ width: isMuted ? 0 : volume > 0 ? 60 : 0 }}
+                  >
+                    <input
+                      type="range"
+                      min="0"
+                      max="100"
+                      value={isMuted ? 0 : volume}
+                      onChange={(e) => {
+                        const v = Number(e.target.value);
+                        setVolume(v);
+                        if (v > 0) setMuted(false);
+                      }}
+                      className="w-16 h-1 appearance-none bg-white/30 rounded-full cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white"
+                    />
+                  </motion.div>
+                </div>
+              )}
+            </div>
+          </div>
+        </motion.div>
+      </div>
+      <div
+        className="absolute top-3 right-3 w-10 h-10 opacity-40"
+        style={{ animation: 'spin 20s linear infinite', animationPlayState: isPlaying ? 'running' : 'paused' }}
+      >
+        <svg viewBox="0 0 24 24" fill="currentColor" className="text-white w-full h-full">
+          <circle cx="12" cy="12" r="3" />
+          <circle cx="12" cy="5" r="2" />
+          <circle cx="12" cy="19" r="2" />
+          <circle cx="5" cy="12" r="2" />
+          <circle cx="19" cy="12" r="2" />
+          <circle cx="6.5" cy="6.5" r="1.5" />
+          <circle cx="17.5" cy="6.5" r="1.5" />
+          <circle cx="6.5" cy="17.5" r="1.5" />
+          <circle cx="17.5" cy="17.5" r="1.5" />
+        </svg>
+      </div>
+    </motion.div>
+  );
+}
+
 export function MusicCard({ card }: MusicCardProps) {
   const config = card.config as MusicCardConfig;
-  
-  // 播放列表支持
+
   const playlist = config.playlist || [];
   const hasPlaylist = playlist.length > 0;
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -91,38 +304,36 @@ export function MusicCard({ card }: MusicCardProps) {
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(215);
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  
-  // 获取当前播放的音频
+
+  const sourceCardId = useMusicPlayerStore((s) => s.sourceCardId);
+  const setConfigAndPlay = useMusicPlayerStore((s) => s.setConfigAndPlay);
+
   const currentTrack = hasPlaylist ? playlist[currentIndex] : null;
   const currentAudioUrl = currentTrack?.audioUrl || config.audioUrl || '';
   const currentTitle = currentTrack?.title || config.title || '未知曲目';
   const currentArtist = currentTrack?.artist || config.artist;
   const currentCoverUrl = currentTrack?.coverUrl || config.coverUrl;
-  
-  // 播放下一首
+
   const playNext = () => {
     if (hasPlaylist && playlist.length > 1) {
       setCurrentIndex((prev) => (prev + 1) % playlist.length);
       setIsPlaying(true);
     }
   };
-  
-  // 播放上一首
+
   const playPrevious = () => {
     if (hasPlaylist && playlist.length > 1) {
       setCurrentIndex((prev) => (prev - 1 + playlist.length) % playlist.length);
       setIsPlaying(true);
     }
   };
-  
-  // 音频加载时获取时长
+
   const handleLoadedMetadata = () => {
     if (audioRef.current) {
       setDuration(audioRef.current.duration || 215);
     }
   };
-  
-  // 播放完毕时自动播放下一首
+
   const handleEnded = () => {
     if (hasPlaylist && playlist.length > 1) {
       playNext();
@@ -183,9 +394,46 @@ export function MusicCard({ card }: MusicCardProps) {
     }
   };
 
-  // 简化模式
   if (config.simplifiedMode) {
-    return <MusicMiniPlayer config={config} />;
+    return <MusicMiniPlayer config={config} cardId={card.id} />;
+  }
+
+  if (config.persistAcrossPages) {
+    const isCurrentCard = sourceCardId === card.id;
+    if (!isCurrentCard) {
+      const displayTrack = hasPlaylist ? playlist[0] : null;
+      const displayTitle = displayTrack?.title || config.title || '未知曲目';
+      const displayCoverUrl = displayTrack?.coverUrl || config.coverUrl;
+      return (
+        <motion.div
+          className="w-full h-full rounded-3xl relative overflow-hidden cursor-pointer"
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          whileHover={{ scale: 1.02 }}
+          onClick={() => setConfigAndPlay(config, card.id)}
+        >
+          <div className="absolute inset-0 bg-gradient-to-br from-theme-accent-primary/90 via-theme-accent-secondary/80 to-theme-accent-tertiary/70" />
+          <div className="relative z-10 h-full flex flex-col items-center justify-center gap-4 p-5">
+            <RotatingDisc isPlaying={false} coverUrl={displayCoverUrl} />
+            <div className="text-center">
+              <h3 className="text-lg font-bold text-white mb-1 truncate max-w-[200px]">{displayTitle}</h3>
+              <p className="text-sm text-white/70">点击播放（切换页面继续播放）</p>
+            </div>
+            <motion.button
+              type="button"
+              className="w-14 h-14 rounded-full bg-white text-theme-accent-primary flex items-center justify-center shadow-lg"
+              whileTap={{ scale: 0.95 }}
+              whileHover={{ scale: 1.05 }}
+            >
+              <FiPlay size={28} className="ml-1" />
+            </motion.button>
+          </div>
+        </motion.div>
+      );
+    }
+    return (
+      <MusicCardPersistedView config={config} playlist={playlist} hasPlaylist={hasPlaylist} />
+    );
   }
 
   return (
