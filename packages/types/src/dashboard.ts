@@ -174,6 +174,8 @@ export interface MusicCardConfig {
   showVolume: boolean
   playlist?: MusicTrack[]
   simplifiedMode?: boolean
+  /** 开启后切换页面时继续播放，使用全局单例播放器 */
+  persistAcrossPages?: boolean
 }
 
 export interface ReadingCardConfig {

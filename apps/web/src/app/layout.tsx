@@ -8,6 +8,8 @@ import { ThemeSwitcher } from '@/components/theme/ThemeSwitcher'
 import { RootAlignmentGuides } from '@/components/layout/RootAlignmentGuides'
 import { SmokeEffect } from '@/components/background/SmokeEffect'
 import { GlobalSearch } from '@/components/search/GlobalSearch'
+import { MusicPlayerProvider } from '@/components/music/MusicPlayerProvider'
+import { GlobalMusicBar } from '@/components/music/GlobalMusicBar'
 import '@/styles/globals.css'
 
 const plusJakartaSans = Plus_Jakarta_Sans({
@@ -68,6 +70,8 @@ export default function RootLayout({
             <GlobalSearch />
             <ScrollToTop />
             <div style={{ viewTransitionName: 'page-content' }}>{children}</div>
+            <MusicPlayerProvider />
+            <GlobalMusicBar />
             <ThemeSwitcher />
             <RootAlignmentGuides />
           </FloatingActionsProvider>
