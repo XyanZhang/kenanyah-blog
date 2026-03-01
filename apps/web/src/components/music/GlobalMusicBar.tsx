@@ -1,8 +1,8 @@
 'use client'
 
 import Link from 'next/link'
-import { motion } from 'framer-motion'
-import { FiPlay, FiPause, FiMusic, FiSkipBack, FiSkipForward, FiX } from 'react-icons/fi'
+import { motion, AnimatePresence } from 'framer-motion'
+import { FiPlay, FiPause, FiMusic, FiSkipBack, FiSkipForward, FiX, FiChevronDown } from 'react-icons/fi'
 import { useMusicPlayerStore } from '@/store/music-player-store'
 
 function formatTime(seconds: number) {
@@ -11,7 +11,12 @@ function formatTime(seconds: number) {
   return `${mins}:${secs.toString().padStart(2, '0')}`
 }
 
-export function GlobalMusicBar() {
+interface GlobalMusicBarProps {
+  isExpanded?: boolean
+  onCollapse?: () => void
+}
+
+export function GlobalMusicBar({ isExpanded = true, onCollapse }: GlobalMusicBarProps) {
   const config = useMusicPlayerStore((s) => s.config)
   const currentIndex = useMusicPlayerStore((s) => s.currentIndex)
   const isPlaying = useMusicPlayerStore((s) => s.isPlaying)
@@ -40,12 +45,16 @@ export function GlobalMusicBar() {
   }
 
   return (
-    <motion.div
-      initial={{ y: 100, opacity: 0 }}
-      animate={{ y: 0, opacity: 1 }}
-      exit={{ y: 100, opacity: 0 }}
-      className="fixed bottom-0 left-0 right-0 z-50 border-t border-line-primary bg-surface-primary/95 backdrop-blur text-content-primary"
-    >
+    <AnimatePresence initial={false}>
+      {isExpanded && (
+        <motion.div
+          key="music-bar"
+          initial={{ y: '100%', opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          exit={{ y: '100%', opacity: 0 }}
+          transition={{ type: 'spring', damping: 28, stiffness: 260 }}
+          className="fixed bottom-0 left-0 right-0 z-50 border-t border-line-primary bg-surface-primary/95 backdrop-blur text-content-primary"
+        >
       <div className="flex items-center gap-4 px-4 py-2 max-w-4xl mx-auto">
         <div className="flex items-center gap-3 min-w-0 flex-1">
           <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-accent-primary to-accent-secondary flex items-center justify-center shrink-0">
@@ -112,6 +121,16 @@ export function GlobalMusicBar() {
           >
             返回首页
           </Link>
+          {onCollapse && (
+            <button
+              type="button"
+              onClick={onCollapse}
+              className="p-1.5 rounded-full text-content-primary hover:bg-surface-hover hover:text-accent-primary transition-colors"
+              aria-label="收起播放栏"
+            >
+              <FiChevronDown size={18} />
+            </button>
+          )}
           <button
             type="button"
             onClick={clearSession}
@@ -123,5 +142,7 @@ export function GlobalMusicBar() {
         </div>
       </div>
     </motion.div>
+      )}
+    </AnimatePresence>
   )
 }
