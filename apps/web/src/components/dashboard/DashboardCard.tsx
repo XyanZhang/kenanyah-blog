@@ -166,12 +166,13 @@ export function DashboardCard({ card, animationIndex }: DashboardCardProps) {
       }}
       whileHover={!isEditMode ? { scale: 1.02 } : undefined}
       className={`
+        card squircle
         group relative
         bg-surface-glass border border-line-glass backdrop-blur-lg
-        [box-shadow:0_20px_40px_-10px_rgba(0,0,0,0.1),inset_0_1px_0_rgba(255,255,255,0.4)]
+        [box-shadow:0_20px_40px_-10px_rgba(0,0,0,0.1),inset_0_1px_0_rgba(255,255,255,0.7)]
         ${isEditMode ? 'cursor-grab active:cursor-grabbing' : ''}
         ${isSelected ? 'ring-2 ring-line-focus' : ''}
-        ${isDragging ? '[box-shadow:0_30px_50px_-15px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.4)]' : ''}
+        ${isDragging ? '[box-shadow:0_30px_50px_-15px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.7)]' : ''}
         ${!isEditMode && navigateTo ? 'cursor-pointer' : ''}
       `}
       onClick={handleCardClick}

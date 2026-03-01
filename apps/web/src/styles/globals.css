@@ -338,6 +338,13 @@
     box-shadow: 0 20px 40px -5px var(--theme-shadow-color);
   }
 
+  /* Squircle 圆角：支持时使用 corner-shape，否则保持原有圆角 */
+  @supports (corner-shape: squircle) {
+    .card.squircle {
+      corner-shape: squircle;
+    }
+  }
+
   .line-clamp-2 {
     display: -webkit-box;
     -webkit-line-clamp: 2;
