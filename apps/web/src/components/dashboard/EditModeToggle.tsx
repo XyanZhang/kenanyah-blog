@@ -1,9 +1,9 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Edit3, Eye, Plus, LayoutTemplate, PenSquare } from 'lucide-react'
+import { Edit3, Eye, Plus, LayoutTemplate, PenSquare, CloudUpload, Loader2 } from 'lucide-react'
 import { useDashboard } from '@/hooks/useDashboard'
 import { useFloatingActions } from '@/components/providers/FloatingActionsProvider'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui'
@@ -11,11 +11,26 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui'
 interface EditModeActionsProps {
   onAddCard: () => void
   onSelectLayout: () => void
+  onSyncToCloud?: () => Promise<void>
 }
 
-function EditModeActions({ onAddCard, onSelectLayout }: EditModeActionsProps) {
+function EditModeActions({ onAddCard, onSelectLayout, onSyncToCloud }: EditModeActionsProps) {
   const { isEditMode, toggleEditMode } = useDashboard()
   const router = useRouter()
+  const [syncStatus, setSyncStatus] = useState<'idle' | 'syncing' | 'success' | 'error'>('idle')
+
+  const handleSync = useCallback(async () => {
+    if (!onSyncToCloud) return
+    setSyncStatus('syncing')
+    try {
+      await onSyncToCloud()
+      setSyncStatus('success')
+      setTimeout(() => setSyncStatus('idle'), 2000)
+    } catch {
+      setSyncStatus('error')
+      setTimeout(() => setSyncStatus('idle'), 2000)
+    }
+  }, [onSyncToCloud])
 
   const handleGoToBlogEditor = () => {
     router.push('/blog/editor')
@@ -41,6 +56,42 @@ function EditModeActions({ onAddCard, onSelectLayout }: EditModeActionsProps) {
       <AnimatePresence>
         {isEditMode && (
           <>
+            {/* 同步到云端 */}
+            {onSyncToCloud && (
+              <motion.div
+                initial={{ scale: 0, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0, opacity: 0 }}
+                transition={{ delay: 0.15, type: 'spring', stiffness: 260, damping: 20 }}
+                className="flex flex-col items-center gap-1"
+              >
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={handleSync}
+                      disabled={syncStatus === 'syncing'}
+                      className="flex h-12 w-12 items-center justify-center rounded-full border border-line-primary bg-surface-primary text-content-secondary shadow-lg transition-all hover:bg-surface-hover disabled:opacity-60"
+                      aria-label="同步到云端"
+                    >
+                      {syncStatus === 'syncing' ? (
+                        <Loader2 className="h-5 w-5 animate-spin" />
+                      ) : (
+                        <CloudUpload className="h-5 w-5" />
+                      )}
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="left">
+                    {syncStatus === 'success' ? '已同步' : syncStatus === 'error' ? '同步失败' : '同步到云端'}
+                  </TooltipContent>
+                </Tooltip>
+                {syncStatus === 'success' && (
+                  <span className="text-xs text-green-600 dark:text-green-400">已同步</span>
+                )}
+                {syncStatus === 'error' && (
+                  <span className="text-xs text-red-600 dark:text-red-400">同步失败</span>
+                )}
+              </motion.div>
+            )}
             {/* 选择布局模板按钮 */}
             <motion.div
               initial={{ scale: 0, opacity: 0 }}
@@ -124,17 +175,22 @@ function EditModeActions({ onAddCard, onSelectLayout }: EditModeActionsProps) {
 interface EditModeToggleProps {
   onAddCard: () => void
   onSelectLayout: () => void
+  onSyncToCloud?: () => Promise<void>
 }
 
-export function EditModeToggle({ onAddCard, onSelectLayout }: EditModeToggleProps) {
+export function EditModeToggle({ onAddCard, onSelectLayout, onSyncToCloud }: EditModeToggleProps) {
   const { setExtraActions } = useFloatingActions()
 
   useEffect(() => {
     setExtraActions(
-      <EditModeActions onAddCard={onAddCard} onSelectLayout={onSelectLayout} />
+      <EditModeActions
+        onAddCard={onAddCard}
+        onSelectLayout={onSelectLayout}
+        onSyncToCloud={onSyncToCloud}
+      />
     )
     return () => setExtraActions(null)
-  }, [setExtraActions, onAddCard, onSelectLayout])
+  }, [setExtraActions, onAddCard, onSelectLayout, onSyncToCloud])
 
   return null
 }

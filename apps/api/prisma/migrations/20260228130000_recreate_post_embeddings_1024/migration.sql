@@ -1,5 +1,8 @@
 -- Recreate post_embeddings after Prisma dropped it (table not in schema). Use 1024 dimensions for text-embedding-v4 etc.
+-- DROP IF EXISTS 保证在 shadow 库重放时幂等：若前面迁移已建表则先删再建，避免重复建表报错
 CREATE EXTENSION IF NOT EXISTS vector;
+
+DROP TABLE IF EXISTS post_embeddings;
 
 CREATE TABLE post_embeddings (
   id         TEXT PRIMARY KEY,

@@ -34,6 +34,8 @@ interface DashboardState {
   resetLayout: () => void
   reorderCards: () => void
   applyLayoutTemplate: (template: LayoutTemplate) => void
+  /** 直接设置 layout（用于从云端加载或应用用户保存的模板） */
+  setLayout: (layout: DashboardLayout | null) => void
 }
 
 export const useDashboardStore = create<DashboardState>()(
@@ -234,6 +236,27 @@ export const useDashboardStore = create<DashboardState>()(
         }))
         set({
           layout: { ...newLayout, cards: cardsInCanvasSpace },
+          selectedCardId: null,
+        })
+      },
+
+      setLayout: (layout) => {
+        if (!layout) {
+          set({ layout: null })
+          return
+        }
+        const normalizedCards = layout.cards.map((card) => ({
+          ...card,
+          createdAt: card.createdAt instanceof Date ? card.createdAt : new Date(card.createdAt),
+          updatedAt: card.updatedAt instanceof Date ? card.updatedAt : new Date(card.updatedAt),
+        }))
+        set({
+          layout: {
+            ...layout,
+            cards: normalizedCards,
+            createdAt: layout.createdAt instanceof Date ? layout.createdAt : new Date(layout.createdAt),
+            updatedAt: layout.updatedAt instanceof Date ? layout.updatedAt : new Date(layout.updatedAt),
+          },
           selectedCardId: null,
         })
       },
