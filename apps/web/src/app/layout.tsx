@@ -9,7 +9,7 @@ import { RootAlignmentGuides } from '@/components/layout/RootAlignmentGuides'
 import { SmokeEffect } from '@/components/background/SmokeEffect'
 import { GlobalSearch } from '@/components/search/GlobalSearch'
 import { MusicPlayerProvider } from '@/components/music/MusicPlayerProvider'
-import { GlobalMusicBar } from '@/components/music/GlobalMusicBar'
+import { MusicPlayerGlobal } from '@/components/music/MusicPlayerGlobal'
 import '@/styles/globals.css'
 
 const plusJakartaSans = Plus_Jakarta_Sans({
@@ -71,7 +71,7 @@ export default function RootLayout({
             <ScrollToTop />
             <div style={{ viewTransitionName: 'page-content' }}>{children}</div>
             <MusicPlayerProvider />
-            <GlobalMusicBar />
+            <MusicPlayerGlobal />
             <ThemeSwitcher />
             <RootAlignmentGuides />
           </FloatingActionsProvider>
