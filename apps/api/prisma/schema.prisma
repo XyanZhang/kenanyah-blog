@@ -139,3 +139,32 @@ model PostTag {
   @@id([postId, tagId])
   @@map("post_tags")
 }
+
+// 首页配置：当前布局 + 导航配置，按用户保存（暂时可写死用户 ID，后期关联多用户）
+model HomeConfig {
+  id         String   @id @default(cuid())
+  userId     String?  @unique // 可选，写死用户时用固定 ID；后期必填关联 User
+  layoutJson String   @db.Text
+  navJson    String   @db.Text
+  canvasJson String?  @db.Text
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@map("home_configs")
+}
+
+// 用户保存的「另存为」模板（含 layout + nav 定位与尺寸，应用时一并恢复）
+model HomeLayoutTemplate {
+  id          String   @id @default(cuid())
+  userId      String?
+  name        String
+  description String?  @db.Text
+  layoutJson  String   @db.Text
+  navJson     String   @db.Text
+  canvasJson  String?  @db.Text
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId])
+  @@map("home_layout_templates")
+}

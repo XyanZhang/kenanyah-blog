@@ -23,6 +23,8 @@ interface NavState {
   setPosition: (position: { x: number; y: number }, isHorizontal: boolean) => void
   updateSize: (size: { width: number; height: number } | null) => void
   setLayout: (layout: NavLayout) => void
+  /** 从服务端/API 恢复完整配置（用于同步云端配置到本地） */
+  setConfigFromApi: (config: Partial<NavConfig>) => void
   toggleItemVisibility: (itemId: string) => void
   setResizing: (isResizing: boolean) => void
   resetConfig: () => void
@@ -86,6 +88,21 @@ export const useNavStore = create<NavState>()(
             layout,
           },
         })
+      },
+
+      setConfigFromApi: (config) => {
+        set((state) => ({
+          config: {
+            ...DEFAULT_CONFIG,
+            ...state.config,
+            ...config,
+            visibleItems: config.visibleItems?.length
+              ? config.visibleItems
+              : state.config.visibleItems?.length
+                ? state.config.visibleItems
+                : DEFAULT_CONFIG.visibleItems,
+          },
+        }))
       },
 
       toggleItemVisibility: (itemId) => {

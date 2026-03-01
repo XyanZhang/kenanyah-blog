@@ -173,6 +173,39 @@ POST /posts/:postId/comments
 
 **说明**：需配置 `OPENAI_API_KEY` 与（可选）`OPENAI_EMBEDDING_MODEL`（默认 `text-embedding-3-small`）。数据库需启用 pgvector 扩展（见 docker-compose 使用 `pgvector/pgvector:pg16` 镜像）。新文章发布/更新时会自动建索引；已有文章可运行 `pnpm --filter api index-posts` 全量建索引。
 
+## 首页配置与模板（Home）
+
+当前通过环境变量 `DEFAULT_HOME_USER_ID` 写死用户；未设置时使用 `userId = null`（全局单条配置）。后期可改为从登录用户关联。
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | /home/config | 拉取当前首页配置（layout + nav + canvas） |
+| PUT | /home/config | 同步当前布局与导航到数据库 |
+| GET | /home/templates | 用户保存的模板列表 |
+| GET | /home/templates/:id | 获取单个模板（含 layout 用于应用） |
+| POST | /home/templates | 另存为模板 |
+| DELETE | /home/templates/:id | 删除模板 |
+
+### PUT /home/config 请求体
+
+```json
+{
+  "layout": { "id": "...", "cards": [...], "version": 2, "createdAt": "...", "updatedAt": "..." },
+  "nav": { "horizontalPosition": {...}, "verticalPosition": {...}, "layout": "auto", "customSize": null, "visibleItems": ["..."] },
+  "canvas": { "scale": 1 }
+}
+```
+
+### POST /home/templates 请求体
+
+```json
+{
+  "name": "模板名称",
+  "description": "可选描述",
+  "layout": { "id": "...", "cards": [...], "version": 2, ... }
+}
+```
+
 ## Response Format
 
 ```json

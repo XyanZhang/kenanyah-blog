@@ -9,19 +9,30 @@ import {
   useSensors,
 } from '@dnd-kit/core'
 import { useDashboard } from '@/hooks/useDashboard'
+import { useDashboardStore } from '@/store/dashboard-store'
 import { useAlignmentStore } from '@/store/alignment-store'
 import { useHomeCanvasStore } from '@/store/home-canvas-store'
+import { useNavStore } from '@/store/nav-store'
 import { CANVAS_WIDTH, CANVAS_HEIGHT } from '@/lib/constants/dashboard'
+import { getHomeConfig, putHomeConfig } from '@/lib/home-api'
 import { DashboardCard } from './DashboardCard'
 import { EditModeToggle } from './EditModeToggle'
 import { AddCardDialog, AddCardDialogHandle } from './AddCardButton'
 import { LayoutTemplatePickerDialog, LayoutTemplatePickerHandle } from './LayoutTemplatePicker'
 
 export function Dashboard() {
-  const { layout, isLoading, initializeLayout, updateCardPosition } = useDashboard()
+  const {
+    layout,
+    isLoading,
+    initializeLayout,
+    updateCardPosition,
+    setLayout,
+  } = useDashboard()
   const { setActiveElement } = useAlignmentStore()
-  const { scale, setViewportSize, translateX, translateY } = useHomeCanvasStore()
+  const { scale, setViewportSize, translateX, translateY, setScale } = useHomeCanvasStore()
+  const { config: navConfig, setConfigFromApi } = useNavStore()
   const viewportRef = useRef<HTMLDivElement>(null)
+  const hasFetchedCloudRef = useRef(false)
 
   // Dialog refs
   const addCardDialogRef = useRef<AddCardDialogHandle>(null)
@@ -35,6 +46,32 @@ export function Dashboard() {
   const handleSelectLayout = useCallback(() => {
     layoutPickerDialogRef.current?.open()
   }, [])
+
+  const handleSyncToCloud = useCallback(async () => {
+    const currentLayout = useDashboardStore.getState().layout
+    if (!currentLayout) return
+    await putHomeConfig({
+      layout: currentLayout,
+      nav: navConfig,
+      canvas: { scale },
+    })
+  }, [navConfig, scale])
+
+  // 进入首页后从云端拉取配置并覆盖本地（若存在）
+  useEffect(() => {
+    if (isLoading || hasFetchedCloudRef.current) return
+    hasFetchedCloudRef.current = true
+    getHomeConfig()
+      .then((data) => {
+        if (!data) return
+        setLayout(data.layout)
+        setConfigFromApi(data.nav)
+        if (data.canvas?.scale != null) setScale(data.canvas.scale)
+      })
+      .catch(() => {
+        // 无配置或网络错误，保持本地/默认
+      })
+  }, [isLoading, setLayout, setConfigFromApi, setScale])
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -162,7 +199,11 @@ export function Dashboard() {
         </DndContext>
       </div>
 
-      <EditModeToggle onAddCard={handleAddCard} onSelectLayout={handleSelectLayout} />
+      <EditModeToggle
+        onAddCard={handleAddCard}
+        onSelectLayout={handleSelectLayout}
+        onSyncToCloud={handleSyncToCloud}
+      />
       <AddCardDialog ref={addCardDialogRef} />
       <LayoutTemplatePickerDialog ref={layoutPickerDialogRef} />
     </div>
