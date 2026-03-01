@@ -116,11 +116,13 @@ export function CalendarCard({ card }: CalendarCardProps) {
               className={`
                 relative aspect-square rounded-lg p-1 text-sm transition-all
                 ${!isCurrentMonth ? 'text-content-disabled' : 'text-content-secondary'}
-                ${isCurrentDay && config.highlightToday ? 'bg-accent-primary font-semibold text-content-inverse shadow-md' : ''}
+                ${isCurrentDay && config.highlightToday ? 'bg-accent-primary font-semibold text-white shadow-md' : ''}
                 ${!isCurrentDay && isCurrentMonth ? 'hover:bg-surface-glass/50' : ''}
               `}
             >
-              <span className="flex h-full w-full items-center justify-center">
+              <span
+                className={`flex h-full w-full items-center justify-center ${isCurrentDay && config.highlightToday ? 'text-white' : ''}`}
+              >
                 {format(day, 'd')}
               </span>
 
