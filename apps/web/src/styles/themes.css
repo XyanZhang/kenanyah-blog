@@ -1,0 +1,372 @@
+/* ===================================================================
+   Theme Definitions
+   Each theme defines CSS custom properties used by Tailwind via @theme.
+   Applied via data-theme attribute on <html>.
+   =================================================================== */
+
+/* === Default Theme: 科技渐变 (Tech Gradient) === */
+:root,
+[data-theme='default'] {
+  --theme-bg-base: #f5f0ff;
+  --theme-bg-orb-1: #9333ea;
+  --theme-bg-orb-2: #3b82f6;
+  --theme-bg-orb-3: #06b6d4;
+  --theme-bg-orb-4: #8b5cf6;
+  --theme-bg-orb-5: #ec4899;
+  --theme-bg-orb-6: #6366f1;
+  --theme-bg-orb-7: #14b8a6;
+  --theme-bg-orb-8: #a855f7;
+
+  --theme-accent-primary: #9333ea;
+  --theme-accent-secondary: #2563eb;
+  --theme-accent-tertiary: #0891b2;
+  --theme-accent-primary-light: #f3e8ff;
+  --theme-accent-secondary-light: #dbeafe;
+  --theme-accent-tertiary-light: #cffafe;
+  --theme-accent-primary-dark: #7e22ce;
+  --theme-accent-primary-muted: #a855f7;
+  --theme-accent-primary-subtle: #faf5ff;
+
+  --theme-surface-primary: #ffffff;
+  --theme-surface-secondary: #f9fafb;
+  --theme-surface-tertiary: #f3f4f6;
+  --theme-surface-hover: #f3f4f6;
+  --theme-surface-glass: rgba(255, 255, 255, 0.15);
+  --theme-surface-selected: #eff6ff;
+
+  --theme-text-primary: #111827;
+  --theme-text-secondary: #374151;
+  --theme-text-tertiary: #4b5563;
+  --theme-text-muted: #6b7280;
+  --theme-text-dim: #9ca3af;
+  --theme-text-disabled: #d1d5db;
+  --theme-text-inverse: #ffffff;
+
+  --theme-border-primary: #e5e7eb;
+  --theme-border-secondary: #d1d5db;
+  --theme-border-hover: #c4b5fd;
+  --theme-border-focus: #3b82f6;
+  --theme-border-glass: rgba(255, 255, 255, 0.5);
+
+  --theme-ui-primary: #2563eb;
+  --theme-ui-primary-hover: #1d4ed8;
+  --theme-ui-primary-ring: #3b82f6;
+  --theme-ui-destructive: #dc2626;
+  --theme-ui-destructive-hover: #b91c1c;
+  --theme-ui-destructive-light: #fef2f2;
+  --theme-ui-success: #dcfce7;
+  --theme-ui-success-text: #16a34a;
+  --theme-ui-switch-off: #e5e7eb;
+
+  --theme-shadow-color: rgba(0, 0, 0, 0.1);
+  --theme-shadow-accent: rgba(147, 51, 234, 0.3);
+
+  --frosted-blur: 60px;
+  --frosted-saturate: 1.8;
+  --frosted-tint: rgba(255, 255, 255, 0.05);
+}
+
+/* === Warm Natural: 暖色自然风 === */
+[data-theme='warm-natural'] {
+  --theme-bg-base: #fefcf5;
+  --theme-bg-orb-1: #f59e0b;
+  --theme-bg-orb-2: #22c55e;
+  --theme-bg-orb-3: #eab308;
+  --theme-bg-orb-4: #fb923c;
+  --theme-bg-orb-5: #84cc16;
+  --theme-bg-orb-6: #fbbf24;
+  --theme-bg-orb-7: #4ade80;
+  --theme-bg-orb-8: #d97706;
+
+  --theme-accent-primary: #b45309;
+  --theme-accent-secondary: #15803d;
+  --theme-accent-tertiary: #a16207;
+  --theme-accent-primary-light: #fef3c7;
+  --theme-accent-secondary-light: #dcfce7;
+  --theme-accent-tertiary-light: #fef9c3;
+  --theme-accent-primary-dark: #92400e;
+  --theme-accent-primary-muted: #d97706;
+  --theme-accent-primary-subtle: #fffbeb;
+
+  --theme-surface-primary: #fffef7;
+  --theme-surface-secondary: #fefce8;
+  --theme-surface-tertiary: #fef9c3;
+  --theme-surface-hover: #fef3c7;
+  --theme-surface-glass: rgba(255, 254, 247, 0.15);
+  --theme-surface-selected: #fef3c7;
+
+  --theme-text-primary: #292115;
+  --theme-text-secondary: #4a3d2a;
+  --theme-text-tertiary: #5c4d38;
+  --theme-text-muted: #7a6b55;
+  --theme-text-dim: #a89a80;
+  --theme-text-disabled: #c9bfae;
+  --theme-text-inverse: #fffef7;
+
+  --theme-border-primary: #fde68a;
+  --theme-border-secondary: #fcd34d;
+  --theme-border-hover: #f59e0b;
+  --theme-border-focus: #d97706;
+  --theme-border-glass: rgba(255, 251, 235, 0.6);
+
+  --theme-ui-primary: #b45309;
+  --theme-ui-primary-hover: #92400e;
+  --theme-ui-primary-ring: #d97706;
+  --theme-ui-destructive: #dc2626;
+  --theme-ui-destructive-hover: #b91c1c;
+  --theme-ui-destructive-light: #fef2f2;
+  --theme-ui-success: #dcfce7;
+  --theme-ui-success-text: #15803d;
+  --theme-ui-switch-off: #fde68a;
+
+  --theme-shadow-color: rgba(120, 53, 15, 0.08);
+  --theme-shadow-accent: rgba(180, 83, 9, 0.2);
+
+  --frosted-blur: 50px;
+  --frosted-saturate: 1.6;
+  --frosted-tint: rgba(255, 250, 235, 0.06);
+}
+
+/* === Classic Minimal: 经典黑白极简 === */
+[data-theme='classic-minimal'] {
+  --theme-bg-base: #fafafa;
+  --theme-bg-orb-1: #e5e5e5;
+  --theme-bg-orb-2: #a3a3a3;
+  --theme-bg-orb-3: #d4d4d4;
+  --theme-bg-orb-4: #737373;
+  --theme-bg-orb-5: #f5f5f5;
+  --theme-bg-orb-6: #525252;
+  --theme-bg-orb-7: #fafafa;
+  --theme-bg-orb-8: #404040;
+
+  --theme-accent-primary: #171717;
+  --theme-accent-secondary: #404040;
+  --theme-accent-tertiary: #525252;
+  --theme-accent-primary-light: #f5f5f5;
+  --theme-accent-secondary-light: #e5e5e5;
+  --theme-accent-tertiary-light: #d4d4d4;
+  --theme-accent-primary-dark: #0a0a0a;
+  --theme-accent-primary-muted: #737373;
+  --theme-accent-primary-subtle: #fafafa;
+
+  --theme-surface-primary: #ffffff;
+  --theme-surface-secondary: #fafafa;
+  --theme-surface-tertiary: #f5f5f5;
+  --theme-surface-hover: #f5f5f5;
+  --theme-surface-glass: rgba(255, 255, 255, 0.12);
+  --theme-surface-selected: #f5f5f5;
+
+  --theme-text-primary: #0a0a0a;
+  --theme-text-secondary: #262626;
+  --theme-text-tertiary: #404040;
+  --theme-text-muted: #737373;
+  --theme-text-dim: #a3a3a3;
+  --theme-text-disabled: #d4d4d4;
+  --theme-text-inverse: #ffffff;
+
+  --theme-border-primary: #e5e5e5;
+  --theme-border-secondary: #d4d4d4;
+  --theme-border-hover: #a3a3a3;
+  --theme-border-focus: #171717;
+  --theme-border-glass: rgba(255, 255, 255, 0.5);
+
+  --theme-ui-primary: #171717;
+  --theme-ui-primary-hover: #0a0a0a;
+  --theme-ui-primary-ring: #404040;
+  --theme-ui-destructive: #dc2626;
+  --theme-ui-destructive-hover: #b91c1c;
+  --theme-ui-destructive-light: #fef2f2;
+  --theme-ui-success: #f5f5f5;
+  --theme-ui-success-text: #404040;
+  --theme-ui-switch-off: #e5e5e5;
+
+  --theme-shadow-color: rgba(0, 0, 0, 0.06);
+  --theme-shadow-accent: rgba(0, 0, 0, 0.12);
+
+  --frosted-blur: 40px;
+  --frosted-saturate: 1.2;
+  --frosted-tint: rgba(255, 255, 255, 0.03);
+}
+
+/* === Vintage Study: 复古墨绿书房风 === */
+[data-theme='vintage-study'] {
+  --theme-bg-base: #f7f5f0;
+  --theme-bg-orb-1: #22c55e;
+  --theme-bg-orb-2: #a16207;
+  --theme-bg-orb-3: #4ade80;
+  --theme-bg-orb-4: #ca8a04;
+  --theme-bg-orb-5: #16a34a;
+  --theme-bg-orb-6: #d4a574;
+  --theme-bg-orb-7: #86efac;
+  --theme-bg-orb-8: #fbbf24;
+
+  --theme-accent-primary: #2d5a27;
+  --theme-accent-secondary: #6b4423;
+  --theme-accent-tertiary: #4a6741;
+  --theme-accent-primary-light: #d4e6cf;
+  --theme-accent-secondary-light: #f0e6d3;
+  --theme-accent-tertiary-light: #e0eadc;
+  --theme-accent-primary-dark: #1a3d16;
+  --theme-accent-primary-muted: #5a8a52;
+  --theme-accent-primary-subtle: #eef4ec;
+
+  --theme-surface-primary: #fdfbf7;
+  --theme-surface-secondary: #f7f3ec;
+  --theme-surface-tertiary: #f0eadf;
+  --theme-surface-hover: #ebe4d6;
+  --theme-surface-glass: rgba(253, 251, 247, 0.15);
+  --theme-surface-selected: #e6eee3;
+
+  --theme-text-primary: #1a1510;
+  --theme-text-secondary: #3a3025;
+  --theme-text-tertiary: #4d4235;
+  --theme-text-muted: #6b5d4d;
+  --theme-text-dim: #9a8b78;
+  --theme-text-disabled: #c9bfae;
+  --theme-text-inverse: #fdfbf7;
+
+  --theme-border-primary: #e0d5c4;
+  --theme-border-secondary: #d4c7b0;
+  --theme-border-hover: #5a8a52;
+  --theme-border-focus: #2d5a27;
+  --theme-border-glass: rgba(253, 251, 247, 0.5);
+
+  --theme-ui-primary: #2d5a27;
+  --theme-ui-primary-hover: #1a3d16;
+  --theme-ui-primary-ring: #5a8a52;
+  --theme-ui-destructive: #c0392b;
+  --theme-ui-destructive-hover: #a93226;
+  --theme-ui-destructive-light: #fceae8;
+  --theme-ui-success: #d4e6cf;
+  --theme-ui-success-text: #2d5a27;
+  --theme-ui-switch-off: #d4c7b0;
+
+  --theme-shadow-color: rgba(44, 36, 22, 0.08);
+  --theme-shadow-accent: rgba(45, 90, 39, 0.15);
+
+  --frosted-blur: 55px;
+  --frosted-saturate: 1.5;
+  --frosted-tint: rgba(253, 251, 247, 0.06);
+}
+
+/* === Morandi: 柔和莫兰迪色系 === */
+[data-theme='morandi'] {
+  --theme-bg-base: #f8f6f3;
+  --theme-bg-orb-1: #c9a892;
+  --theme-bg-orb-2: #9eada3;
+  --theme-bg-orb-3: #b5a8c0;
+  --theme-bg-orb-4: #d4b896;
+  --theme-bg-orb-5: #a8c4b8;
+  --theme-bg-orb-6: #c4b8d0;
+  --theme-bg-orb-7: #bfcfc5;
+  --theme-bg-orb-8: #d9c6a8;
+
+  --theme-accent-primary: #8b7b6b;
+  --theme-accent-secondary: #7a8b80;
+  --theme-accent-tertiary: #8b8499;
+  --theme-accent-primary-light: #e8ddd4;
+  --theme-accent-secondary-light: #dde5df;
+  --theme-accent-tertiary-light: #e2dfe8;
+  --theme-accent-primary-dark: #6b5b4b;
+  --theme-accent-primary-muted: #a99688;
+  --theme-accent-primary-subtle: #f2ede8;
+
+  --theme-surface-primary: #faf8f5;
+  --theme-surface-secondary: #f2ede8;
+  --theme-surface-tertiary: #ebe5dd;
+  --theme-surface-hover: #e5ded4;
+  --theme-surface-glass: rgba(250, 248, 245, 0.15);
+  --theme-surface-selected: #e8e2dc;
+
+  --theme-text-primary: #1a1815;
+  --theme-text-secondary: #3a3530;
+  --theme-text-tertiary: #4d4845;
+  --theme-text-muted: #6b6560;
+  --theme-text-dim: #9a9590;
+  --theme-text-disabled: #c8c4c0;
+  --theme-text-inverse: #faf8f5;
+
+  --theme-border-primary: #ddd6cc;
+  --theme-border-secondary: #ccc5bb;
+  --theme-border-hover: #a99688;
+  --theme-border-focus: #8b7b6b;
+  --theme-border-glass: rgba(250, 248, 245, 0.5);
+
+  --theme-ui-primary: #8b7b6b;
+  --theme-ui-primary-hover: #6b5b4b;
+  --theme-ui-primary-ring: #a99688;
+  --theme-ui-destructive: #c0706b;
+  --theme-ui-destructive-hover: #a85a55;
+  --theme-ui-destructive-light: #f5e5e3;
+  --theme-ui-success: #dde5df;
+  --theme-ui-success-text: #5a7060;
+  --theme-ui-switch-off: #d5cfc8;
+
+  --theme-shadow-color: rgba(61, 53, 48, 0.06);
+  --theme-shadow-accent: rgba(139, 123, 107, 0.15);
+
+  --frosted-blur: 55px;
+  --frosted-saturate: 1.4;
+  --frosted-tint: rgba(250, 248, 245, 0.05);
+}
+
+/* === Sakura Pink: 樱花粉色主题 === */
+[data-theme='sakura-pink'] {
+  --theme-bg-base: #fff5f7;
+  --theme-bg-orb-1: #fce7f3;
+  --theme-bg-orb-2: #fbcfe8;
+  --theme-bg-orb-3: #fdf2f8;
+  --theme-bg-orb-4: #f9a8d4;
+  --theme-bg-orb-5: #fff1f2;
+  --theme-bg-orb-6: #fecdd3;
+  --theme-bg-orb-7: #ffe4e6;
+  --theme-bg-orb-8: #fce7f3;
+
+  --theme-accent-primary: #f472b6;
+  --theme-accent-secondary: #f9a8d4;
+  --theme-accent-tertiary: #ec4899;
+  --theme-accent-primary-light: #fdf2f8;
+  --theme-accent-secondary-light: #fce7f3;
+  --theme-accent-tertiary-light: #fbcfe8;
+  --theme-accent-primary-dark: #db2777;
+  --theme-accent-primary-muted: #fbcfe8;
+  --theme-accent-primary-subtle: #fff1f2;
+
+  --theme-surface-primary: #ffffff;
+  --theme-surface-secondary: #fff5f7;
+  --theme-surface-tertiary: #fdf2f8;
+  --theme-surface-hover: #fce7f3;
+  --theme-surface-glass: rgba(255, 255, 255, 0.18);
+  --theme-surface-selected: #fce7f3;
+
+  --theme-text-primary: #1c1017;
+  --theme-text-secondary: #44303a;
+  --theme-text-tertiary: #5c4350;
+  --theme-text-muted: #8b6b7a;
+  --theme-text-dim: #b8a0ac;
+  --theme-text-disabled: #dcc8d2;
+  --theme-text-inverse: #ffffff;
+
+  --theme-border-primary: #fce7f3;
+  --theme-border-secondary: #fbcfe8;
+  --theme-border-hover: #f9a8d4;
+  --theme-border-focus: #f472b6;
+  --theme-border-glass: rgba(252, 231, 243, 0.7);
+
+  --theme-ui-primary: #f472b6;
+  --theme-ui-primary-hover: #ec4899;
+  --theme-ui-primary-ring: #f9a8d4;
+  --theme-ui-destructive: #e11d48;
+  --theme-ui-destructive-hover: #be123c;
+  --theme-ui-destructive-light: #fff1f2;
+  --theme-ui-success: #d1fae5;
+  --theme-ui-success-text: #059669;
+  --theme-ui-switch-off: #fce7f3;
+
+  --theme-shadow-color: rgba(28, 16, 23, 0.06);
+  --theme-shadow-accent: rgba(244, 114, 182, 0.15);
+
+  --frosted-blur: 55px;
+  --frosted-saturate: 1.4;
+  --frosted-tint: rgba(255, 241, 242, 0.08);
+}

@@ -1,0 +1,11 @@
+{
+  "name": "@blog/config",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Shared configuration for the blog monorepo",
+  "files": [
+    "typescript",
+    "eslint",
+    "prettier"
+  ]
+}
