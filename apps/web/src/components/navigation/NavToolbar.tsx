@@ -1,0 +1,76 @@
+'use client'
+
+import { useState } from 'react'
+import { Settings, RotateCcw, Maximize2 } from 'lucide-react'
+import { Button } from '@/components/ui'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui'
+import { useNavStore } from '@/store/nav-store'
+import { NavConfigDialog } from './NavConfigDialog'
+
+interface NavToolbarProps {
+  /** 是否是首页（影响工具栏位置） */
+  isHomepage?: boolean
+}
+
+export function NavToolbar({ isHomepage = true }: NavToolbarProps) {
+  const { config, resetConfig, updateSize } = useNavStore()
+  const [isConfigOpen, setIsConfigOpen] = useState(false)
+
+  // 首页工具栏在上方，非首页在下方
+  const toolbarPositionClass = isHomepage ? '-top-12' : '-bottom-12'
+
+  return (
+    <>
+      <div
+        className={`absolute ${toolbarPositionClass} left-1/2 -translate-x-1/2 flex items-center gap-1 rounded-lg bg-surface-primary/90 p-1 shadow-lg backdrop-blur-sm`}
+        onPointerDown={(e) => e.stopPropagation()}
+      >
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => setIsConfigOpen(true)}
+              className="h-8 w-8 p-0"
+            >
+              <Settings className="h-4 w-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="top">配置导航</TooltipContent>
+        </Tooltip>
+
+        {config.customSize && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => updateSize(null)}
+                className="h-8 w-8 p-0"
+              >
+                <Maximize2 className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="top">自动尺寸</TooltipContent>
+          </Tooltip>
+        )}
+
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={resetConfig}
+              className="h-8 w-8 p-0"
+            >
+              <RotateCcw className="h-4 w-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="top">重置位置</TooltipContent>
+        </Tooltip>
+      </div>
+
+      <NavConfigDialog open={isConfigOpen} onOpenChange={setIsConfigOpen} />
+    </>
+  )
+}
