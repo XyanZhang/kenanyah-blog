@@ -4,11 +4,8 @@
   "private": true,
   "description": "Full-stack blog application with Next.js and Hono",
   "scripts": {
-<<<<<<< HEAD
     "dev:blog": "turbo run dev --filter=web",
     "dev:api": "turbo run dev --filter=@blog/api",
-=======
->>>>>>> 01b4a194e735037457663ab65bfa93090c3df264
     "dev": "turbo run dev",
     "build": "turbo run build",
     "test": "turbo run test",
