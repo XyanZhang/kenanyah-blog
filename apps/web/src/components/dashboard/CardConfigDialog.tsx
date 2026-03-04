@@ -14,6 +14,7 @@ import {
   Label,
   Slider,
   Input,
+  Switch,
 } from '@/components/ui'
 import { ProfileConfigForm } from './config-forms/ProfileConfigForm'
 import { StatsConfigForm } from './config-forms/StatsConfigForm'
@@ -162,6 +163,20 @@ export function CardConfigDialog({ card, open, onOpenChange }: CardConfigDialogP
           {/* Common Settings */}
           <div className="space-y-4">
             <h3 className="text-sm font-semibold text-content-secondary">General Settings</h3>
+
+            {/* 隐藏卡片容器 */}
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <Label htmlFor="hideCardContainer">隐藏卡片容器样式</Label>
+                <p className="text-xs text-content-muted mt-0.5">
+                  开启后仅展示内容，无背景、边框、阴影等容器样式
+                </p>
+              </div>
+              <Switch
+                checked={config.hideCardContainer ?? false}
+                onCheckedChange={(checked) => setConfig({ ...config, hideCardContainer: checked })}
+              />
+            </div>
 
             {/* Dimensions */}
             <div className="grid grid-cols-2 gap-4">

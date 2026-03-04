@@ -120,6 +120,7 @@ export function DashboardCard({ card, animationIndex }: DashboardCardProps) {
   const borderRadius = card.borderRadius ?? DEFAULT_BORDER_RADIUS
   const handleOpenConfig = useCallback(() => setOpenConfigCardId(card.id), [card.id])
   const padding = card.padding ?? 24
+  const hideCardContainer = card.config?.hideCardContainer ?? false
 
   // 画布坐标：card.position 为画布坐标，transform 与 positionDelta 为视口像素需除以 scale
   const x = card.position.x + (transform?.x ?? 0) / scale + positionDelta.x / scale
@@ -136,8 +137,8 @@ export function DashboardCard({ card, animationIndex }: DashboardCardProps) {
         width: isAutoSize ? 'fit-content' : currentDimensions.width,
         height: isAutoSize ? 'fit-content' : currentDimensions.height,
         zIndex: isDragging || isResizing ? 1000 : card.position.z,
-        borderRadius: `${borderRadius}px`,
-        padding: `${padding}px`,
+        borderRadius: hideCardContainer ? 0 : borderRadius,
+        padding: hideCardContainer ? 0 : padding,
       }}
       initial={{ scale: 0, opacity: 0, x, y }}
       animate={{
@@ -167,13 +168,11 @@ export function DashboardCard({ card, animationIndex }: DashboardCardProps) {
       }}
       whileHover={!isEditMode ? { scale: 1.02 } : undefined}
       className={`
-        card squircle
-        group relative
-        bg-surface-glass border border-line-glass backdrop-blur-lg
-        [box-shadow:0_20px_40px_-10px_rgba(0,0,0,0.1),inset_0_1px_0_rgba(255,255,255,0.7)]
+        card group relative
+        ${hideCardContainer ? '' : 'squircle bg-surface-glass border border-line-glass backdrop-blur-lg [box-shadow:0_20px_40px_-10px_rgba(0,0,0,0.1),inset_0_1px_0_rgba(255,255,255,0.7)]'}
         ${isEditMode ? 'cursor-grab active:cursor-grabbing' : ''}
         ${isSelected ? 'ring-2 ring-line-focus' : ''}
-        ${isDragging ? '[box-shadow:0_30px_50px_-15px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.7)]' : ''}
+        ${!hideCardContainer && isDragging ? '[box-shadow:0_30px_50px_-15px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.7)]' : ''}
         ${!isEditMode && navigateTo ? 'cursor-pointer' : ''}
       `}
       onClick={handleCardClick}
@@ -181,7 +180,7 @@ export function DashboardCard({ card, animationIndex }: DashboardCardProps) {
     >
       <div
         className="h-full w-full overflow-hidden relative z-0"
-        style={{ borderRadius: `${Math.max(0, borderRadius - 24)}px` }}
+        style={{ borderRadius: hideCardContainer ? 0 : `${Math.max(0, borderRadius - 24)}px` }}
       >
         <Suspense fallback={<CardPlaceholder />}>
           <CardContent
