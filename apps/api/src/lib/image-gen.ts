@@ -11,6 +11,7 @@
  * - 北京地域：dashscope.aliyuncs.com；新加坡：dashscope-intl.aliyuncs.com（API Key 不可混用）
  */
 import { env } from '../env'
+import { logger } from './logger'
 
 const MODEL = 'qwen-image-2.0-pro'
 const DEFAULT_NEGATIVE_PROMPT =
@@ -43,7 +44,16 @@ export async function generateImage(
     )
   }
 
-  const url = `${DASHSCOPE_BASE_URL.replace(/\/$/, '')}/api/v1/services/aigc/multimodal-generation/generation`
+  // qwen-image API 使用标准 DashScope 路径，不能带 compatible-mode/v1（仅 chat/embeddings 用）
+  const base = new URL(DASHSCOPE_BASE_URL).origin
+  const url = `${base}/api/v1/services/aigc/multimodal-generation/generation`
+  logger.debug({
+    url,
+    model: MODEL,
+    promptLength: options.prompt.length,
+    promptPreview: options.prompt.slice(0, 120) + (options.prompt.length > 120 ? '...' : ''),
+  }, 'image-gen request')
+
   const body = {
     model: MODEL,
     input: {
@@ -67,6 +77,7 @@ export async function generateImage(
     },
   }
 
+  const start = Date.now()
   const res = await fetch(url, {
     method: 'POST',
     headers: {
@@ -75,6 +86,9 @@ export async function generateImage(
     },
     body: JSON.stringify(body),
   })
+
+  const elapsed = Date.now() - start
+  logger.debug({ status: res.status, elapsed: `${elapsed}ms` }, 'image-gen response')
 
   if (!res.ok) {
     const errText = await res.text()
@@ -106,6 +120,10 @@ export async function generateImage(
 
   const imageUrl =
     data.output?.choices?.[0]?.message?.content?.[0]?.image
+  logger.debug({
+    requestId: (data as { request_id?: string }).request_id,
+    imageUrl: imageUrl ? `${imageUrl.slice(0, 60)}...` : null,
+  }, 'image-gen success')
   if (!imageUrl) {
     throw new Error('未从 DashScope 返回中获取到图片 URL')
   }

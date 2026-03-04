@@ -20,6 +20,7 @@ import {
 } from '@blog/validation'
 import { streamChat, invokeChat } from '../lib/llm'
 import { generateImage } from '../lib/image-gen'
+import { logger } from '../lib/logger'
 import { saveImageFromUrl } from '../lib/storage'
 
 const ai = new Hono()
@@ -268,10 +269,15 @@ ai.post('/generate-article', validateBody(aiGenerateArticleSchema), async (c) =>
 ai.post('/generate-cover', validateBody(aiGenerateCoverSchema), async (c) => {
   const body = (c.get as (k: string) => AiGenerateCoverInput)('validatedBody')
   try {
+    logger.debug({ title: body.title?.slice(0, 50) }, '[AI][generate-cover] start')
     const excerpt = body.content.slice(0, 2000).replace(/#+|\*\*|`/g, ' ').trim()
     const userPrompt = `文章标题：${body.title}\n\n正文摘要：\n${excerpt}`
     const imagePrompt = await invokeChat(userPrompt, coverPromptSystemPrompt())
     const trimmed = imagePrompt.trim().slice(0, 800)
+    logger.debug({
+      length: trimmed.length,
+      preview: trimmed.slice(0, 200) + (trimmed.length > 200 ? '...' : ''),
+    }, '[AI][generate-cover] imagePrompt from LLM')
     if (!trimmed) {
       return c.json(
         { success: false, error: '未能从文章内容提炼出合适的封面图提示词' },
@@ -279,11 +285,13 @@ ai.post('/generate-cover', validateBody(aiGenerateCoverSchema), async (c) => {
       )
     }
     const { imageUrl } = await generateImage({ prompt: trimmed })
+    logger.debug({ imageUrl: imageUrl ? `${imageUrl.slice(0, 80)}${imageUrl.length > 80 ? '...' : ''}` : null }, '[AI][generate-cover] DashScope temp url')
     const savedUrl = await saveImageFromUrl(imageUrl, 'covers')
+    logger.debug({ savedUrl }, '[AI][generate-cover] saved to local')
     return c.json({ success: true, data: { imageUrl: savedUrl } })
   } catch (err) {
     const message = err instanceof Error ? err.message : '封面图生成失败'
-    console.error('[AI][generate-cover] error', err)
+    logger.error({ err }, '[AI][generate-cover] error')
     return c.json({ success: false, error: message }, 500)
   }
 })

@@ -1,5 +1,6 @@
 import type { Context, Next } from 'hono'
 import { ZodError } from 'zod'
+import { logger } from '../lib/logger'
 
 export class AppError extends Error {
   constructor(
@@ -46,7 +47,7 @@ export async function errorHandler(c: Context, next: Next) {
   try {
     await next()
   } catch (error) {
-    console.error('Error:', error)
+    logger.error({ err: error, path: c.req.path }, 'Unhandled error')
 
     if (error instanceof ZodError) {
       return c.json(
