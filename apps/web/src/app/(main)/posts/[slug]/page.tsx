@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import ReactMarkdown from 'react-markdown'
 import Image from 'next/image'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, Pencil } from 'lucide-react'
 import { apiClient } from '@/lib/api-client'
 import type { ApiResponse } from '@/lib/api-client'
 
@@ -105,13 +105,22 @@ export default function PostPage() {
 
   return (
     <main className="min-h-[60vh] w-full max-w-3xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
-      <Link
-        href="/blog"
-        className="inline-flex items-center gap-2 text-sm text-content-tertiary transition-colors hover:text-accent-primary mb-8"
-      >
-        <ArrowLeft className="h-4 w-4" />
-        返回博客
-      </Link>
+      <div className="flex items-center justify-between mb-8">
+        <Link
+          href="/blog"
+          className="inline-flex items-center gap-2 text-sm text-content-tertiary transition-colors hover:text-accent-primary"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          返回博客
+        </Link>
+        <Link
+          href={`/blog/editor/${post.id}` as import('next').Route}
+          className="inline-flex items-center gap-2 rounded-xl border border-line-primary bg-surface-glass px-4 py-2.5 text-sm font-medium text-content-primary transition-colors hover:border-accent-primary/50 hover:bg-accent-primary/10"
+        >
+          <Pencil className="h-4 w-4" />
+          编辑
+        </Link>
+      </div>
 
       <article className="font-blog overflow-hidden rounded-2xl border border-line-glass bg-surface-glass/60 shadow-lg backdrop-blur-sm">
         <header className="p-6 sm:p-8 pb-4">

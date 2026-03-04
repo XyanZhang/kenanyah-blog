@@ -36,6 +36,7 @@ POST /auth/login
 | Method | Endpoint | Auth | Description |
 |--------|----------|------|-------------|
 | GET | /posts | No | List posts (paginated) |
+| GET | /posts/by-id/:id | No | Get post by id (for edit) |
 | GET | /posts/:slug | No | Get post by slug |
 | POST | /posts | Yes | Create post |
 | PATCH | /posts/:id | Yes | Update post (author only) |
