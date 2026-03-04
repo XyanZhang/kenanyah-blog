@@ -30,6 +30,7 @@ import { MottoConfigForm } from './config-forms/MottoConfigForm'
 import { WeatherConfigForm } from './config-forms/WeatherConfigForm'
 import { MusicConfigForm } from './config-forms/MusicConfigForm'
 import { ReadingConfigForm } from './config-forms/ReadingConfigForm'
+import { WoodenFishConfigForm } from './config-forms/WoodenFishConfigForm'
 import { NavigateConfigForm } from './config-forms/NavigateConfigForm'
 
 interface CardConfigDialogProps {
@@ -55,6 +56,7 @@ function getCardTypeLabel(type: CardType): string {
     [CardType.WEATHER]: 'Weather',
     [CardType.MUSIC]: 'Music',
     [CardType.READING]: 'Reading',
+    [CardType.WOODEN_FISH]: '木鱼',
   }
   return labels[type]
 }
@@ -76,6 +78,7 @@ function getConfigForm(type: CardType) {
     [CardType.WEATHER]: WeatherConfigForm,
     [CardType.MUSIC]: MusicConfigForm,
     [CardType.READING]: ReadingConfigForm,
+    [CardType.WOODEN_FISH]: WoodenFishConfigForm,
   }
   return forms[type]
 }

@@ -113,6 +113,7 @@ export function createDefaultCard(
       showProgress: true,
       showAuthor: true,
     },
+    [CardType.WOODEN_FISH]: {},
   }
 
   return {

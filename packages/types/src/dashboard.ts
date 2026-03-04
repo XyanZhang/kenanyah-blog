@@ -29,6 +29,7 @@ export enum CardType {
   WEATHER = 'weather',
   MUSIC = 'music',
   READING = 'reading',
+  WOODEN_FISH = 'wooden_fish',
 }
 
 export interface CardPosition {
