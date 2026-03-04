@@ -9,14 +9,18 @@ import {
   aiHeadingsSchema,
   aiSummarySchema,
   aiGenerateArticleSchema,
+  aiGenerateCoverSchema,
   type AiRewriteInput,
   type AiExpandInput,
   type AiShrinkInput,
   type AiHeadingsInput,
   type AiSummaryInput,
   type AiGenerateArticleInput,
+  type AiGenerateCoverInput,
 } from '@blog/validation'
 import { streamChat, invokeChat } from '../lib/llm'
+import { generateImage } from '../lib/image-gen'
+import { saveImageFromUrl } from '../lib/storage'
 
 const ai = new Hono()
 
@@ -42,6 +46,17 @@ function headingsSystemPrompt(): string {
 
 function summarySystemPrompt(): string {
   return '你是一个中文写作助手。请根据用户给出的文章正文，生成一段简短摘要（2～4 句话），概括文章要点。只输出摘要正文，不要加「摘要：」等前缀或其它解释。'
+}
+
+function coverPromptSystemPrompt(): string {
+  return [
+    '你是一个博客封面图提示词专家。根据用户提供的文章标题和正文摘要，生成一段用于 AI 文生图的英文提示词（prompt）。',
+    '要求：',
+    '1. 提炼文章核心主题，生成一张适合作为博客封面的图片描述。',
+    '2. 风格：现代、简洁、偏科技/设计感，适合技术博客或知识分享类文章。',
+    '3. 不要包含具体文字、Logo 或复杂排版，重点是视觉氛围和主题意象。',
+    '4. 输出纯英文，80-150 词，只输出提示词本身，不要解释或前缀。',
+  ].join('\n')
 }
 
 function generateArticleSystemPrompt(): string {
@@ -247,6 +262,30 @@ ai.post('/generate-article', validateBody(aiGenerateArticleSchema), async (c) =>
       stream.close()
     }
   })
+})
+
+// POST /ai/generate-cover — 根据文章内容生成封面图（qwen-image-2.0-pro）
+ai.post('/generate-cover', validateBody(aiGenerateCoverSchema), async (c) => {
+  const body = (c.get as (k: string) => AiGenerateCoverInput)('validatedBody')
+  try {
+    const excerpt = body.content.slice(0, 2000).replace(/#+|\*\*|`/g, ' ').trim()
+    const userPrompt = `文章标题：${body.title}\n\n正文摘要：\n${excerpt}`
+    const imagePrompt = await invokeChat(userPrompt, coverPromptSystemPrompt())
+    const trimmed = imagePrompt.trim().slice(0, 800)
+    if (!trimmed) {
+      return c.json(
+        { success: false, error: '未能从文章内容提炼出合适的封面图提示词' },
+        400
+      )
+    }
+    const { imageUrl } = await generateImage({ prompt: trimmed })
+    const savedUrl = await saveImageFromUrl(imageUrl, 'covers')
+    return c.json({ success: true, data: { imageUrl: savedUrl } })
+  } catch (err) {
+    const message = err instanceof Error ? err.message : '封面图生成失败'
+    console.error('[AI][generate-cover] error', err)
+    return c.json({ success: false, error: message }, 500)
+  }
 })
 
 export default ai

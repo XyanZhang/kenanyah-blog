@@ -30,6 +30,19 @@ const envSchema = z.object({
   EMBEDDINGS_BASE_URL: z.string().url().optional(),
   EMBEDDINGS_API_KEY: z.string().min(1).optional(),
   EMBEDDINGS_MODEL_NAME: z.string().default('text-embedding-v4'),
+  // 封面图生成：阿里云 DashScope qwen-image-2.0-pro
+  DASHSCOPE_API_KEY: z.string().min(1).optional(),
+  DASHSCOPE_BASE_URL: z
+    .string()
+    .url()
+    .optional()
+    .default('https://dashscope.aliyuncs.com'), // 北京地域；新加坡用 https://dashscope-intl.aliyuncs.com
+  // 上传文件存储：本地 upload 目录，后续可切换 OSS
+  UPLOAD_DIR: z.string().optional(), // 绝对路径，默认 apps/api/uploads
+  UPLOAD_BASE_URL: z
+    .string()
+    .url()
+    .optional(), // 访问 URL 前缀，默认 http://localhost:${PORT}；OSS 时填 CDN 域名
 })
 
 export type Env = z.infer<typeof envSchema>
