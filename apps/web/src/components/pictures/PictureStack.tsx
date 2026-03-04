@@ -18,11 +18,12 @@ interface PictureStackProps {
   className?: string
 }
 
-const PAD = 24
+const PAD = 32
+/** Polaroid 桌面：白边相纸比例，略高以留出底部白边 */
+const CARD_WIDTH = 200
+const CARD_HEIGHT = 250
 
-// 图片较少时（≤4 张）均匀分布在圆周上不堆叠；较多时从中心向外层排列
-const FEW_ITEMS_THRESHOLD = 4
-
+/** Polaroid 桌面布局：模拟相片随意散落桌面的感觉，允许重叠与随机倾斜 */
 function getStackStyle(
   index: number,
   id: string,
@@ -33,48 +34,49 @@ function getStackStyle(
   const idSeed = id.split('').reduce((s, c) => s + c.charCodeAt(0), 0)
   const s1 = (idSeed * 17 + index * 31) % 997
 
-  const centerLeft = (containerWidth - CARD_WIDTH) / 2
-  const centerTop = (containerHeight - CARD_HEIGHT) / 2
-  const maxRadiusX = Math.max(0, (containerWidth - CARD_WIDTH) / 2 - PAD)
-  const maxRadiusY = Math.max(0, (containerHeight - CARD_HEIGHT) / 2 - PAD)
-  const maxRadius = Math.min(maxRadiusX, maxRadiusY)
-
-  let radius: number
-  let angleDeg: number
+  const availW = Math.max(0, containerWidth - 2 * PAD - CARD_WIDTH)
+  const availH = Math.max(0, containerHeight - 2 * PAD - CARD_HEIGHT)
 
   if (totalCount <= 1) {
-    radius = 0
-    angleDeg = 0
-  } else if (totalCount <= FEW_ITEMS_THRESHOLD) {
-    // 少量图片：均匀分布在圆周上，不堆叠
-    radius = maxRadius * 0.65
-    angleDeg = (360 / totalCount) * index
-  } else {
-    // 多张图片：从中心向外，黄金角分布
-    radius = (index / Math.max(1, totalCount - 1)) * maxRadius
-    angleDeg = (idSeed * 37 + index * 137.5) % 360
+    return {
+      left: Math.max(PAD, (containerWidth - CARD_WIDTH) / 2),
+      top: Math.max(PAD, (containerHeight - CARD_HEIGHT) / 2),
+      rotate: 0,
+    }
   }
 
-  const angleRad = (angleDeg * Math.PI) / 180
-  const dx = radius * Math.cos(angleRad)
-  const dy = radius * Math.sin(angleRad)
+  // 松散网格 + 大范围抖动，刻意制造重叠，营造随手散落感
+  const aspect = availW / Math.max(1, availH)
+  const cols = Math.max(1, Math.round(Math.sqrt(totalCount * aspect)))
+  const rows = Math.max(1, Math.ceil(totalCount / cols))
 
-  const left = centerLeft + dx
-  const top = centerTop + dy
-  // 每张卡片倾斜角在 [-45, 45] 度内，用 id 种子保证同张图不变
-  const rotate = -45 + (s1 % 91)
+  const cellW = availW / cols
+  const cellH = availH / rows
+
+  const col = index % cols
+  const row = Math.floor(index / cols)
+
+  // 抖动范围约 70% 格子，使相邻相片明显重叠
+  const jitterRangeX = cellW * 0.7
+  const jitterRangeY = cellH * 0.7
+  const jitterX = ((idSeed * 47 + index * 73) % 201 - 100) / 100 * jitterRangeX
+  const jitterY = ((idSeed * 61 + index * 89) % 201 - 100) / 100 * jitterRangeY
+
+  const left = PAD + col * cellW + (cellW - CARD_WIDTH) / 2 + jitterX
+  const top = PAD + row * cellH + (cellH - CARD_HEIGHT) / 2 + jitterY
 
   const maxLeft = Math.max(0, containerWidth - CARD_WIDTH - PAD)
   const maxTop = Math.max(0, containerHeight - CARD_HEIGHT - PAD)
+
+  // Polaroid 倾斜角更柔和，-12° ~ 12°
+  const rotate = -12 + (s1 % 25)
+
   return {
     left: Math.max(PAD, Math.min(maxLeft, left)),
     top: Math.max(PAD, Math.min(maxTop, top)),
     rotate,
   }
 }
-
-const CARD_WIDTH = 220
-const CARD_HEIGHT = 180
 
 /** 每张卡片入场动画错开时间（秒） */
 const STAGGER_DELAY = 0.1
@@ -148,23 +150,37 @@ function DraggableCard({
       {...dragHandlers}
     >
       <motion.div
-        className="w-full h-full rounded-xl overflow-hidden bg-content-inverse shadow-lg border border-line-primary hover:shadow-xl transition-shadow"
-        initial={{ opacity: 0, scale: 0.88 }}
+        className="w-full h-full flex flex-col bg-white rounded-sm overflow-hidden transition-shadow duration-200"
+        style={{
+          boxShadow: '0 4px 20px rgba(0,0,0,0.1), 0 1px 3px rgba(0,0,0,0.08)',
+        }}
+        initial={{ opacity: 0, scale: 0.92 }}
         animate={{ opacity: 1, scale: 1 }}
+        whileHover={{
+          boxShadow: '0 12px 40px rgba(0,0,0,0.15), 0 4px 12px rgba(0,0,0,0.1)',
+          transition: { duration: 0.2 },
+        }}
         transition={{
           duration: ENTRANCE_DURATION,
           delay: index * STAGGER_DELAY,
           ease: [0.32, 0.72, 0, 1],
         }}
       >
-        <Image
-          src={item.src}
-          alt=""
-          width={CARD_WIDTH}
-          height={CARD_HEIGHT}
-          className="pointer-events-none object-cover w-full h-full"
-          unoptimized={item.src.startsWith('http')}
-        />
+        <div className="flex-1 min-h-0 p-2.5 pb-1">
+          <div className="relative w-full h-full min-h-[160px]">
+            <Image
+              src={item.src}
+              alt=""
+              fill
+              sizes={`${CARD_WIDTH}px`}
+              className="pointer-events-none object-cover"
+              unoptimized={item.src.startsWith('http')}
+            />
+          </div>
+        </div>
+        <div className="h-10 flex items-center justify-center text-xs text-neutral-400 font-mono">
+          {item.date}
+        </div>
       </motion.div>
     </div>
   )
@@ -198,11 +214,18 @@ function PicturePreviewOverlay({
       if (e.key === 'Escape') onClose()
     }
     document.addEventListener('keydown', onKey)
+
+    const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth
     const prevOverflow = document.body.style.overflow
+    const prevPaddingRight = document.body.style.paddingRight
     document.body.style.overflow = 'hidden'
+    if (scrollbarWidth > 0) {
+      document.body.style.paddingRight = `${scrollbarWidth}px`
+    }
     return () => {
       document.removeEventListener('keydown', onKey)
       document.body.style.overflow = prevOverflow
+      document.body.style.paddingRight = prevPaddingRight
     }
   }, [onClose])
 
@@ -308,6 +331,18 @@ export function PictureStack({ items, className }: PictureStackProps) {
     return () => ro.disconnect()
   }, [])
 
+  // 照片墙单屏展示：禁止页面滚动，不显示滚动条
+  useEffect(() => {
+    const prevHtmlOverflow = document.documentElement.style.overflow
+    const prevBodyOverflow = document.body.style.overflow
+    document.documentElement.style.overflow = 'hidden'
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.documentElement.style.overflow = prevHtmlOverflow
+      document.body.style.overflow = prevBodyOverflow
+    }
+  }, [])
+
   const sorted = useMemo(
     () => [...items].sort((a, b) => (b.date > a.date ? 1 : b.date < a.date ? -1 : 0)),
     [items]
@@ -331,7 +366,7 @@ export function PictureStack({ items, className }: PictureStackProps) {
 
   return (
     <>
-      <div ref={containerRef} className={cn('relative min-h-screen w-full', className)}>
+      <div ref={containerRef} className={cn('relative h-full min-h-0 w-full overflow-hidden', className)}>
         {size &&
           sorted.map((item, index) => (
             <DraggableCard
