@@ -47,6 +47,9 @@ lerna-debug.log*
 *.db
 *.db-journal
 
+# Uploads (generated images)
+apps/api/uploads/
+
 # Misc
 *.pem
 *.log

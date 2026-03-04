@@ -30,6 +30,7 @@ import {
   streamAiHeadings,
   streamAiSummary,
   streamAiGenerateArticle,
+  aiGenerateCover,
 } from '@/lib/ai-api'
 
 interface BlogEditorProps {
@@ -62,6 +63,8 @@ export function BlogEditor({ onSubmit }: BlogEditorProps) {
   const [aiError, setAiError] = useState<string | null>(null)
   const [aiAction, setAiAction] = useState<AiAction>(null)
   const [generateKeywords, setGenerateKeywords] = useState('')
+  const [coverGenLoading, setCoverGenLoading] = useState(false)
+  const [coverGenError, setCoverGenError] = useState<string | null>(null)
 
   const textareaRef = useRef<HTMLTextAreaElement | null>(null)
 
@@ -208,6 +211,24 @@ export function BlogEditor({ onSubmit }: BlogEditorProps) {
     if (!file) return
     const url = URL.createObjectURL(file)
     setCoverImage(url)
+    setCoverGenError(null)
+  }
+
+  const handleAiGenerateCover = async () => {
+    if (!title.trim() || !content.trim()) {
+      setCoverGenError('请先填写标题和正文')
+      return
+    }
+    setCoverGenLoading(true)
+    setCoverGenError(null)
+    try {
+      const imageUrl = await aiGenerateCover({ title: title.trim(), content })
+      setCoverImage(imageUrl)
+    } catch (err) {
+      setCoverGenError(err instanceof Error ? err.message : '封面图生成失败')
+    } finally {
+      setCoverGenLoading(false)
+    }
   }
 
   const handleSubmit = async (event: FormEvent) => {
@@ -452,6 +473,21 @@ export function BlogEditor({ onSubmit }: BlogEditorProps) {
                 onChange={handleCoverChange}
                 className="rounded-lg border-line-primary bg-surface-primary text-content-primary file:mr-2 file:rounded-lg file:border-0 file:bg-accent-primary/10 file:px-3 file:py-1.5 file:text-sm file:text-accent-primary file:hover:bg-accent-primary/20"
               />
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-8 text-xs shrink-0"
+                onClick={handleAiGenerateCover}
+                disabled={coverGenLoading || aiLoading}
+              >
+                {coverGenLoading ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
+                ) : (
+                  <Sparkles className="h-3.5 w-3.5 mr-1.5" />
+                )}
+                AI 生成封面
+              </Button>
               {coverImage && (
                 <div className="relative h-16 w-24 shrink-0 rounded-lg overflow-hidden border border-line-primary/60 bg-surface-tertiary shadow-sm">
                   <Image
@@ -465,6 +501,9 @@ export function BlogEditor({ onSubmit }: BlogEditorProps) {
                 </div>
               )}
             </div>
+            {coverGenError && (
+              <p className="text-sm text-ui-destructive">{coverGenError}</p>
+            )}
           </div>
 
           <div className="flex flex-col gap-3">

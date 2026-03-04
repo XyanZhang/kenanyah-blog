@@ -60,12 +60,14 @@ export {
   aiHeadingsSchema,
   aiSummarySchema,
   aiGenerateArticleSchema,
+  aiGenerateCoverSchema,
   type AiRewriteInput,
   type AiExpandInput,
   type AiShrinkInput,
   type AiHeadingsInput,
   type AiSummaryInput,
   type AiGenerateArticleInput,
+  type AiGenerateCoverInput,
 } from './ai'
 
 // Dashboard validation

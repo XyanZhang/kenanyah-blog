@@ -16,6 +16,7 @@ import weather from './routes/weather'
 import ai from './routes/ai'
 import search from './routes/search'
 import home from './routes/home'
+import uploads from './routes/uploads'
 
 const app = new Hono()
 
@@ -73,6 +74,7 @@ app.route('/users', users)
 app.route('/weather', weather)
 app.route('/search', search)
 app.route('/home', home)
+app.route('/uploads', uploads)
 
 const port = parseInt(env.PORT)
 

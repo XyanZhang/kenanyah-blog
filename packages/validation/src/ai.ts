@@ -29,9 +29,15 @@ export const aiGenerateArticleSchema = z.object({
   keywords: z.string().min(1).max(200),
 })
 
+export const aiGenerateCoverSchema = z.object({
+  title: z.string().min(1).max(200),
+  content: z.string().min(1).max(contentMax),
+})
+
 export type AiRewriteInput = z.infer<typeof aiRewriteSchema>
 export type AiExpandInput = z.infer<typeof aiExpandSchema>
 export type AiShrinkInput = z.infer<typeof aiShrinkSchema>
 export type AiHeadingsInput = z.infer<typeof aiHeadingsSchema>
 export type AiSummaryInput = z.infer<typeof aiSummarySchema>
 export type AiGenerateArticleInput = z.infer<typeof aiGenerateArticleSchema>
+export type AiGenerateCoverInput = z.infer<typeof aiGenerateCoverSchema>

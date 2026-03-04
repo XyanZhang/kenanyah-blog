@@ -15,8 +15,14 @@ export type AiShrinkPayload = { text: string; maxLength?: number }
 export type AiHeadingsPayload = { content: string }
 export type AiSummaryPayload = { content: string }
 export type AiGenerateArticlePayload = { keywords: string }
+export type AiGenerateCoverPayload = { title: string; content: string }
 
 export type AiTextResponse = { success: boolean; data?: { text: string }; error?: string }
+export type AiGenerateCoverResponse = {
+  success: boolean
+  data?: { imageUrl: string }
+  error?: string
+}
 
 /** Non-stream: POST /ai/rewrite, returns full text */
 export async function aiRewrite(payload: AiRewritePayload): Promise<string> {
@@ -180,6 +186,19 @@ export async function streamAiSummary(
   onError?: (err: string) => void
 ): Promise<void> {
   await streamAiGeneric(`${API_BASE_URL}/ai/summary`, payload, onChunk, onError)
+}
+
+/** POST /ai/generate-cover — 根据文章内容生成封面图 */
+export async function aiGenerateCover(payload: AiGenerateCoverPayload): Promise<string> {
+  const res = await fetch(`${API_BASE_URL}/ai/generate-cover`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(payload),
+  })
+  const json = (await res.json()) as AiGenerateCoverResponse
+  if (!json.success || !json.data?.imageUrl) throw new Error(json.error || '封面图生成失败')
+  return json.data.imageUrl
 }
 
 /** Stream: POST /ai/generate-article?stream=true */
