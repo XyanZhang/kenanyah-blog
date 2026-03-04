@@ -1,8 +1,9 @@
 import { serve } from '@hono/node-server'
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
-import { logger } from 'hono/logger'
 import { env } from './env'
+import { logger } from './lib/logger'
+import { requestLogger } from './middleware/request-logger'
 import { errorHandler } from './middleware/error'
 
 // Import routes
@@ -21,7 +22,7 @@ import uploads from './routes/uploads'
 const app = new Hono()
 
 // Global middleware
-app.use('*', logger())
+app.use('*', requestLogger)
 app.use('*', cors({
   origin: env.CORS_ORIGIN,
   credentials: true,
@@ -78,7 +79,7 @@ app.route('/uploads', uploads)
 
 const port = parseInt(env.PORT)
 
-console.log(`Server is running on port ${port}`)
+logger.info({ msg: 'Server started', port, env: env.NODE_ENV })
 
 serve({
   fetch: app.fetch,

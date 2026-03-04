@@ -4,10 +4,8 @@ const nextConfig = {
   transpilePackages: ['@blog/types', '@blog/utils', '@blog/validation'],
   images: {
     remotePatterns: [
-      {
-        protocol: 'https',
-        hostname: '**',
-      },
+      { protocol: 'https', hostname: '**' },
+      { protocol: 'http', hostname: 'localhost', pathname: '/uploads/**' },
     ],
   },
   typedRoutes: true,

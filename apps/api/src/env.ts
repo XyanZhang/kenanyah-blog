@@ -43,6 +43,7 @@ const envSchema = z.object({
     .string()
     .url()
     .optional(), // 访问 URL 前缀，默认 http://localhost:${PORT}；OSS 时填 CDN 域名
+  LOG_LEVEL: z.enum(['trace', 'debug', 'info', 'warn', 'error', 'fatal']).optional(),
 })
 
 export type Env = z.infer<typeof envSchema>
