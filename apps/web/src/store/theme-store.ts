@@ -22,14 +22,14 @@ export const THEME_OPTIONS: readonly ThemeOption[] = [
   {
     id: 'default',
     name: '科技渐变',
-    description: '紫蓝青渐变，科技感十足',
-    previewColors: ['#9333ea', '#2563eb', '#0891b2'],
+    description: '紫蓝青渐变，柔和低饱和',
+    previewColors: ['#7c6b9e', '#5a7a9e', '#5a8a8f'],
   },
   {
     id: 'warm-natural',
     name: '暖色自然风',
-    description: '琥珀棕与森林绿，温暖自然',
-    previewColors: ['#b45309', '#15803d', '#d97706'],
+    description: '琥珀棕与森林绿，柔和低饱和',
+    previewColors: ['#9a7a4a', '#5a7a5a', '#a88a5a'],
   },
   {
     id: 'classic-minimal',
@@ -40,8 +40,8 @@ export const THEME_OPTIONS: readonly ThemeOption[] = [
   {
     id: 'vintage-study',
     name: '复古书房',
-    description: '墨绿与奶白，复古书卷气',
-    previewColors: ['#2d5a27', '#6b4423', '#d4c7b0'],
+    description: '墨绿与奶白，柔和低饱和',
+    previewColors: ['#4a6a45', '#6a5a45', '#d0c6b0'],
   },
   {
     id: 'morandi',
