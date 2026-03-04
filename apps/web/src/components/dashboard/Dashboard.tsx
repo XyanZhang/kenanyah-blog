@@ -14,7 +14,7 @@ import { useAlignmentStore } from '@/store/alignment-store'
 import { useHomeCanvasStore } from '@/store/home-canvas-store'
 import { useNavStore } from '@/store/nav-store'
 import { CANVAS_WIDTH, CANVAS_HEIGHT } from '@/lib/constants/dashboard'
-import { getHomeConfig, putHomeConfig } from '@/lib/home-api'
+import { getHomeConfig, putHomeConfig, syncHomeConfigToStatic } from '@/lib/home-api'
 import { DashboardCard } from './DashboardCard'
 import { EditModeToggle } from './EditModeToggle'
 import { AddCardDialog, AddCardDialogHandle } from './AddCardButton'
@@ -51,6 +51,16 @@ export function Dashboard() {
     const currentLayout = useDashboardStore.getState().layout
     if (!currentLayout) return
     await putHomeConfig({
+      layout: currentLayout,
+      nav: navConfig,
+      canvas: { scale },
+    })
+  }, [navConfig, scale])
+
+  const handleSyncToStatic = useCallback(async () => {
+    const currentLayout = useDashboardStore.getState().layout
+    if (!currentLayout) return
+    await syncHomeConfigToStatic({
       layout: currentLayout,
       nav: navConfig,
       canvas: { scale },
@@ -203,6 +213,7 @@ export function Dashboard() {
         onAddCard={handleAddCard}
         onSelectLayout={handleSelectLayout}
         onSyncToCloud={handleSyncToCloud}
+        onSyncToStatic={handleSyncToStatic}
       />
       <AddCardDialog ref={addCardDialogRef} />
       <LayoutTemplatePickerDialog ref={layoutPickerDialogRef} />

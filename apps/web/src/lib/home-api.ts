@@ -22,11 +22,28 @@ export interface HomeTemplateDetail extends HomeTemplateSummary {
   canvas: { scale?: number } | null
 }
 
-/** GET /home/config */
+/** 静态配置路径：数据库不可用时的备用配置 */
+const STATIC_CONFIG_URL = '/home-config.json'
+
+/** GET /home/config，数据库不可用时回退到静态 JSON */
 export async function getHomeConfig(): Promise<HomeConfigData | null> {
-  const res = await apiClient.get('home/config').json<ApiResponse<HomeConfigData | null>>()
-  if (!res.success) throw new Error(res.error ?? '获取首页配置失败')
-  return res.data ?? null
+  try {
+    const res = await apiClient.get('home/config').json<ApiResponse<HomeConfigData | null>>()
+    if (!res.success) throw new Error(res.error ?? '获取首页配置失败')
+    return res.data ?? null
+  } catch {
+    // 数据库/后端不可用，尝试从静态 JSON 加载
+    try {
+      const base = typeof window !== 'undefined' ? window.location.origin : ''
+      const resp = await fetch(`${base}${STATIC_CONFIG_URL}`)
+      if (!resp.ok) return null
+      const data = (await resp.json()) as HomeConfigData | null
+      if (!data || !data.layout || !data.nav) return null
+      return data
+    } catch {
+      return null
+    }
+  }
 }
 
 /** PUT /home/config */
@@ -39,6 +56,23 @@ export async function putHomeConfig(payload: {
     .put('home/config', { json: payload })
     .json<ApiResponse<unknown>>()
   if (!res.success) throw new Error(res.error ?? '同步配置失败')
+}
+
+/** POST /api/home-config/sync-static 同步当前配置到静态 JSON 文件（数据库不可用时仍可展示） */
+export async function syncHomeConfigToStatic(payload: {
+  layout: DashboardLayout
+  nav: NavConfig
+  canvas?: { scale?: number } | null
+}): Promise<void> {
+  const res = await fetch('/api/home-config/sync-static', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+  const json = (await res.json()) as { success?: boolean; error?: string }
+  if (!res.ok || !json.success) {
+    throw new Error(json.error ?? '同步到静态配置失败')
+  }
 }
 
 /** GET /home/templates */

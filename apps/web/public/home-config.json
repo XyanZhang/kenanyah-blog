@@ -1,0 +1,250 @@
+{
+  "layout": {
+    "id": "layout-1772089639687",
+    "cards": [
+      {
+        "id": "profile-1772089639685-dy8z8diqj",
+        "type": "profile",
+        "size": "custom",
+        "borderRadius": 40,
+        "padding": 24,
+        "config": {
+          "showAvatar": true,
+          "showBio": true,
+          "showSocialLinks": true
+        },
+        "visible": true,
+        "createdAt": "2026-02-26T07:07:19.685Z",
+        "updatedAt": "2026-02-27T07:18:57.770Z",
+        "animationPriority": 1,
+        "position": {
+          "x": 812.6591552734375,
+          "y": 285.55272930526735,
+          "z": 0
+        },
+        "customDimensions": {
+          "width": 299.9296875,
+          "height": 346.8359375
+        }
+      },
+      {
+        "id": "calendar-1772089639687-18i0nlbr5",
+        "type": "calendar",
+        "size": "custom",
+        "borderRadius": 40,
+        "padding": 24,
+        "config": {
+          "showPostDots": true,
+          "highlightToday": true
+        },
+        "visible": true,
+        "createdAt": "2026-02-26T07:07:19.687Z",
+        "updatedAt": "2026-02-27T07:19:14.012Z",
+        "animationPriority": 8,
+        "position": {
+          "x": 1157.8446491020582,
+          "y": 462.0751089912036,
+          "z": 7
+        },
+        "customDimensions": {
+          "width": 336.00390625,
+          "height": 324.00390625
+        }
+      },
+      {
+        "id": "motto-1772090195922-3z0yqbisx",
+        "type": "motto",
+        "size": "custom",
+        "borderRadius": 40,
+        "padding": 0,
+        "config": {
+          "motto": "种一棵树最好的时间是十年前 其次是现在。",
+          "author": "",
+          "fontStyle": "serif",
+          "textAlign": "center",
+          "showDivider": true,
+          "dividerStyle": "line",
+          "textSize": "medium"
+        },
+        "visible": true,
+        "createdAt": "2026-02-26T07:16:35.922Z",
+        "updatedAt": "2026-03-03T02:32:26.633Z",
+        "position": {
+          "x": 401.8532446289065,
+          "y": 666.8148362426758,
+          "z": 3
+        },
+        "customDimensions": {
+          "width": 338.20703125,
+          "height": 160.58203125
+        }
+      },
+      {
+        "id": "music-1772090210468-s8ih4b508",
+        "type": "music",
+        "size": "custom",
+        "borderRadius": 40,
+        "padding": 0,
+        "config": {
+          "title": "爱不会绝迹",
+          "artist": "林",
+          "autoPlay": true,
+          "showProgress": true,
+          "showVolume": true,
+          "audioUrl": "http://localhost:3000/music/林俊杰+-+爱不会绝迹.wav",
+          "playlist": [
+            {
+              "audioUrl": "http://localhost:3000/music/林俊杰-爱不会绝迹.mp3",
+              "title": "爱不会绝迹",
+              "artist": "林俊杰",
+              "coverUrl": ""
+            },
+            {
+              "audioUrl": "http://localhost:3000/music/林俊杰-背对背拥抱.mp3",
+              "title": "背对背拥抱",
+              "artist": "林俊杰",
+              "coverUrl": ""
+            },
+            {
+              "audioUrl": "http://localhost:3000/music/전쟁터-AKMU_李仙姬.mp3",
+              "title": "전쟁터",
+              "artist": "AKMU/李仙姬",
+              "coverUrl": ""
+            },
+            {
+              "audioUrl": "http://localhost:3000/music/王力宏-爱错.mp3",
+              "title": "爱错",
+              "artist": "王力宏",
+              "coverUrl": ""
+            }
+          ],
+          "coverUrl": "",
+          "simplifiedMode": true,
+          "persistAcrossPages": true
+        },
+        "visible": true,
+        "createdAt": "2026-02-26T07:16:50.468Z",
+        "updatedAt": "2026-03-01T15:26:19.660Z",
+        "position": {
+          "x": 500.5078021699061,
+          "y": 543.0917680118446,
+          "z": 4
+        },
+        "customDimensions": {
+          "width": 244.8046875,
+          "height": 73.35546875
+        }
+      },
+      {
+        "id": "image-1772090233717-b4gu1cd23",
+        "type": "image",
+        "size": "custom",
+        "borderRadius": 40,
+        "padding": 24,
+        "config": {
+          "src": "/images/dashboard/cat.webp",
+          "alt": "Cover Image",
+          "objectFit": "cover",
+          "showOverlay": false,
+          "navigateTo": "/pictures",
+          "linkUrl": ""
+        },
+        "visible": true,
+        "createdAt": "2026-02-26T07:17:13.717Z",
+        "updatedAt": "2026-02-28T15:53:48.696Z",
+        "position": {
+          "x": 1166.8235517578123,
+          "y": 189.53528561057897,
+          "z": 5
+        },
+        "customDimensions": {
+          "width": 242.19921875,
+          "height": 231.5
+        }
+      },
+      {
+        "id": "clock-1772090365195-zr21crs0z",
+        "type": "clock",
+        "size": "custom",
+        "borderRadius": 40,
+        "padding": 24,
+        "config": {
+          "format24h": true,
+          "showSeconds": true,
+          "showDate": true,
+          "fontStyle": "mono"
+        },
+        "visible": true,
+        "createdAt": "2026-02-26T07:19:25.195Z",
+        "updatedAt": "2026-02-27T05:39:03.361Z",
+        "position": {
+          "x": 812.6591557617185,
+          "y": 136.43501752433625,
+          "z": 5
+        },
+        "customDimensions": {
+          "width": 292.953125,
+          "height": 124.22265625
+        }
+      },
+      {
+        "id": "reading-1772177283949-fi9k1huyg",
+        "type": "reading",
+        "size": "custom",
+        "borderRadius": 40,
+        "padding": 20,
+        "config": {
+          "bookTitle": "百年孤独",
+          "author": "加西亚·马尔克斯",
+          "totalPages": 360,
+          "currentPage": 120,
+          "status": "reading",
+          "startDate": "2024-01-01",
+          "streak": 7,
+          "dailyGoal": 30,
+          "showStreak": true,
+          "showProgress": true,
+          "showAuthor": true
+        },
+        "visible": true,
+        "createdAt": "2026-02-27T07:28:03.949Z",
+        "updatedAt": "2026-03-03T02:31:59.781Z",
+        "position": {
+          "x": 819.0100709287136,
+          "y": 667.7459317244346,
+          "z": 6
+        },
+        "customDimensions": {
+          "width": 285.6953125,
+          "height": 252.53125
+        }
+      }
+    ],
+    "version": 2,
+    "createdAt": "2026-02-26T07:07:19.685Z",
+    "updatedAt": "2026-03-03T02:32:26.633Z"
+  },
+  "nav": {
+    "horizontalPosition": {
+      "x": 0,
+      "y": 0
+    },
+    "verticalPosition": {
+      "x": -287.6875,
+      "y": -222.0591278076172
+    },
+    "layout": "auto",
+    "customSize": null,
+    "visibleItems": [
+      "home",
+      "blog",
+      "pictures",
+      "thoughts",
+      "works",
+      "about"
+    ]
+  },
+  "canvas": {
+    "scale": 1
+  }
+}
