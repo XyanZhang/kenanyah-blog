@@ -372,6 +372,7 @@ function getCardTypeName(type: string): string {
     random_posts: '随机文章',
     calendar: '日历',
     clock: '时钟',
+    wooden_fish: '木鱼',
   }
   return names[type] || type
 }

@@ -59,8 +59,20 @@ export const useDashboardStore = create<DashboardState>()(
 
       // Add a new card
       addCard: (type: CardType, size: CardSize) => {
-        const { layout } = get()
-        if (!layout) return
+        let { layout } = get()
+        // 当 layout 为 null 时，创建空布局以便添加第一个组件
+        if (!layout) {
+          const now = new Date()
+          const emptyLayout: DashboardLayout = {
+            id: `layout-${Date.now()}`,
+            cards: [],
+            version: LAYOUT_VERSION,
+            createdAt: now,
+            updatedAt: now,
+          }
+          set({ layout: emptyLayout })
+          layout = emptyLayout
+        }
 
         const newCardBase = createDefaultCard(type, size)
         const existingCards = layout.cards

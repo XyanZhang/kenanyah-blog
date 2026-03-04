@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useImperativeHandle, forwardRef } from 'react'
-import { User, BarChart3, FolderTree, FileText, LayoutGrid, Clock, Shuffle, Calendar, Timer, ImageIcon, Link2, Quote, CloudSun, Music, Book } from 'lucide-react'
+import { User, BarChart3, FolderTree, FileText, LayoutGrid, Clock, Shuffle, Calendar, Timer, ImageIcon, Link2, Quote, CloudSun, Music, Book, Fish } from 'lucide-react'
 import { CardType, CardSize } from '@blog/types'
 import { useDashboard } from '@/hooks/useDashboard'
 import { Button } from '@/components/ui'
@@ -31,6 +31,7 @@ const cardTypeOptions = [
   { value: CardType.WEATHER, label: 'Weather', icon: CloudSun, description: 'Q版天气卡片' },
   { value: CardType.MUSIC, label: 'Music', icon: Music, description: '音乐播放卡片' },
   { value: CardType.READING, label: 'Reading', icon: Book, description: '读书进度卡片' },
+  { value: CardType.WOODEN_FISH, label: '木鱼', icon: Fish, description: 'Q版木鱼敲钟·功德+1' },
 ]
 
 const cardSizeOptions = [

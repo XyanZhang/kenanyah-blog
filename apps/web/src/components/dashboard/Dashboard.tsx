@@ -139,16 +139,36 @@ export function Dashboard() {
 
   if (isLoading) {
     return (
-      <div className="flex h-screen items-center justify-center">
-        <div className="text-lg text-content-muted">Loading dashboard...</div>
+      <div className="relative h-screen w-full">
+        <div className="flex h-full items-center justify-center">
+          <div className="text-lg text-content-muted">Loading dashboard...</div>
+        </div>
+        <EditModeToggle
+          onAddCard={handleAddCard}
+          onSelectLayout={handleSelectLayout}
+          onSyncToCloud={handleSyncToCloud}
+          onSyncToStatic={handleSyncToStatic}
+        />
+        <AddCardDialog ref={addCardDialogRef} />
+        <LayoutTemplatePickerDialog ref={layoutPickerDialogRef} />
       </div>
     )
   }
 
   if (!layout) {
     return (
-      <div className="flex h-screen items-center justify-center">
-        <div className="text-lg text-content-muted">No layout found</div>
+      <div className="relative h-screen w-full">
+        <div className="flex h-full flex-col items-center justify-center gap-4">
+          <div className="text-lg text-content-muted">暂无布局，点击右下角「插入组件」添加第一个组件</div>
+        </div>
+        <EditModeToggle
+          onAddCard={handleAddCard}
+          onSelectLayout={handleSelectLayout}
+          onSyncToCloud={handleSyncToCloud}
+          onSyncToStatic={handleSyncToStatic}
+        />
+        <AddCardDialog ref={addCardDialogRef} />
+        <LayoutTemplatePickerDialog ref={layoutPickerDialogRef} />
       </div>
     )
   }

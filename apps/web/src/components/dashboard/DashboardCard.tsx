@@ -31,6 +31,7 @@ const cardComponents = {
   [CardType.WEATHER]: lazy(() => import('./cards/WeatherCard').then(m => ({ default: m.WeatherCard }))),
   [CardType.MUSIC]: lazy(() => import('./cards/MusicCard').then(m => ({ default: m.MusicCard }))),
   [CardType.READING]: lazy(() => import('./cards/ReadingCard').then(m => ({ default: m.ReadingCard }))),
+  [CardType.WOODEN_FISH]: lazy(() => import('./cards/WoodenFishCard').then(m => ({ default: m.WoodenFishCard }))),
 }
 
 function CardPlaceholder() {

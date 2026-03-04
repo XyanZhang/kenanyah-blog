@@ -68,15 +68,15 @@
         },
         "visible": true,
         "createdAt": "2026-02-26T07:16:35.922Z",
-        "updatedAt": "2026-03-04T07:12:15.740Z",
+        "updatedAt": "2026-03-04T09:28:38.618Z",
         "position": {
-          "x": 437.5173071289065,
-          "y": 666.9636399536133,
+          "x": 295.6523168945315,
+          "y": 541.7564866333008,
           "z": 3
         },
         "customDimensions": {
-          "width": 338.20703125,
-          "height": 160.58203125
+          "width": 479.69140625,
+          "height": 123.62890625
         }
       },
       {
@@ -124,10 +124,10 @@
         },
         "visible": true,
         "createdAt": "2026-02-26T07:16:50.468Z",
-        "updatedAt": "2026-03-04T09:02:19.200Z",
+        "updatedAt": "2026-03-04T09:28:46.910Z",
         "position": {
-          "x": 530.8922115937341,
-          "y": 558.6151444766883,
+          "x": 349.74351969920286,
+          "y": 441.18510480383674,
           "z": 4
         },
         "customDimensions": {
@@ -218,11 +218,61 @@
           "width": 285.6953125,
           "height": 252.53125
         }
+      },
+      {
+        "id": "latest_posts-1772616292583-qzrdy69lg",
+        "type": "latest_posts",
+        "size": "custom",
+        "borderRadius": 40,
+        "padding": 24,
+        "config": {
+          "limit": 1,
+          "showImage": true,
+          "showExcerpt": true,
+          "showDate": true
+        },
+        "visible": true,
+        "createdAt": "2026-03-04T09:24:52.583Z",
+        "updatedAt": "2026-03-04T09:28:40.420Z",
+        "position": {
+          "x": 394.41724529346396,
+          "y": 704.8283078071216,
+          "z": 7
+        },
+        "customDimensions": {
+          "width": 381.25390625,
+          "height": 195.31640625
+        }
+      },
+      {
+        "id": "image-1772616835350-wuqulf7er",
+        "type": "image",
+        "size": "custom",
+        "borderRadius": 40,
+        "padding": 24,
+        "config": {
+          "src": "/images/avatar/avatar-pink.png",
+          "alt": "Cover Image",
+          "objectFit": "cover",
+          "showOverlay": false
+        },
+        "visible": true,
+        "createdAt": "2026-03-04T09:33:55.350Z",
+        "updatedAt": "2026-03-04T09:34:06.757Z",
+        "position": {
+          "x": 404.05528947866225,
+          "y": 238.01564141044435,
+          "z": 8
+        },
+        "customDimensions": {
+          "width": 188.890625,
+          "height": 174.8984375
+        }
       }
     ],
     "version": 2,
     "createdAt": "2026-02-26T07:07:19.685Z",
-    "updatedAt": "2026-03-04T09:18:38.817Z"
+    "updatedAt": "2026-03-04T09:34:06.757Z"
   },
   "nav": {
     "horizontalPosition": {
