@@ -218,7 +218,7 @@ ai.post('/generate-article', validateBody(aiGenerateArticleSchema), async (c) =>
   const body = (c.get as (k: string) => AiGenerateArticleInput)('validatedBody')
   const stream = c.req.query('stream') === 'true'
 
-  const userPrompt = `请围绕以下关键词生成一篇完整的博客文章：${body.keywords}`
+  const userPrompt = `请围绕以下关键词生成一篇完整的文章，要求：1. 文章必须是结构清晰的 Markdown：至少包含一级标题、若干小节（二级/三级标题）、段落、必要时可用列表。2. 语言自然流畅，风格偏实用分享，而不是生硬的说明文。3. 不要输出多份版本或重复内容，不要在文末再重复整篇文章。4. 只输出 Markdown 正文，不要任何解释性文字。关键词：${body.keywords}`
 
   if (!stream) {
     try {
