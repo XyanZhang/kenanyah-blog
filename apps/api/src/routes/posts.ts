@@ -97,11 +97,50 @@ posts.get('/', validateQuery(postQuerySchema), async (c) => {
   })
 })
 
-// Get post by slug
+// Get post by id (for edit page)
+posts.get('/by-id/:id', async (c) => {
+  const { id } = c.req.param()
+
+  const post = await prisma.post.findUnique({
+    where: { id },
+    include: {
+      author: {
+        select: {
+          id: true,
+          username: true,
+          name: true,
+          avatar: true,
+          bio: true,
+        },
+      },
+      categories: {
+        include: {
+          category: true,
+        },
+      },
+      tags: {
+        include: {
+          tag: true,
+        },
+      },
+    },
+  })
+
+  if (!post) {
+    throw new NotFoundError('Post not found')
+  }
+
+  return c.json({
+    success: true,
+    data: post,
+  })
+})
+
+// Get post by slug (or by id when slug 为空时列表用 id 作为链接)
 posts.get('/:slug', async (c) => {
   const { slug } = c.req.param()
 
-  const post = await prisma.post.findUnique({
+  let post = await prisma.post.findUnique({
     where: { slug },
     include: {
       author: {
@@ -130,6 +169,26 @@ posts.get('/:slug', async (c) => {
       },
     },
   })
+
+  if (!post) {
+    post = await prisma.post.findUnique({
+      where: { id: slug },
+      include: {
+        author: {
+          select: {
+            id: true,
+            username: true,
+            name: true,
+            avatar: true,
+            bio: true,
+          },
+        },
+        categories: { include: { category: true } },
+        tags: { include: { tag: true } },
+        _count: { select: { comments: true } },
+      },
+    })
+  }
 
   if (!post) {
     throw new NotFoundError('Post not found')
@@ -255,20 +314,28 @@ posts.patch('/:id', authMiddleware, validateBody(updatePostSchema), async (c) =>
 
   if (data.title) {
     updateData.title = data.title
-    updateData.slug = generateSlug(data.title)
+    const newSlug = generateSlug(data.title)
+    if (newSlug) {
+      updateData.slug = newSlug
+    } else if (!existingPost.slug) {
+      // 纯中文等标题会生成空 slug，用 id 兜底，避免列表无法点击
+      updateData.slug = existingPost.id
+    }
+    // 否则保留原 slug
   }
   if (data.excerpt !== undefined) updateData.excerpt = data.excerpt
   if (data.content) updateData.content = data.content
   if (data.coverImage !== undefined) updateData.coverImage = data.coverImage
   if (data.published !== undefined) {
     updateData.published = data.published
-    if (data.published) {
-      updateData.publishedAt = data.publishedAt
-        ? new Date(data.publishedAt)
-        : existingPost.publishedAt ?? new Date()
-    } else {
+    if (!data.published) {
       updateData.publishedAt = null
     }
+  }
+  if (data.publishedAt !== undefined && data.published !== false) {
+    updateData.publishedAt = new Date(data.publishedAt)
+  } else if (data.published === false) {
+    updateData.publishedAt = null
   }
   if (data.isFeatured !== undefined) updateData.isFeatured = data.isFeatured
 

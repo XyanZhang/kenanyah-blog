@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useCallback, ChangeEvent, FormEvent } from 'react'
+import { useState, useRef, useCallback, useEffect, ChangeEvent, FormEvent } from 'react'
 import Image from 'next/image'
 import ReactMarkdown from 'react-markdown'
 import {
@@ -33,7 +33,18 @@ import {
   aiGenerateCover,
 } from '@/lib/ai-api'
 
+export type BlogEditorInitialData = {
+  title: string
+  content: string
+  coverImage?: string
+  images?: string[]
+  published: boolean
+  publishedAt?: string
+  isFeatured: boolean
+}
+
 interface BlogEditorProps {
+  initialData?: BlogEditorInitialData
   onSubmit?: (data: {
     title: string
     content: string
@@ -47,16 +58,22 @@ interface BlogEditorProps {
 
 type AiAction = 'rewrite' | 'expand' | 'shrink' | 'headings' | 'summary' | 'generateArticle' | null
 
-export function BlogEditor({ onSubmit }: BlogEditorProps) {
-  const [title, setTitle] = useState('')
-  const [content, setContent] = useState('')
-  const [coverImage, setCoverImage] = useState<string | undefined>(undefined)
-  const [images, setImages] = useState<string[]>([])
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [published, setPublished] = useState(true)
-  const [publishedAt, setPublishedAt] = useState(
-    () => new Date().toISOString().slice(0, 16) // YYYY-MM-DDTHH:mm for datetime-local
+export function BlogEditor({ initialData, onSubmit }: BlogEditorProps) {
+  const [title, setTitle] = useState(initialData?.title ?? '')
+  const [content, setContent] = useState(initialData?.content ?? '')
+  const [coverImage, setCoverImage] = useState<string | undefined>(
+    initialData?.coverImage ?? undefined
   )
+  const [images, setImages] = useState<string[]>(initialData?.images ?? [])
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [published, setPublished] = useState(initialData?.published ?? true)
+  const [publishedAt, setPublishedAt] = useState(() => {
+    if (initialData?.publishedAt) {
+      const d = new Date(initialData.publishedAt)
+      return d.toISOString().slice(0, 16)
+    }
+    return new Date().toISOString().slice(0, 16)
+  })
   const [isFeatured, setIsFeatured] = useState(false)
   const [aiLoading, setAiLoading] = useState(false)
   const [aiResult, setAiResult] = useState('')
@@ -67,6 +84,18 @@ export function BlogEditor({ onSubmit }: BlogEditorProps) {
   const [coverGenError, setCoverGenError] = useState<string | null>(null)
 
   const textareaRef = useRef<HTMLTextAreaElement | null>(null)
+
+  useEffect(() => {
+    if (!initialData) return
+    setTitle(initialData.title ?? '')
+    setContent(initialData.content ?? '')
+    setCoverImage(initialData.coverImage ?? undefined)
+    setImages(initialData.images ?? [])
+    setPublished(initialData.published ?? true)
+    if (initialData.publishedAt) {
+      setPublishedAt(new Date(initialData.publishedAt).toISOString().slice(0, 16))
+    }
+  }, [initialData])
 
   const getSelectedOrFull = useCallback(() => {
     const el = textareaRef.current
@@ -606,7 +635,13 @@ export function BlogEditor({ onSubmit }: BlogEditorProps) {
             ) : (
               <Send className="h-4 w-4" />
             )}
-            {isSubmitting ? '发布中…' : '发布文章'}
+            {isSubmitting
+              ? initialData
+                ? '保存中…'
+                : '发布中…'
+              : initialData
+                ? '保存修改'
+                : '发布文章'}
           </Button>
         </div>
       </form>

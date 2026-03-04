@@ -52,10 +52,11 @@ function DefaultTimelineRow({ item }: { item: BlogTimelineItem }) {
     </span>
   )
 
-  if (item.slug) {
+  const href = (item.slug ? `/posts/${item.slug}` : `/posts/${item.id}`) as import('next').Route
+  if (item.slug || item.id) {
     return (
       <Link
-        href={`/posts/${item.slug}`}
+        href={href}
         className="group flex items-center gap-4 min-w-0"
       >
         {meta}
