@@ -1,11 +1,14 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { format } from 'date-fns'
 import { zhCN } from 'date-fns/locale'
 import { DashboardCard, LatestPostsCardConfig } from '@blog/types'
-import { Calendar } from 'lucide-react'
+import { Calendar, Loader2 } from 'lucide-react'
+import { apiClient } from '@/lib/api-client'
+import type { ApiResponse } from '@/lib/api-client'
 
 interface LatestPostsCardProps {
   card: DashboardCard
@@ -20,62 +23,116 @@ interface PostItem {
   publishedAt: Date
 }
 
+type PostFromApi = {
+  id: string
+  slug: string
+  title: string
+  excerpt: string | null
+  coverImage: string | null
+  publishedAt: string | null
+  createdAt: string
+}
+
+function mapPostToItem(post: PostFromApi): PostItem {
+  const dateStr = post.publishedAt ?? post.createdAt
+  return {
+    id: post.id,
+    title: post.title,
+    slug: post.slug,
+    excerpt: post.excerpt ?? '',
+    coverImage: post.coverImage ?? '',
+    publishedAt: new Date(dateStr),
+  }
+}
+
 export function LatestPostsCard({ card }: LatestPostsCardProps) {
   const config = card.config as LatestPostsCardConfig
+  const [posts, setPosts] = useState<PostItem[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-  const posts: PostItem[] = [
-    {
-      id: '1',
-      title: 'Next.js 15 App Router 深度解析',
-      slug: 'nextjs-15-app-router',
-      excerpt: '探索 Next.js 15 中 App Router 的新特性和最佳实践，包括并行路由、拦截路由等高级用法。',
-      coverImage: '/images/posts/nextjs.jpg',
-      publishedAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
-    },
-    {
-      id: '2',
-      title: 'React 19 新特性一览',
-      slug: 'react-19-features',
-      excerpt: '深入了解 React 19 带来的革命性变化，包括 Server Components、Actions 等核心特性。',
-      coverImage: '/images/posts/react.jpg',
-      publishedAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
-    },
-    {
-      id: '3',
-      title: 'TypeScript 高级类型技巧',
-      slug: 'typescript-advanced-types',
-      excerpt: '掌握 TypeScript 中的条件类型、映射类型、模板字面量类型等高级特性。',
-      coverImage: '/images/posts/typescript.jpg',
-      publishedAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
-    },
-  ]
+  useEffect(() => {
+    let cancelled = false
+    setLoading(true)
+    setError(null)
+    const limit = config?.limit ?? 5
+    apiClient
+      .get('posts', { searchParams: { published: true, limit } })
+      .json<ApiResponse<PostFromApi[]>>()
+      .then((res) => {
+        if (cancelled) return
+        if (res.success && res.data && Array.isArray(res.data)) {
+          setPosts(res.data.map(mapPostToItem))
+        } else {
+          setError(res.error ?? '加载失败')
+          setPosts([])
+        }
+      })
+      .catch((err) => {
+        if (cancelled) return
+        setError(err?.message ?? '加载失败')
+        setPosts([])
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [config?.limit])
 
-  const displayPosts = posts.slice(0, config.limit)
+  const displayPosts = posts.slice(0, config?.limit ?? 5)
+
+  if (loading) {
+    return (
+      <div className="flex h-full flex-col">
+        <h3 className="mb-4 text-lg font-semibold text-content-primary">最新文章</h3>
+        <div className="flex flex-1 items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-content-muted" />
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="flex h-full flex-col">
+        <h3 className="mb-4 text-lg font-semibold text-content-primary">最新文章</h3>
+        <p className="text-sm text-red-500">{error}</p>
+      </div>
+    )
+  }
 
   return (
     <div className="flex h-full flex-col">
       <h3 className="mb-4 text-lg font-semibold text-content-primary">最新文章</h3>
 
       <div className="flex-1 space-y-3 overflow-auto">
-        {displayPosts.map((post) => (
-          <Link
-            key={post.id}
-            href={`/posts/${post.slug}` as any}
-            className="group flex gap-3 rounded-xl border border-line-glass/50 bg-surface-glass/40 p-2 backdrop-blur-sm transition-all hover:border-line-hover hover:bg-surface-glass/60 hover:shadow-md"
-          >
-            {config.showImage && (
-              <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-lg bg-gradient-to-br from-accent-primary-light to-accent-secondary-light">
-                <Image
-                  src={post.coverImage}
-                  alt={post.title}
-                  fill
-                  className="object-cover transition-transform group-hover:scale-105"
-                  onError={(e) => {
-                    e.currentTarget.style.display = 'none'
-                  }}
-                />
-              </div>
-            )}
+        {displayPosts.length === 0 ? (
+          <p className="text-sm text-content-tertiary">暂无文章</p>
+        ) : (
+          <>
+            {displayPosts.map((post) => (
+              <Link
+              key={post.id}
+              href={`/posts/${post.slug}` as any}
+              className="group flex gap-3 rounded-xl border border-line-glass/50 bg-surface-glass/40 p-2 backdrop-blur-sm transition-all hover:border-line-hover hover:bg-surface-glass/60 hover:shadow-md"
+            >
+              {config.showImage && (
+                <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-lg bg-gradient-to-br from-accent-primary-light to-accent-secondary-light">
+                  {post.coverImage ? (
+                    <Image
+                      src={post.coverImage}
+                      alt={post.title}
+                      fill
+                      className="object-cover transition-transform group-hover:scale-105"
+                      onError={(e) => {
+                        e.currentTarget.style.display = 'none'
+                      }}
+                    />
+                  ) : null}
+                </div>
+              )}
 
             <div className="flex min-w-0 flex-1 flex-col justify-between py-1">
               <div>
@@ -95,7 +152,9 @@ export function LatestPostsCard({ card }: LatestPostsCardProps) {
               )}
             </div>
           </Link>
-        ))}
+            ))}
+          </>
+        )}
       </div>
     </div>
   )
