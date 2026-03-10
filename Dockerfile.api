@@ -24,7 +24,7 @@ RUN pnpm install --frozen-lockfile
 RUN cd apps/api && npx prisma generate
 
 # Build TypeScript (generate JS output)
-RUN cd apps/api && npx tsc --build
+RUN cd apps/api && npx tsc -p tsconfig.build.json && test -d dist
 
 # Production stage
 FROM node:20-alpine AS runner
