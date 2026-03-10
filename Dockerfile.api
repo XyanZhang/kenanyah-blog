@@ -1,33 +1,48 @@
-# API Dockerfile - Build stage
+# API Dockerfile - Hono + Prisma
+# Build stage
 FROM node:20-alpine AS builder
 
 WORKDIR /app
 
 # Install pnpm
 RUN corepack enable && corepack prepare pnpm@9.15.4 --activate
-WORKDIR /app
+
 # Copy workspace config
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json turbo.json ./
 COPY packages ./packages
 COPY apps/api ./apps/api
-# Install dependencies (generate prisma client)
-RUN pnpm --filter @blog/api install --frozen-lockfile
-# generate prisma client
-RUN pnpm --filter @blog/api prisma:generate
-# Build (generate JS output)
-RUN pnpm --filter @blog/api exec tsc --build
+
+# Install all dependencies
+RUN pnpm install --frozen-lockfile
+
+# Generate Prisma Client
+RUN cd apps/api && npx prisma generate
+
+# Build TypeScript (generate JS output)
+RUN cd apps/api && npx tsc --build
+
 # Production stage
 FROM node:20-alpine AS runner
+
 WORKDIR /app
-# Copy built files
-COPY --from=builder /app/apps/api/dist ./apps/api
-COPY --from=builder /app/apps/api/package.json ./apps/api
+
+# Copy node_modules with .prisma
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/apps/api/dist ./apps/api/dist
+COPY --from=builder /app/apps/api/package.json ./apps/api/
 COPY --from=builder /app/apps/api/prisma ./apps/api/prisma
-# create uploads directory
+COPY --from=builder /app/packages ./packages
+
+# Create uploads directory
 RUN mkdir -p /app/apps/api/uploads
+
 # Set environment
 ENV NODE_ENV=production
 ENV PORT=3001
+
+WORKDIR /app/apps/api
+
 EXPOSE 3001
-# start command with migration
+
+# Start command with migration
 CMD ["sh", "-c", "npx prisma migrate deploy && node dist/index.js"]
