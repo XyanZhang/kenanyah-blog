@@ -35,6 +35,8 @@ packages/config/    # Shared configs
 ```bash
 pnpm docker:up      # Start PostgreSQL (使用 pgvector/pgvector:pg16 以支持语义搜索)
 pnpm db:migrate     # Run migrations
+pnpm db:export      # Export blog_dev to backups/
+pnpm db:import <file> # Import from backup
 pnpm db:studio      # Open Prisma Studio
 ```
 
