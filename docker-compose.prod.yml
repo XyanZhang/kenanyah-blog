@@ -1,0 +1,130 @@
+# Production Docker Compose
+# Usage: docker-compose -f docker-compose.prod.yml up -d
+#
+# 通过 IP 访问模式：直接暴露端口，不使用 Nginx
+# 通过域名访问模式：取消注释 nginx 服务，注释掉 web/api 的 ports
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: blog-postgres-prod
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USER:-blog_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Database password required}
+      POSTGRES_DB: ${DB_NAME:-blog_prod}
+      POSTGRES_INITDB_ARGS: '--encoding=UTF-8 --lc-collate=C --lc-ctype=C'
+    volumes:
+      - postgres_prod_data:/var/lib/postgresql/data
+      - ./apps/api/prisma/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${DB_USER:-blog_user} -d ${DB_NAME:-blog_prod}']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - blog-network
+
+  # API Service (Hono)
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    container_name: blog-api-prod
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    # === IP 访问模式：暴露端口 ===
+    ports:
+      - '3001:3001'
+    # === 域名访问模式：注释上面 ports，取消下面注释 ===
+    # expose:
+    #   - '3001'
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      DATABASE_URL: postgresql://${DB_USER:-blog_user}:${DB_PASSWORD}@postgres:5432/${DB_NAME:-blog_prod}?schema=public
+      JWT_SECRET: ${JWT_SECRET:?JWT secret required}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?JWT refresh secret required}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-15m}
+      JWT_REFRESH_EXPIRES_IN: ${JWT_REFRESH_EXPIRES_IN:-7d}
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3000}
+      # OAuth (optional)
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI:-}
+      GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID:-}
+      GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET:-}
+      GITHUB_REDIRECT_URI: ${GITHUB_REDIRECT_URI:-}
+      # AI Services
+      OPENAI_BASE_URL: ${OPENAI_BASE_URL:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_MODEL: ${OPENAI_MODEL:-}
+      EMBEDDINGS_BASE_URL: ${EMBEDDINGS_BASE_URL:-}
+      EMBEDDINGS_API_KEY: ${EMBEDDINGS_API_KEY:-}
+      EMBEDDINGS_MODEL_NAME: ${EMBEDDINGS_MODEL_NAME:-}
+      # Dashscope (for image generation)
+      DASHSCOPE_BASE_URL: ${DASHSCOPE_BASE_URL:-}
+      DASHSCOPE_API_KEY: ${DASHSCOPE_API_KEY:-}
+      DASHSCOPE_MODEL_NAME: ${DASHSCOPE_MODEL_NAME:-}
+      # Upload
+      UPLOAD_DIR: /app/apps/api/uploads
+      UPLOAD_BASE_URL: ${UPLOAD_BASE_URL:-http://localhost:3001}
+    volumes:
+      - uploads_data:/app/apps/api/uploads
+    networks:
+      - blog-network
+
+  # Web Service (Next.js)
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+    container_name: blog-web-prod
+    restart: unless-stopped
+    depends_on:
+      - api
+    # === IP 访问模式：暴露端口 ===
+    ports:
+      - '3000:3000'
+    # === 域名访问模式：注释上面 ports，取消下面注释 ===
+    # expose:
+    #   - '3000'
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3001}
+      NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
+      NEXT_PUBLIC_APP_NAME: ${NEXT_PUBLIC_APP_NAME:-Blog}
+    networks:
+      - blog-network
+
+  # === IP 访问模式：注释掉 nginx 服务 ===
+  # === 域名访问模式：取消注释 ===
+  # nginx:
+  #   image: nginx:alpine
+  #   container_name: blog-nginx
+  #   restart: unless-stopped
+  #   depends_on:
+  #     - web
+  #     - api
+  #   ports:
+  #     - '80:80'
+  #     - '443:443'
+  #   volumes:
+  #     - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+  #     - ./nginx/ssl:/etc/nginx/ssl:ro
+  #   networks:
+  #     - blog-network
+
+volumes:
+  postgres_prod_data:
+    driver: local
+  uploads_data:
+    driver: local
+
+networks:
+  blog-network:
+    driver: bridge
