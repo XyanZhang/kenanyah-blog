@@ -24,20 +24,7 @@ RUN pnpm install --frozen-lockfile
 RUN cd apps/api && npx prisma generate
 
 # Build TypeScript (generate JS output)
-# Print helpful debug info if `dist/` is not produced.
-RUN set -eux; \
-  cd apps/api; \
-  echo "[build] pwd=$(pwd)"; \
-  echo "[build] tsconfig.build.json exists?"; \
-  test -f tsconfig.build.json; \
-  echo "[build] typescript version:"; \
-  npx tsc -v; \
-  echo "[build] compiling (and listing emitted files)"; \
-  npx tsc -p tsconfig.build.json --pretty false --listEmittedFiles; \
-  echo "[build] dist listing:"; \
-  ls -la dist || true; \
-  test -d dist; \
-  test -f dist/index.js
+RUN cd apps/api && npx tsc -p tsconfig.build.json --pretty false && test -f dist/index.js
 
 # Production stage
 FROM node:20-alpine AS runner
