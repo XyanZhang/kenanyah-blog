@@ -35,6 +35,8 @@ WORKDIR /app
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/apps/api/dist ./apps/api/dist
 COPY --from=builder /app/apps/api/package.json ./apps/api/
+# Prisma CLI 加载 prisma.config.ts 时需要能解析 prisma/config，必须保留 api 的 node_modules
+COPY --from=builder /app/apps/api/node_modules ./apps/api/node_modules
 COPY --from=builder /app/apps/api/prisma ./apps/api/prisma
 # Prisma 7 需要在运行时也能读取 prisma.config.ts 来获得 datasource.url
 COPY --from=builder /app/apps/api/prisma.config.ts ./apps/api/
