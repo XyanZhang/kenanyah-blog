@@ -35,6 +35,8 @@ WORKDIR /app
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/apps/api/dist ./apps/api/dist
 COPY --from=builder /app/apps/api/package.json ./apps/api/
+# 运行时 node dist/index.js 需要能解析 @hono/node-server 等依赖（pnpm 放在 api 的 node_modules）
+COPY --from=builder /app/apps/api/node_modules ./apps/api/node_modules
 COPY --from=builder /app/apps/api/prisma ./apps/api/prisma
 # 生产环境只用 .cjs，避免在容器内加载 .ts 或 prisma/config
 COPY --from=builder /app/apps/api/prisma.config.cjs ./apps/api/
