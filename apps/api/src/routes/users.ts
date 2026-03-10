@@ -8,7 +8,12 @@ import {
 } from '@blog/validation'
 import { NotFoundError, ForbiddenError } from '../middleware/error'
 
-const users = new Hono()
+type UserVariables = {
+  validatedBody: unknown
+  user: { userId: string; role: string }
+}
+
+const users = new Hono<{ Variables: UserVariables }>()
 
 // Get user by username
 users.get('/:username', async (c) => {

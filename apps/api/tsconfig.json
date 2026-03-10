@@ -10,8 +10,8 @@
     "types": ["node"],
     "resolveJsonModule": true,
     "allowSyntheticDefaultImports": true,
-    "skipLibCheck": true
-    "noEmit": true,
+    "skipLibCheck": true,
+    "noEmit": true
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist", "**/*.test.ts"]

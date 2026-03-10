@@ -1,10 +1,11 @@
 import type { Context, Next } from 'hono'
+import type { ContentfulStatusCode } from 'hono/utils/http-status'
 import { ZodError } from 'zod'
 import { logger } from '../lib/logger'
 
 export class AppError extends Error {
   constructor(
-    public statusCode: number,
+    public statusCode: ContentfulStatusCode,
     message: string,
     public code?: string
   ) {

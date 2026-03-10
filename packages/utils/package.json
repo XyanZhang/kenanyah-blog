@@ -17,6 +17,7 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
+    "@blog/types": "workspace:*",
     "date-fns": "^4.1.0"
   },
   "devDependencies": {

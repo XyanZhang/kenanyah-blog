@@ -11,7 +11,12 @@ import {
 import { generateSlug } from '@blog/utils'
 import { NotFoundError, ConflictError } from '../middleware/error'
 
-const categories = new Hono()
+type CategoryVariables = {
+  validatedBody: unknown
+  user: { userId: string }
+}
+
+const categories = new Hono<{ Variables: CategoryVariables }>()
 
 // List all categories
 categories.get('/', async (c) => {

@@ -10,7 +10,12 @@ import {
 } from '@blog/validation'
 import { NotFoundError, ForbiddenError } from '../middleware/error'
 
-const comments = new Hono()
+type CommentVariables = {
+  validatedBody: unknown
+  user: { userId: string; role: string }
+}
+
+const comments = new Hono<{ Variables: CommentVariables }>()
 
 // Get comments for a post
 comments.get('/post/:postId', async (c) => {

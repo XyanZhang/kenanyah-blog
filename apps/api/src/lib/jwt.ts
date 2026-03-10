@@ -14,14 +14,15 @@ export interface TokenPair {
 
 export function generateAccessToken(payload: JwtPayload): string {
   const options: SignOptions = {
-    expiresIn: env.JWT_EXPIRES_IN as string,
+    // jsonwebtoken v9 types only accept `number | StringValue`
+    expiresIn: env.JWT_EXPIRES_IN as unknown as SignOptions['expiresIn'],
   }
   return jwt.sign(payload, env.JWT_SECRET, options)
 }
 
 export function generateRefreshToken(payload: JwtPayload): string {
   const options: SignOptions = {
-    expiresIn: env.JWT_REFRESH_EXPIRES_IN as string,
+    expiresIn: env.JWT_REFRESH_EXPIRES_IN as unknown as SignOptions['expiresIn'],
   }
   return jwt.sign(payload, env.JWT_REFRESH_SECRET, options)
 }
