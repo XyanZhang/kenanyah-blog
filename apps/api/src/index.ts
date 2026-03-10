@@ -83,5 +83,6 @@ logger.info({ msg: 'Server started', port, env: env.NODE_ENV })
 
 serve({
   fetch: app.fetch,
+  hostname: '0.0.0.0',
   port,
 })
