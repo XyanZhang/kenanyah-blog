@@ -36,12 +36,9 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-    # === IP 访问模式：暴露端口 ===
-    ports:
-      - '3001:3001'
-    # === 域名访问模式：注释上面 ports，取消下面注释 ===
-    # expose:
-    #   - '3001'
+    # === 域名访问模式（Docker Nginx 反代）：不直接暴露端口 ===
+    expose:
+      - '3001'
     environment:
       NODE_ENV: production
       PORT: 3001
@@ -86,38 +83,35 @@ services:
     restart: unless-stopped
     depends_on:
       - api
-    # === IP 访问模式：暴露端口 ===
-    ports:
-      - '3000:3000'
-    # === 域名访问模式：注释上面 ports，取消下面注释 ===
-    # expose:
-    #   - '3000'
+    # === 域名访问模式（Docker Nginx 反代）：不直接暴露端口 ===
+    expose:
+      - '3000'
     environment:
       NODE_ENV: production
       PORT: 3000
-      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3001}
-      NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
+      # 通过 nginx 统一入口，建议使用相对路径，避免浏览器直连 3001
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-/api}
+      NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-/}
       NEXT_PUBLIC_APP_NAME: ${NEXT_PUBLIC_APP_NAME:-Blog}
     networks:
       - blog-network
 
-  # === IP 访问模式：注释掉 nginx 服务 ===
-  # === 域名访问模式：取消注释 ===
-  # nginx:
-  #   image: nginx:alpine
-  #   container_name: blog-nginx
-  #   restart: unless-stopped
-  #   depends_on:
-  #     - web
-  #     - api
-  #   ports:
-  #     - '80:80'
-  #     - '443:443'
-  #   volumes:
-  #     - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-  #     - ./nginx/ssl:/etc/nginx/ssl:ro
-  #   networks:
-  #     - blog-network
+  nginx:
+    image: nginx:alpine
+    container_name: blog-nginx
+    restart: unless-stopped
+    depends_on:
+      - web
+      - api
+    ports:
+      - '80:80'
+      # 如需 HTTPS：准备证书后再打开 443 并按 nginx.conf 配置
+      # - '443:443'
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+    networks:
+      - blog-network
 
 volumes:
   postgres_prod_data:
