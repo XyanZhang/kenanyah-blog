@@ -14,7 +14,12 @@ import {
 } from '@blog/validation'
 import { ConflictError, UnauthorizedError, BadRequestError } from '../middleware/error'
 
-const auth = new Hono()
+type AuthVariables = {
+  validatedBody: unknown
+  user: { userId: string }
+}
+
+const auth = new Hono<{ Variables: AuthVariables }>()
 
 // Rate limiting for auth endpoints
 const authRateLimit = rateLimit({

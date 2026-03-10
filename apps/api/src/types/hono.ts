@@ -1,4 +1,4 @@
-import type { Context, Next } from 'hono'
+import type { Context } from 'hono'
 import type { JwtPayload } from '../lib/jwt'
 
 // 定义 Hono 的变量类型
@@ -8,8 +8,12 @@ export type HonoVariables = {
   validatedQuery: unknown
 }
 
+export type ApiEnv = {
+  Variables: HonoVariables
+}
+
 // 类型化的 Context
-export type AppContext = Context<HonoVariables>
+export type AppContext = Context<ApiEnv>
 
 // 辅助函数：获取验证后的 body
 export function getValidatedBody<T>(c: AppContext): T {

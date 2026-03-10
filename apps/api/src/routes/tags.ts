@@ -11,7 +11,12 @@ import {
 import { generateSlug } from '@blog/utils'
 import { NotFoundError, ConflictError } from '../middleware/error'
 
-const tags = new Hono()
+type TagVariables = {
+  validatedBody: unknown
+  user: { userId: string; role: string }
+}
+
+const tags = new Hono<{ Variables: TagVariables }>()
 
 // List all tags
 tags.get('/', async (c) => {
@@ -128,12 +133,15 @@ tags.patch(
       throw new NotFoundError('Tag not found')
     }
 
+    const updateData: { name?: string; slug?: string } = {}
+    if (data.name !== undefined) {
+      updateData.name = data.name
+      updateData.slug = generateSlug(data.name)
+    }
+
     const tag = await prisma.tag.update({
       where: { id },
-      data: {
-        name: data.name,
-        slug: generateSlug(data.name),
-      },
+      data: updateData,
     })
 
     return c.json({

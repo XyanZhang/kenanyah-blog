@@ -1,6 +1,6 @@
 import { Hono } from 'hono'
 import { prisma } from '../lib/db'
-import { authMiddleware, requireRole } from '../middleware/auth'
+import { authMiddleware } from '../middleware/auth'
 import { validateBody, validateQuery } from '../middleware/validation'
 import {
   createPostSchema,
@@ -14,7 +14,13 @@ import { generateSlug } from '@blog/utils'
 import { NotFoundError, ForbiddenError } from '../middleware/error'
 import { indexPost, removePostFromIndex } from '../lib/semantic-search'
 
-const posts = new Hono()
+type PostVariables = {
+  validatedBody: unknown
+  validatedQuery: unknown
+  user: { userId: string; role: string }
+}
+
+const posts = new Hono<{ Variables: PostVariables }>()
 
 // List posts
 posts.get('/', validateQuery(postQuerySchema), async (c) => {
@@ -211,24 +217,25 @@ posts.post('/', authMiddleware, validateBody(createPostSchema), async (c) => {
   const data = c.get('validatedBody') as CreatePostInput
   const { userId } = c.get('user')
 
-  const slug = generateSlug(data.title)
+  let slugToUse = generateSlug(data.title)
+  if (!slugToUse) {
+    // 纯中文等标题可能生成空 slug；用时间戳兜底
+    slugToUse = `post-${Date.now()}`
+  }
 
   // Check if slug already exists
   const existingPost = await prisma.post.findUnique({
-    where: { slug },
+    where: { slug: slugToUse },
   })
 
   if (existingPost) {
     // Append timestamp to make it unique
-    const uniqueSlug = `${slug}-${Date.now()}`
-    data.slug = uniqueSlug
-  } else {
-    data.slug = slug
+    slugToUse = `${slugToUse}-${Date.now()}`
   }
 
   const post = await prisma.post.create({
     data: {
-      slug: data.slug,
+      slug: slugToUse,
       title: data.title,
       excerpt: data.excerpt,
       content: data.content,

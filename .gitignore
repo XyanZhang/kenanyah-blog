@@ -57,3 +57,5 @@ backups/
 *.pem
 *.log
 .cache/
+
+.pnpm-store/
