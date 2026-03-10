@@ -83,7 +83,8 @@ export async function exchangeCodeForToken(
     throw new Error('Failed to exchange code for token')
   }
 
-  return response.json()
+  const data = (await response.json()) as OAuthTokenResponse
+  return data
 }
 
 export async function fetchUserInfo(
@@ -101,24 +102,24 @@ export async function fetchUserInfo(
     throw new Error('Failed to fetch user info')
   }
 
-  const data = await response.json()
+  const data = (await response.json()) as Record<string, unknown>
 
   // Normalize user info based on provider
   if (provider.name === 'google') {
     return {
-      id: data.id,
-      email: data.email,
-      name: data.name,
-      avatar: data.picture,
+      id: data.id as string,
+      email: data.email as string,
+      name: data.name as string | undefined,
+      avatar: data.picture as string | undefined,
     }
   }
 
   if (provider.name === 'github') {
     return {
-      id: data.id.toString(),
-      email: data.email,
-      name: data.name || data.login,
-      avatar: data.avatar_url,
+      id: String(data.id),
+      email: data.email as string,
+      name: (data.name as string) || (data.login as string),
+      avatar: data.avatar_url as string | undefined,
     }
   }
 
