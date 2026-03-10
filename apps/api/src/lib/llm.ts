@@ -4,14 +4,6 @@ import { env } from '../env'
 
 let chatModel: ChatOpenAI | null = null
 
-/**
- * 规范化 baseURL：去掉末尾斜线，并确保带 /v1（OpenAI 兼容接口通常需要）。
- * 若已包含 /v1 则不再重复添加。
- */
-function normalizeBaseUrl(url: string): string {
-  return url
-}
-
 function getChatModel(): ChatOpenAI | null {
   if (!env.OPENAI_API_KEY) {
     return null
