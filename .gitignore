@@ -47,6 +47,7 @@ lerna-debug.log*
 # Prisma
 *.db
 *.db-journal
+apps/api/src/generated/
 
 # Uploads (generated images)
 apps/api/uploads/

@@ -1,10 +1,15 @@
-import pkg from '@prisma/client'
+import { PrismaClient } from '../generated/prisma/client.js'
+import { PrismaPg } from '@prisma/adapter-pg'
+import { env } from '../env.js'
 
-const { PrismaClient } = pkg
+const adapter = new PrismaPg({
+  connectionString: env.DATABASE_URL,
+})
 
 const prismaClientSingleton = () => {
   return new PrismaClient({
-    log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
+    adapter,
+    log: env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
   })
 }
 
@@ -15,6 +20,6 @@ declare global {
 
 export const prisma = globalThis.prismaGlobal ?? prismaClientSingleton()
 
-if (process.env.NODE_ENV !== 'production') {
+if (env.NODE_ENV !== 'production') {
   globalThis.prismaGlobal = prisma
 }
