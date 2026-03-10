@@ -57,6 +57,25 @@ pnpm dev
 
 ## Database Management
 
+### 导出/导入备份
+
+```bash
+# 导出 blog_dev 到 backups/ 目录（带时间戳的 .sql 文件）
+pnpm db:export
+
+# 导出为压缩格式 (.dump，体积更小，适合迁移）
+pnpm db:export:custom
+
+# 仅导出表结构（不含数据）
+pnpm db:export:schema
+
+# 从备份恢复（会提示确认）
+pnpm db:import backups/blog_dev_20250305_120000.sql
+
+# 跳过确认直接导入（用于脚本自动化）
+pnpm db:import backups/blog_dev_20250305_120000.sql -y
+```
+
 ### Access PostgreSQL CLI
 
 ```bash

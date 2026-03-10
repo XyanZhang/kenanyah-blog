@@ -50,6 +50,9 @@ lerna-debug.log*
 # Uploads (generated images)
 apps/api/uploads/
 
+# Database backups
+backups/
+
 # Misc
 *.pem
 *.log
