@@ -2,8 +2,13 @@
 FROM node:20-alpine AS builder
 
 WORKDIR /app
+# Use a registry mirror in restricted networks (e.g. CN servers)
+ENV COREPACK_NPM_REGISTRY=https://registry.npmmirror.com
 # Install pnpm
 RUN corepack enable && corepack prepare pnpm@9.15.4 --activate
+
+# Ensure npm/pnpm also use the same registry during build
+RUN npm config set registry https://registry.npmmirror.com && pnpm config set registry https://registry.npmmirror.com
 
 WORKDIR /app
 # Copy workspace config
