@@ -1,0 +1,112 @@
+# Local Test Environment Docker Compose
+# Usage: docker-compose -f docker-compose.test.yml --env-file .env.test up -d
+#
+# 本地测试环境：模拟生产环境结构，但使用本地配置
+# - 数据库名: blog_test_env
+# - 端口: 3010 (web), 3011 (api), 5434 (postgres)
+# - 适用于本地完整部署测试
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: blog-postgres-test-env
+    restart: unless-stopped
+    ports:
+      - '5434:5432'
+    environment:
+      POSTGRES_USER: ${DB_USER:-blog_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-blog_password}
+      POSTGRES_DB: ${DB_NAME:-blog_test_env}
+      POSTGRES_INITDB_ARGS: '--encoding=UTF-8 --lc-collate=C --lc-ctype=C'
+    volumes:
+      - postgres_test_env_data:/var/lib/postgresql/data
+      - ./apps/api/prisma/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${DB_USER:-blog_user} -d ${DB_NAME:-blog_test_env}']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - blog-test-network
+
+  # API Service (Hono)
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    container_name: blog-api-test-env
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - '3011:3001'
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      DATABASE_URL: postgresql://${DB_USER:-blog_user}:${DB_PASSWORD:-blog_password}@postgres:5432/${DB_NAME:-blog_test_env}?schema=public
+      JWT_SECRET: ${JWT_SECRET:?JWT secret required}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?JWT refresh secret required}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-15m}
+      JWT_REFRESH_EXPIRES_IN: ${JWT_REFRESH_EXPIRES_IN:-7d}
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3010}
+      # OAuth (optional)
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI:-}
+      GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID:-}
+      GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET:-}
+      GITHUB_REDIRECT_URI: ${GITHUB_REDIRECT_URI:-}
+      # AI Services
+      OPENAI_BASE_URL: ${OPENAI_BASE_URL:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_MODEL: ${OPENAI_MODEL:-}
+      EMBEDDINGS_BASE_URL: ${EMBEDDINGS_BASE_URL:-}
+      EMBEDDINGS_API_KEY: ${EMBEDDINGS_API_KEY:-}
+      EMBEDDINGS_MODEL_NAME: ${EMBEDDINGS_MODEL_NAME:-}
+      # Dashscope (for image generation)
+      DASHSCOPE_BASE_URL: ${DASHSCOPE_BASE_URL:-}
+      DASHSCOPE_API_KEY: ${DASHSCOPE_API_KEY:-}
+      DASHSCOPE_MODEL_NAME: ${DASHSCOPE_MODEL_NAME:-}
+      # Upload
+      UPLOAD_DIR: /app/apps/api/uploads
+      UPLOAD_BASE_URL: ${UPLOAD_BASE_URL:-http://localhost:3011}
+    volumes:
+      - uploads_test_env_data:/app/apps/api/uploads
+    networks:
+      - blog-test-network
+
+  # Web Service (Next.js)
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3011}
+        NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-http://localhost:3010}
+        NEXT_PUBLIC_APP_NAME: ${NEXT_PUBLIC_APP_NAME:-Blog (Test Env)}
+    container_name: blog-web-test-env
+    restart: unless-stopped
+    depends_on:
+      - api
+    ports:
+      - '3010:3000'
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3011}
+      NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-http://localhost:3010}
+      NEXT_PUBLIC_APP_NAME: ${NEXT_PUBLIC_APP_NAME:-Blog (Test Env)}
+    networks:
+      - blog-test-network
+
+volumes:
+  postgres_test_env_data:
+    driver: local
+  uploads_test_env_data:
+    driver: local
+
+networks:
+  blog-test-network:
+    driver: bridge
