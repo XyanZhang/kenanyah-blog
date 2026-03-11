@@ -168,7 +168,7 @@ export default function PostPage() {
               fill
               className="object-cover"
               sizes="(max-width: 768px) 100vw, 672px"
-              unoptimized={post.coverImage?.startsWith('blob:')}
+              unoptimized
               priority
             />
           </div>
