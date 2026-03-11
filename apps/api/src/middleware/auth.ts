@@ -24,8 +24,9 @@ export async function authMiddleware(c: Context, next: Next) {
     }
 
     if (!token) {
-      // 开发环境写死默认用户，便于本地发布文章等操作（优先 admin@blog.com，否则任意第一个用户）
-      if (process.env.NODE_ENV === 'development') {
+      // 开发/测试环境写死默认用户，便于本地发布文章等操作（优先 admin@blog.com，否则任意第一个用户）
+      const isDevOrTest = process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test'
+      if (isDevOrTest) {
         if (!devDefaultUser) {
           const user =
             (await prisma.user.findUnique({
@@ -50,7 +51,7 @@ export async function authMiddleware(c: Context, next: Next) {
         {
           success: false,
           error:
-            process.env.NODE_ENV === 'development'
+            isDevOrTest
               ? 'Authentication required. Run: pnpm db:seed (or create a user in DB) for dev fallback.'
               : 'Authentication required',
         },
