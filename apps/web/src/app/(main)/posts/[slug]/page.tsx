@@ -21,6 +21,21 @@ type PostDetail = {
   author: { username: string; name: string | null; avatar: string | null }
 }
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
+
+function normalizeImageUrl(url: string | null): string | null {
+  if (!url) return null
+  // 已经是完整 URL 或 blob URL，直接返回
+  if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('blob:')) {
+    return url
+  }
+  // 相对路径，拼接 API 基础 URL
+  if (url.startsWith('/')) {
+    return `${API_BASE_URL.replace(/\/$/, '')}${url}`
+  }
+  return url
+}
+
 function formatDate(iso: string) {
   const d = new Date(iso)
   return d.toLocaleDateString('zh-CN', {
@@ -145,15 +160,15 @@ export default function PostPage() {
           )}
         </header>
 
-        {post.coverImage && (
+        {normalizeImageUrl(post.coverImage) && (
           <div className="relative w-full aspect-video bg-surface-tertiary">
             <Image
-              src={post.coverImage}
+              src={normalizeImageUrl(post.coverImage)!}
               alt=""
               fill
               className="object-cover"
               sizes="(max-width: 768px) 100vw, 672px"
-              unoptimized={post.coverImage.startsWith('blob:')}
+              unoptimized={post.coverImage?.startsWith('blob:')}
               priority
             />
           </div>
