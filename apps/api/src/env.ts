@@ -17,10 +17,10 @@ const envSchema = z.object({
   JWT_REFRESH_EXPIRES_IN: z.string().default('7d'),
   GOOGLE_CLIENT_ID: z.string().optional(),
   GOOGLE_CLIENT_SECRET: z.string().optional(),
-  GOOGLE_REDIRECT_URI: z.string().url().optional(),
+  GOOGLE_REDIRECT_URI: z.string().optional().refine((val) => !val || z.string().url().safeParse(val).success),
   GITHUB_CLIENT_ID: z.string().optional(),
   GITHUB_CLIENT_SECRET: z.string().optional(),
-  GITHUB_REDIRECT_URI: z.string().url().optional(),
+  GITHUB_REDIRECT_URI: z.string().optional().refine((val) => !val || z.string().url().safeParse(val).success),
   CORS_ORIGIN: z.string().default('http://localhost:3000'),
   // LLM：若 Key 以 cr_ 开头多为代理 Key，需用代理的 BASE_URL，不能填 api.deepseek.com
   OPENAI_API_KEY: z.string().min(1).optional(),

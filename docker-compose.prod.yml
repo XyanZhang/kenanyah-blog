@@ -1,5 +1,5 @@
 # Production Docker Compose
-# Usage: docker-compose -f docker-compose.prod.yml up -d
+# Usage: docker-compose -f docker-compose.prod.yml --env-file .env.prod up -d
 #
 # 通过 IP 访问模式：直接暴露端口，不使用 Nginx
 # 通过域名访问模式：取消注释 nginx 服务，注释掉 web/api 的 ports
@@ -79,6 +79,10 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.web
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3001}
+        NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
+        NEXT_PUBLIC_APP_NAME: ${NEXT_PUBLIC_APP_NAME:-Blog}
     container_name: blog-web-prod
     restart: unless-stopped
     depends_on:
