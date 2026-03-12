@@ -4,9 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "tsx watch --env-file=.env src/index.ts",
+    "dev": "node ../../scripts/dev.js api",
     "build": "prisma generate && tsc --build",
-    "start": "node --env-file=.env dist/index.js",
+    "start": "node --env-file=../../.env.test dist/index.js",
     "type-check": "tsc --noEmit",
     "test": "vitest",
     "test:coverage": "vitest --coverage",
@@ -15,9 +15,9 @@
     "prisma:reset": "prisma migrate reset --force",
     "prisma:push": "prisma db push",
     "prisma:studio": "prisma studio",
-    "prisma:seed": "tsx --env-file=.env prisma/seed.ts",
-    "index-posts": "tsx --env-file=.env scripts/index-all-posts.ts",
-    "check-embeddings": "tsx --env-file=.env scripts/check-embeddings.ts"
+    "prisma:seed": "tsx --env-file=../../.env.test prisma/seed.ts",
+    "index-posts": "tsx --env-file=../../.env.test scripts/index-all-posts.ts",
+    "check-embeddings": "tsx --env-file=../../.env.test scripts/check-embeddings.ts"
   },
   "dependencies": {
     "@blog/types": "workspace:*",

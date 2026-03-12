@@ -3,9 +3,12 @@ import { fileURLToPath } from 'node:url'
 import { config } from 'dotenv'
 import { z } from 'zod'
 
-// 显式加载 apps/api/.env，避免从 monorepo 根目录或其它 cwd 启动时读不到配置
+// 如果 process.env 中已有配置（如通过 --env-file 加载），则不重复加载
+// 否则尝试加载 apps/api/.env
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
-config({ path: path.resolve(__dirname, '..', '.env') })
+if (!process.env.DATABASE_URL) {
+  config({ path: path.resolve(__dirname, '..', '.env') })
+}
 
 const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
