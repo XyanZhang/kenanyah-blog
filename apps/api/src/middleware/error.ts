@@ -44,6 +44,12 @@ export class ConflictError extends AppError {
   }
 }
 
+export class TooManyRequestsError extends AppError {
+  constructor(message = 'Too many requests') {
+    super(429, message, 'TOO_MANY_REQUESTS')
+  }
+}
+
 export async function errorHandler(c: Context, next: Next) {
   try {
     await next()

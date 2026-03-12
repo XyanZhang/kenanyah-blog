@@ -249,16 +249,17 @@
         "type": "image",
         "size": "custom",
         "borderRadius": 40,
-        "padding": 24,
+        "padding": 8,
         "config": {
           "src": "/images/avatar/avatar-pink.png",
           "alt": "Cover Image",
           "objectFit": "cover",
-          "showOverlay": false
+          "showOverlay": false,
+          "hideCardContainer": false
         },
         "visible": true,
         "createdAt": "2026-03-04T09:33:55.350Z",
-        "updatedAt": "2026-03-04T09:34:06.757Z",
+        "updatedAt": "2026-03-04T10:24:13.091Z",
         "position": {
           "x": 404.05528947866225,
           "y": 238.01564141044435,
@@ -268,11 +269,33 @@
           "width": 188.890625,
           "height": 174.8984375
         }
+      },
+      {
+        "id": "wooden_fish-1772617754205-dl7co98r9",
+        "type": "wooden_fish",
+        "size": "custom",
+        "borderRadius": 14,
+        "padding": 0,
+        "config": {
+          "hideCardContainer": true
+        },
+        "visible": true,
+        "createdAt": "2026-03-04T09:49:14.205Z",
+        "updatedAt": "2026-03-04T09:56:45.303Z",
+        "position": {
+          "x": 1157.8589176484215,
+          "y": 740.5202506062034,
+          "z": 9
+        },
+        "customDimensions": {
+          "width": 148.8203125,
+          "height": 179.75390625
+        }
       }
     ],
     "version": 2,
     "createdAt": "2026-02-26T07:07:19.685Z",
-    "updatedAt": "2026-03-04T09:34:06.757Z"
+    "updatedAt": "2026-03-04T10:24:13.091Z"
   },
   "nav": {
     "horizontalPosition": {
@@ -280,8 +303,8 @@
       "y": 0
     },
     "verticalPosition": {
-      "x": -257.279541015625,
-      "y": -209.5864715576172
+      "x": -177.158447265625,
+      "y": -352.04722595214844
     },
     "layout": "auto",
     "customSize": null,

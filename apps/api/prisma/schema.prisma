@@ -19,19 +19,26 @@ enum AuthProvider {
   github
 }
 
+enum VerificationCodeType {
+  LOGIN
+  REGISTER
+  RESET_PASSWORD
+}
+
 model User {
-  id           String       @id @default(cuid())
-  email        String       @unique
-  username     String       @unique
-  passwordHash String?
-  name         String?
-  bio          String?
-  avatar       String?
-  role         UserRole     @default(USER)
-  provider     AuthProvider @default(local)
-  providerId   String?
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
+  id            String       @id @default(cuid())
+  email         String       @unique
+  username      String       @unique
+  passwordHash  String?
+  name          String?
+  bio           String?
+  avatar        String?
+  role          UserRole     @default(USER)
+  provider      AuthProvider @default(local)
+  providerId    String?
+  emailVerified DateTime?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
 
   posts    Post[]
   comments Comment[]
@@ -39,6 +46,21 @@ model User {
   @@index([email])
   @@index([username])
   @@map("users")
+}
+
+model VerificationCode {
+  id        String                @id @default(cuid())
+  email     String
+  code      String
+  type      VerificationCodeType
+  attempts  Int                   @default(0)
+  expiresAt DateTime
+  createdAt DateTime              @default(now())
+  usedAt    DateTime?
+
+  @@index([email, type])
+  @@index([expiresAt])
+  @@map("verification_codes")
 }
 
 model Post {

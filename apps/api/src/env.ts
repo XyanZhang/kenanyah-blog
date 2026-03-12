@@ -47,6 +47,21 @@ const envSchema = z.object({
     .url()
     .optional(), // 访问 URL 前缀，默认 http://localhost:${PORT}；OSS 时填 CDN 域名
   LOG_LEVEL: z.enum(['trace', 'debug', 'info', 'warn', 'error', 'fatal']).optional(),
+  // SMTP 邮件服务配置
+  SMTP_HOST: z.string().min(1).optional(),
+  SMTP_PORT: z.string().default('587'),
+  SMTP_SECURE: z
+    .string()
+    .default('false')
+    .transform((val) => val === 'true'),
+  SMTP_USER: z.string().min(1).optional(),
+  SMTP_PASS: z.string().min(1).optional(),
+  SMTP_FROM: z.string().optional(), // 发件人地址，默认使用 SMTP_USER
+  // 验证码配置
+  VERIFICATION_CODE_LENGTH: z.string().default('6'),
+  VERIFICATION_CODE_EXPIRY_MINUTES: z.string().default('10'),
+  VERIFICATION_CODE_MAX_ATTEMPTS: z.string().default('5'),
+  VERIFICATION_CODE_RESEND_COOLDOWN_SECONDS: z.string().default('60'),
 })
 
 export type Env = z.infer<typeof envSchema>

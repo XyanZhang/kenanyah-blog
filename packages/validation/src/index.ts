@@ -12,8 +12,14 @@ export {
 export {
   loginSchema,
   registerSchema,
+  sendCodeSchema,
+  verifyCodeSchema,
+  setupProfileSchema,
   type LoginInput,
   type RegisterInput,
+  type SendCodeInput,
+  type VerifyCodeInput,
+  type SetupProfileInput,
 } from './auth'
 
 // Post validation
