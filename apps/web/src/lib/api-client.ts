@@ -7,9 +7,9 @@ import ky from 'ky'
  */
 export function getApiBaseUrl(): string {
   if (typeof window !== 'undefined') {
-    // Browser: use relative path in production, full URL in development
+    // Browser: use /api prefix in production (nginx routes /api to backend)
     if (process.env.NODE_ENV === 'production') {
-      return '' // Relative path - nginx handles routing
+      return '/api'
     }
   }
   // Server-side or development: use full URL
