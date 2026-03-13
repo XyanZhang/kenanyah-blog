@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react'
 import { PenLine, Loader2 } from 'lucide-react'
 import { BlogEditor, type BlogEditorInitialData } from '@/components/blog/BlogEditor'
 import { HTTPError } from 'ky'
-import { apiClient } from '@/lib/api-client'
+import { apiClient, getApiBaseUrl } from '@/lib/api-client'
 import type { ApiResponse } from '@/lib/api-client'
 
 type PostDetail = {
@@ -67,7 +67,7 @@ export default function BlogEditPage() {
   }) => {
     if (!id) return
     setSubmitError(null)
-    const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
+    const API_BASE = getApiBaseUrl()
     let coverValue: string | undefined
     if (data.coverImage) {
       if (data.coverImage.startsWith('http')) {

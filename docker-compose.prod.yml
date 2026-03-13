@@ -1,8 +1,9 @@
 # Production Docker Compose
 # Usage: docker-compose -f docker-compose.prod.yml --env-file .env.prod up -d
 #
-# 通过 IP 访问模式：直接暴露端口，不使用 Nginx
-# 通过域名访问模式：取消注释 nginx 服务，注释掉 web/api 的 ports
+# Domain: xyan.store
+# - Frontend: https://xyan.store
+# - API: https://xyan.store/api
 
 services:
   # PostgreSQL Database
@@ -36,9 +37,9 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-    # === IP 访问模式：直接暴露端口，浏览器访问 http://IP:3001 ===
-    ports:
-      - '3001:3001'
+    # Not exposed externally - accessed via nginx
+    expose:
+      - '3001'
     environment:
       NODE_ENV: production
       PORT: 3001
@@ -47,7 +48,7 @@ services:
       JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?JWT refresh secret required}
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-15m}
       JWT_REFRESH_EXPIRES_IN: ${JWT_REFRESH_EXPIRES_IN:-7d}
-      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3000}
+      CORS_ORIGIN: ${HOST:-https://www.xyan.store}
       # OAuth (optional)
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
@@ -68,7 +69,19 @@ services:
       DASHSCOPE_MODEL_NAME: ${DASHSCOPE_MODEL_NAME:-}
       # Upload
       UPLOAD_DIR: /app/apps/api/uploads
-      UPLOAD_BASE_URL: ${UPLOAD_BASE_URL:-http://localhost:3001}
+      UPLOAD_BASE_URL: ${HOST:-https://www.xyan.store}
+      # SMTP
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_SECURE: ${SMTP_SECURE:-false}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      SMTP_FROM: ${SMTP_FROM:-}
+      # Verification Code
+      VERIFICATION_CODE_LENGTH: ${VERIFICATION_CODE_LENGTH:-6}
+      VERIFICATION_CODE_EXPIRY_MINUTES: ${VERIFICATION_CODE_EXPIRY_MINUTES:-10}
+      VERIFICATION_CODE_MAX_ATTEMPTS: ${VERIFICATION_CODE_MAX_ATTEMPTS:-5}
+      VERIFICATION_CODE_RESEND_COOLDOWN_SECONDS: ${VERIFICATION_CODE_RESEND_COOLDOWN_SECONDS:-60}
     volumes:
       - uploads_data:/app/apps/api/uploads
     networks:
@@ -80,42 +93,42 @@ services:
       context: .
       dockerfile: Dockerfile.web
       args:
-        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3001}
-        NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
+        NEXT_PUBLIC_API_URL: ${HOST:-https://www.xyan.store}/api
+        NEXT_PUBLIC_APP_URL: ${HOST:-https://www.xyan.store}
         NEXT_PUBLIC_APP_NAME: ${NEXT_PUBLIC_APP_NAME:-Blog}
     container_name: blog-web-prod
     restart: unless-stopped
     depends_on:
       - api
-    # === IP 访问模式：直接暴露端口，浏览器访问 http://IP:3000 ===
-    ports:
-      - '3000:3000'
+    # Not exposed externally - accessed via nginx
+    expose:
+      - '3000'
     environment:
       NODE_ENV: production
       PORT: 3000
-      # 直连模式：在 .env.prod 中设置 NEXT_PUBLIC_API_URL=http://你的服务器IP:3001
-      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3001}
-      NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
+      NEXT_PUBLIC_API_URL: ${HOST:-https://www.xyan.store}/api
+      NEXT_PUBLIC_APP_URL: ${HOST:-https://www.xyan.store}
       NEXT_PUBLIC_APP_NAME: ${NEXT_PUBLIC_APP_NAME:-Blog}
     networks:
       - blog-network
 
-  # === IP 访问模式：不启用 nginx；改用域名+HTTPS 时取消下面注释并注释掉 web/api 的 ports ===
-  # nginx:
-  #   image: nginx:alpine
-  #   container_name: blog-nginx
-  #   restart: unless-stopped
-  #   depends_on:
-  #     - web
-  #     - api
-  #   ports:
-  #     - '80:80'
-  #     # - '443:443'
-  #   volumes:
-  #     - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-  #     - ./nginx/ssl:/etc/nginx/ssl:ro
-  #   networks:
-  #     - blog-network
+  # Nginx reverse proxy
+  nginx:
+    image: nginx:alpine
+    container_name: blog-nginx
+    restart: unless-stopped
+    depends_on:
+      - web
+      - api
+    ports:
+      - '80:80'
+      - '443:443'
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+      - ./nginx/certbot:/var/www/certbot:ro
+    networks:
+      - blog-network
 
 volumes:
   postgres_prod_data:

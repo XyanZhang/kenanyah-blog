@@ -19,7 +19,8 @@ import search from './routes/search'
 import home from './routes/home'
 import uploads from './routes/uploads'
 
-const app = new Hono()
+// Use /api as base path for production deployment behind nginx
+const app = new Hono().basePath('/api')
 
 // Global middleware
 app.use('*', requestLogger)

@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react'
 import ReactMarkdown from 'react-markdown'
 import Image from 'next/image'
 import { ArrowLeft, Pencil } from 'lucide-react'
-import { apiClient } from '@/lib/api-client'
+import { apiClient, getApiBaseUrl } from '@/lib/api-client'
 import type { ApiResponse } from '@/lib/api-client'
 
 type PostDetail = {
@@ -21,8 +21,6 @@ type PostDetail = {
   author: { username: string; name: string | null; avatar: string | null }
 }
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
-
 function normalizeImageUrl(url: string | null): string | null {
   if (!url) return null
   // 已经是完整 URL 或 blob URL，直接返回
@@ -31,7 +29,8 @@ function normalizeImageUrl(url: string | null): string | null {
   }
   // 相对路径，拼接 API 基础 URL
   if (url.startsWith('/')) {
-    return `${API_BASE_URL.replace(/\/$/, '')}${url}`
+    const apiBase = getApiBaseUrl()
+    return `${apiBase.replace(/\/$/, '')}${url}`
   }
   return url
 }
