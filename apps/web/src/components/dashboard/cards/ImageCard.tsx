@@ -1,6 +1,5 @@
 'use client'
 
-import Image from 'next/image'
 import { DashboardCard, ImageCardConfig } from '@blog/types'
 
 interface ImageCardProps {
@@ -22,17 +21,19 @@ export function ImageCard({ card }: ImageCardProps) {
     ...config,
   }
 
+  const handleImageError = () => {
+    console.error('Image failed to load', src)
+  }
+
   const imageContent = (
     <div className="relative h-full w-full overflow-hidden">
-      <Image
+      <img
         src={src}
         alt={alt}
-        fill
-        className={`transition-transform duration-300 group-hover:scale-105 object-${objectFit}`}
+        className={`h-full w-full transition-transform duration-300 group-hover:scale-105 object-${objectFit}`}
         style={{ objectFit }}
-        onError={(e) => {
-          e.currentTarget.style.display = 'none'
-        }}
+        loading="lazy"
+        onError={handleImageError}
       />
       {showOverlay && (
         <div className="absolute inset-0 flex items-end bg-gradient-to-t from-black/60 via-transparent to-transparent p-4">
