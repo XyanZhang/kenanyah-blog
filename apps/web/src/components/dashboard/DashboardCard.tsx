@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useState, useRef, lazy, Suspense } from 'react'
+import { useCallback, useMemo, useState, useRef, lazy, Suspense } from 'react'
 import { useRouter } from 'next/navigation'
 import type { Route } from 'next'
 import { useDraggable } from '@dnd-kit/core'
@@ -123,8 +123,13 @@ export function DashboardCard({ card, animationIndex }: DashboardCardProps) {
   const hideCardContainer = card.config?.hideCardContainer ?? false
 
   // 画布坐标：card.position 为画布坐标，transform 与 positionDelta 为视口像素需除以 scale
-  const x = card.position.x + (transform?.x ?? 0) / scale + positionDelta.x / scale
-  const y = card.position.y + (transform?.y ?? 0) / scale + positionDelta.y / scale
+  const position = useMemo(
+    () => ({
+      x: card.position.x + (transform?.x ?? 0) / scale + positionDelta.x / scale,
+      y: card.position.y + (transform?.y ?? 0) / scale + positionDelta.y / scale,
+    }),
+    [card.position.x, card.position.y, transform?.x, transform?.y, scale, positionDelta.x, positionDelta.y]
+  )
 
   // Animation delay based on priority
   const animationDelay = animationIndex * 0.15
@@ -140,10 +145,10 @@ export function DashboardCard({ card, animationIndex }: DashboardCardProps) {
         borderRadius: hideCardContainer ? 0 : borderRadius,
         padding: hideCardContainer ? 0 : padding,
       }}
-      initial={{ scale: 0, opacity: 0, x, y }}
+      initial={{ scale: 0, opacity: 0, x: position.x, y: position.y }}
       animate={{
-        x,
-        y,
+        x: position.x,
+        y: position.y,
         scale: 1,
         opacity: isDragging ? 0.8 : 1,
       }}

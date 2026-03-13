@@ -15,6 +15,11 @@ import {
   CANVAS_HEIGHT,
 } from '@/lib/constants/dashboard'
 
+/** 将 Date 或 string 统一转换为 Date */
+function toDate(d: Date | string): Date {
+  return d instanceof Date ? d : new Date(d)
+}
+
 interface DashboardState {
   // State
   layout: DashboardLayout | null
@@ -259,15 +264,15 @@ export const useDashboardStore = create<DashboardState>()(
         }
         const normalizedCards = layout.cards.map((card) => ({
           ...card,
-          createdAt: card.createdAt instanceof Date ? card.createdAt : new Date(card.createdAt),
-          updatedAt: card.updatedAt instanceof Date ? card.updatedAt : new Date(card.updatedAt),
+          createdAt: toDate(card.createdAt),
+          updatedAt: toDate(card.updatedAt),
         }))
         set({
           layout: {
             ...layout,
             cards: normalizedCards,
-            createdAt: layout.createdAt instanceof Date ? layout.createdAt : new Date(layout.createdAt),
-            updatedAt: layout.updatedAt instanceof Date ? layout.updatedAt : new Date(layout.updatedAt),
+            createdAt: toDate(layout.createdAt),
+            updatedAt: toDate(layout.updatedAt),
           },
           selectedCardId: null,
         })

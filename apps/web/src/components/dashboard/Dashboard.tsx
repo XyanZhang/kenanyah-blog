@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useRef } from 'react'
+import { useCallback, useEffect, useMemo, useRef } from 'react'
 import {
   DndContext,
   DragEndEvent,
@@ -32,7 +32,7 @@ export function Dashboard() {
   const { scale, setViewportSize, translateX, translateY, setScale } = useHomeCanvasStore()
   const { config: navConfig, setConfigFromApi } = useNavStore()
   const viewportRef = useRef<HTMLDivElement>(null)
-  const hasFetchedCloudRef = useRef(false)
+  const isInitializedRef = useRef(false)
 
   // Dialog refs
   const addCardDialogRef = useRef<AddCardDialogHandle>(null)
@@ -67,10 +67,15 @@ export function Dashboard() {
     })
   }, [navConfig, scale])
 
-  // 进入首页后从云端拉取配置并覆盖本地（若存在）
+  // 初始化：先加载本地配置，再从云端拉取覆盖
   useEffect(() => {
-    if (isLoading || hasFetchedCloudRef.current) return
-    hasFetchedCloudRef.current = true
+    if (isInitializedRef.current) return
+    isInitializedRef.current = true
+
+    // 1. 先初始化本地布局
+    initializeLayout()
+
+    // 2. 再从云端拉取配置覆盖
     getHomeConfig()
       .then((data) => {
         if (!data) return
@@ -81,7 +86,7 @@ export function Dashboard() {
       .catch(() => {
         // 无配置或网络错误，保持本地/默认
       })
-  }, [isLoading, setLayout, setConfigFromApi, setScale])
+  }, [initializeLayout, setLayout, setConfigFromApi, setScale])
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -90,10 +95,6 @@ export function Dashboard() {
       },
     })
   )
-
-  useEffect(() => {
-    initializeLayout()
-  }, [initializeLayout])
 
   // 同步视口尺寸到 home canvas store，窗口缩放/resize 时更新平移使画布居中对齐
   useEffect(() => {
@@ -117,7 +118,7 @@ export function Dashboard() {
     syncSize()
   }, [setViewportSize])
 
-  const handleDragEnd = (event: DragEndEvent) => {
+  const handleDragEnd = useCallback((event: DragEndEvent) => {
     const { active, delta } = event
 
     if (delta.x !== 0 || delta.y !== 0) {
@@ -135,7 +136,31 @@ export function Dashboard() {
     }
 
     setActiveElement(null)
-  }
+  }, [scale, updateCardPosition, setActiveElement])
+
+  const cards = layout?.cards ?? []
+
+  const visibleCards = useMemo(
+    () => cards.filter((card) => card.visible),
+    [cards]
+  )
+
+  // Sort cards by animationPriority for staggered animation
+  const sortedCardsForAnimation = useMemo(
+    () =>
+      [...visibleCards].sort((a, b) => {
+        const priorityA = a.animationPriority ?? Infinity
+        const priorityB = b.animationPriority ?? Infinity
+        return priorityA - priorityB
+      }),
+    [visibleCards]
+  )
+
+  // Create a map of card id to animation index
+  const animationIndexMap = useMemo(
+    () => new Map(sortedCardsForAnimation.map((card, index) => [card.id, index])),
+    [sortedCardsForAnimation]
+  )
 
   if (isLoading) {
     return (
@@ -172,20 +197,6 @@ export function Dashboard() {
       </div>
     )
   }
-
-  const visibleCards = layout.cards.filter((card) => card.visible)
-
-  // Sort cards by animationPriority for staggered animation
-  const sortedCardsForAnimation = [...visibleCards].sort((a, b) => {
-    const priorityA = a.animationPriority ?? Infinity
-    const priorityB = b.animationPriority ?? Infinity
-    return priorityA - priorityB
-  })
-
-  // Create a map of card id to animation index
-  const animationIndexMap = new Map(
-    sortedCardsForAnimation.map((card, index) => [card.id, index])
-  )
 
   return (
     <div
