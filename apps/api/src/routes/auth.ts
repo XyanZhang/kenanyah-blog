@@ -1,5 +1,5 @@
 import { Hono } from 'hono'
-import { setCookie, deleteCookie } from 'hono/cookie'
+import { setCookie, deleteCookie, getCookie } from 'hono/cookie'
 import { prisma } from '../lib/db'
 import { generateTokenPair, verifyRefreshToken } from '../lib/jwt'
 import { hashPassword, verifyPassword } from '../lib/password'
@@ -28,10 +28,10 @@ type AuthVariables = {
 
 const auth = new Hono<{ Variables: AuthVariables }>()
 
-// Rate limiting for auth endpoints
+// Rate limiting for auth endpoints（开发环境放宽，避免本地调试被限流）
 const authRateLimit = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5, // 5 requests per window
+  max: process.env.NODE_ENV === 'development' ? 10 : 5,
   message: 'Too many authentication attempts, please try again later',
 })
 
@@ -86,7 +86,7 @@ auth.post('/register', authRateLimit, validateBody(registerSchema), async (c) =>
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'Lax',
-    maxAge: 15 * 60, // 15 minutes
+    maxAge: 7 * 24 * 60 * 60, // 7 days
   })
 
   setCookie(c, 'refresh_token', tokens.refreshToken, {
@@ -134,7 +134,7 @@ auth.post('/login', authRateLimit, validateBody(loginSchema), async (c) => {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'Lax',
-    maxAge: 15 * 60,
+    maxAge: 7 * 24 * 60 * 60, // 7 days
   })
 
   setCookie(c, 'refresh_token', tokens.refreshToken, {
@@ -169,9 +169,11 @@ auth.post('/logout', authMiddleware, async (c) => {
   })
 })
 
-// Refresh token
+// Refresh token（优先从 cookie 读取，兼容请求头 x-refresh-token）
+const ACCESS_TOKEN_MAX_AGE = 7 * 24 * 60 * 60 // 7 days，与 JWT_EXPIRES_IN 一致
 auth.post('/refresh', async (c) => {
-  const refreshToken = c.req.header('x-refresh-token')
+  const refreshToken =
+    getCookie(c, 'refresh_token') ?? c.req.header('x-refresh-token')
 
   if (!refreshToken) {
     throw new BadRequestError('Refresh token required')
@@ -188,7 +190,7 @@ auth.post('/refresh', async (c) => {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'Lax',
-      maxAge: 15 * 60,
+      maxAge: ACCESS_TOKEN_MAX_AGE,
     })
 
     return c.json({
@@ -292,7 +294,7 @@ auth.post('/verify-code', authRateLimit, validateBody(verifyCodeSchema), async (
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'Lax',
-    maxAge: 15 * 60,
+    maxAge: 7 * 24 * 60 * 60, // 7 days
   })
 
   setCookie(c, 'refresh_token', tokens.refreshToken, {

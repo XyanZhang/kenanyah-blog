@@ -1,25 +1,19 @@
 import { Hono } from 'hono'
 import { prisma } from '../lib/db'
+import { authMiddleware } from '../middleware/auth'
 
 /**
- * 首页配置与模板 API。
- * 暂时写死用户：使用 process.env.DEFAULT_HOME_USER_ID，未设置则使用 null（全局单条配置）。
- * 后期可改为从 auth 中间件取当前用户 id。
+ * 首页配置与模板 API（已接入用户系统）。
+ * 所有配置均按当前登录用户的 userId 进行隔离存储。
  */
-function getDefaultUserId(): string | null {
-  return process.env.DEFAULT_HOME_USER_ID ?? null
-}
-
 const home = new Hono()
 
-// GET /home/config — 拉取当前首页配置
-// userId 为 null 时不能用 findUnique（唯一约束下 null 行为），改用 findFirst
-home.get('/config', async (c) => {
-  const userId = getDefaultUserId()
-  const config =
-    userId === null
-      ? await prisma.homeConfig.findFirst({ where: { userId: null } })
-      : await prisma.homeConfig.findUnique({ where: { userId } })
+// GET /home/config — 拉取当前登录用户的首页配置
+home.get('/config', authMiddleware, async (c) => {
+  const { userId } = c.get('user')
+  const config = await prisma.homeConfig.findUnique({
+    where: { userId },
+  })
   if (!config) {
     return c.json({ success: true, data: null })
   }
@@ -33,10 +27,10 @@ home.get('/config', async (c) => {
   })
 })
 
-// PUT /home/config — 同步当前布局与导航到数据库
-home.put('/config', async (c) => {
+// PUT /home/config — 同步当前登录用户的布局与导航到数据库
+home.put('/config', authMiddleware, async (c) => {
   try {
-    const userId = getDefaultUserId()
+    const { userId } = c.get('user')
     const body = await c.req.json().catch(() => null)
     if (!body || typeof body !== 'object') {
       return c.json({ success: false, error: 'Invalid body' }, 400)
@@ -59,26 +53,11 @@ home.put('/config', async (c) => {
       return c.json({ success: false, error: 'Invalid JSON in layout/nav/canvas' }, 400)
     }
 
-    // userId 为 null 时 Prisma 的 upsert(where: { userId: null }) 会报错，改为 findFirst + update/create
-    if (userId === null) {
-      const existing = await prisma.homeConfig.findFirst({ where: { userId: null } })
-      if (existing) {
-        await prisma.homeConfig.update({
-          where: { id: existing.id },
-          data: { layoutJson, navJson, canvasJson, updatedAt: new Date() },
-        })
-      } else {
-        await prisma.homeConfig.create({
-          data: { userId: null, layoutJson, navJson, canvasJson },
-        })
-      }
-    } else {
-      await prisma.homeConfig.upsert({
-        where: { userId },
-        create: { userId, layoutJson, navJson, canvasJson },
-        update: { layoutJson, navJson, canvasJson, updatedAt: new Date() },
-      })
-    }
+    await prisma.homeConfig.upsert({
+      where: { userId },
+      create: { userId, layoutJson, navJson, canvasJson },
+      update: { layoutJson, navJson, canvasJson, updatedAt: new Date() },
+    })
 
     return c.json({ success: true })
   } catch (e) {
@@ -88,9 +67,9 @@ home.put('/config', async (c) => {
   }
 })
 
-// GET /home/templates — 用户保存的模板列表
-home.get('/templates', async (c) => {
-  const userId = getDefaultUserId()
+// GET /home/templates — 当前登录用户保存的模板列表
+home.get('/templates', authMiddleware, async (c) => {
+  const { userId } = c.get('user')
   const list = await prisma.homeLayoutTemplate.findMany({
     where: { userId },
     orderBy: { updatedAt: 'desc' },
@@ -105,9 +84,9 @@ home.get('/templates', async (c) => {
   return c.json({ success: true, data: list })
 })
 
-// GET /home/templates/:id — 获取单个模板（含 layoutJson 用于应用）
-home.get('/templates/:id', async (c) => {
-  const userId = getDefaultUserId()
+// GET /home/templates/:id — 获取当前登录用户的单个模板（含 layoutJson 用于应用）
+home.get('/templates/:id', authMiddleware, async (c) => {
+  const { userId } = c.get('user')
   const id = c.req.param('id')
   const template = await prisma.homeLayoutTemplate.findFirst({
     where: { id, userId },
@@ -130,9 +109,9 @@ home.get('/templates/:id', async (c) => {
   })
 })
 
-// POST /home/templates — 另存为模板（含 layout + nav 定位与尺寸）
-home.post('/templates', async (c) => {
-  const userId = getDefaultUserId()
+// POST /home/templates — 另存为当前登录用户的模板（含 layout + nav 定位与尺寸）
+home.post('/templates', authMiddleware, async (c) => {
+  const { userId } = c.get('user')
   const body = await c.req.json().catch(() => null)
   if (!body || typeof body !== 'object' || !body.name) {
     return c.json({ success: false, error: 'name is required' }, 400)
@@ -172,9 +151,9 @@ home.post('/templates', async (c) => {
   })
 })
 
-// DELETE /home/templates/:id
-home.delete('/templates/:id', async (c) => {
-  const userId = getDefaultUserId()
+// DELETE /home/templates/:id — 删除当前登录用户的模板
+home.delete('/templates/:id', authMiddleware, async (c) => {
+  const { userId } = c.get('user')
   const id = c.req.param('id')
   const deleted = await prisma.homeLayoutTemplate.deleteMany({
     where: { id, userId },

@@ -38,11 +38,14 @@ cp apps/api/.env.example apps/api/.env
 # Generate Prisma Client
 pnpm --filter api prisma:generate
 
-# Run migrations to create tables
-pnpm --filter api prisma:migrate
+# Run migrations to create tables（会使用 prisma.config 或当前环境的 DATABASE_URL）
+pnpm db:migrate
+
+# 若 dev 使用测试库 localhost:5434/blog_test_env，必须单独对该库执行迁移，否则会缺表
+pnpm db:migrate:test
 
 # Seed the database with sample data
-pnpm --filter api prisma:seed
+pnpm db:seed
 ```
 
 ### 4. Start the API Server
@@ -121,6 +124,20 @@ docker-compose down -v
 - **Database**: blog_test
 - **User**: blog_user
 - **Password**: blog_password
+
+## 为什么数据库和 schema 不同步？
+
+- **多个库、一个迁移历史**：生产、测试、本地 dev 可能连的是不同库（如 5432/blog_dev、5434/blog_test_env），但迁移文件只有一份。`pnpm db:migrate`（即 `prisma migrate dev`）只会对你**当前 DATABASE_URL 指向的库**应用迁移。
+- **prisma.config 默认值**：未设置 `DATABASE_URL` 时，Prisma CLI 使用 `prisma.config.ts` 里的默认（如 `postgres:5432/blog_prod`），在本机跑时往往连不上，或连的是别的库。
+- **dev 实际连的库**：`pnpm run dev` 通过 `.env.development` 的 `DATABASE_URL` 连到 **localhost:5434/blog_test_env**。若从没对这个库跑过迁移，就会少表（如 `verification_codes`）或少列（如 `users.emailVerified`）。
+
+**做法**：只要 dev 用的是 5434 的测试库，拉代码或改过 schema 后执行一次：
+
+```bash
+pnpm db:migrate:test
+```
+
+会把当前所有迁移应用到 `localhost:5434/blog_test_env`，与 schema 保持一致。
 
 ## Troubleshooting
 

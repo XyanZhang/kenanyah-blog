@@ -12,10 +12,7 @@ let devDefaultUser: JwtPayload | null = null
 
 export async function authMiddleware(c: Context, next: Next) {
   try {
-    // Try to get token from cookie first
     let token = getCookie(c, 'access_token')
-
-    // If not in cookie, try Authorization header
     if (!token) {
       const authHeader = c.req.header('Authorization')
       if (authHeader?.startsWith('Bearer ')) {
@@ -24,7 +21,6 @@ export async function authMiddleware(c: Context, next: Next) {
     }
 
     if (!token) {
-      // 开发/测试环境写死默认用户，便于本地发布文章等操作（优先 admin@blog.com，否则任意第一个用户）
       const isDevOrTest = process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test'
       if (isDevOrTest) {
         if (!devDefaultUser) {

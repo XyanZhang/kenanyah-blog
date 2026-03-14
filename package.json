@@ -4,6 +4,7 @@
   "private": true,
   "description": "Full-stack blog application with Next.js and Hono",
   "scripts": {
+    "dev:db": "docker-compose -f docker-compose.test.yml --env-file .env.test up -d postgres",
     "dev:blog": "turbo run dev --filter=web",
     "dev:api": "turbo run dev --filter=@blog/api",
     "dev": "turbo run dev",
@@ -21,6 +22,7 @@
     "docker:logs": "docker-compose logs -f",
     "docker:reset": "docker-compose down -v && docker-compose up -d",
     "db:migrate": "pnpm --filter api run prisma:migrate",
+    "db:migrate:test": "DATABASE_URL=postgresql://blog_user:blog_password@localhost:5434/blog_test_env?schema=public pnpm --filter api exec prisma migrate deploy",
     "db:push": "pnpm --filter api prisma db push",
     "db:seed": "pnpm --filter api prisma db seed",
     "db:studio": "pnpm --filter api prisma studio",

@@ -81,7 +81,6 @@ export async function errorHandler(c: Context, next: Next) {
       )
     }
 
-    // Unknown error
     return c.json(
       {
         success: false,

@@ -48,7 +48,7 @@ services:
       DATABASE_URL: postgresql://${DB_USER:-blog_user}:${DB_PASSWORD:-blog_password}@postgres:5432/${DB_NAME:-blog_test_env}?schema=public
       JWT_SECRET: ${JWT_SECRET:?JWT secret required}
       JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?JWT refresh secret required}
-      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-15m}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
       JWT_REFRESH_EXPIRES_IN: ${JWT_REFRESH_EXPIRES_IN:-7d}
       CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3010}
       # OAuth (optional)
@@ -72,8 +72,9 @@ services:
       # Upload
       UPLOAD_DIR: /app/apps/api/uploads
       UPLOAD_BASE_URL: ${UPLOAD_BASE_URL:-http://localhost:3011}
+    # 绑定到项目内 uploads-test，与生产 uploads 隔离
     volumes:
-      - uploads_test_env_data:/app/apps/api/uploads
+      - ./apps/api/uploads:/app/apps/api/uploads
     networks:
       - blog-test-network
 
@@ -103,8 +104,6 @@ services:
 
 volumes:
   postgres_test_env_data:
-    driver: local
-  uploads_test_env_data:
     driver: local
 
 networks:

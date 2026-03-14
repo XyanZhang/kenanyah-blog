@@ -19,18 +19,20 @@ import search from './routes/search'
 import home from './routes/home'
 import uploads from './routes/uploads'
 
-// Use /api as base path for production deployment behind nginx
-const app = new Hono().basePath('/api')
-
-// Global middleware
-app.use('*', requestLogger)
-app.use('*', cors({
+// 根应用：/uploads 在根路径（图片等静态资源无需 /api 前缀），/api 下为接口
+const root = new Hono()
+root.use('*', requestLogger)
+root.use('*', cors({
   origin: env.CORS_ORIGIN,
   credentials: true,
 }))
-app.use('*', errorHandler)
+root.use('*', errorHandler)
 
-// Health check
+// 图片等上传资源：http://localhost:3001/uploads/:subdir/:filename（无 basePath，便于前端 UPLOAD_BASE_URL 不包含 /api）
+root.route('/uploads', uploads)
+
+// API 接口挂到 /api 下（mount 后子应用收到的是 /health、/posts 等，不再带 /api 前缀，故不再用 basePath）
+const app = new Hono()
 app.get('/health', (c) => {
   return c.json({
     success: true,
@@ -41,8 +43,6 @@ app.get('/health', (c) => {
     },
   })
 })
-
-// Root endpoint
 app.get('/', (c) => {
   return c.json({
     success: true,
@@ -60,12 +60,11 @@ app.get('/', (c) => {
         ai: '/ai',
         search: '/search',
         home: '/home',
+        uploads: '/uploads',
       },
     },
   })
 })
-
-// API routes
 app.route('/auth', auth)
 app.route('/ai', ai)
 app.route('/posts', posts)
@@ -76,14 +75,15 @@ app.route('/users', users)
 app.route('/weather', weather)
 app.route('/search', search)
 app.route('/home', home)
-app.route('/uploads', uploads)
+
+root.route('/api', app)
 
 const port = parseInt(env.PORT)
 
 logger.info({ msg: 'Server started', port, env: env.NODE_ENV })
 
 serve({
-  fetch: app.fetch,
+  fetch: root.fetch,
   hostname: '0.0.0.0',
   port,
 })
