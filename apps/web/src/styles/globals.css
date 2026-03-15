@@ -1,4 +1,4 @@
-/* 博客详情页字体 ZCOOL KuaiLe 已改为在 layout.tsx 用 next/font/google 加载，保证开发/生产一致 */
+/* 博客详情页字体：霞鹜文楷（LXGW WenKai），在 layout.tsx 用 next/font/google 加载 */
 
 @import 'tailwindcss';
 @import './view-transitions.css';
@@ -9,8 +9,8 @@
   --font-sans: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
   --font-display: var(--font-display), ui-sans-serif, system-ui, sans-serif;
   --font-motto: var(--font-motto), 'Nunito', ui-rounded, system-ui, sans-serif;
-  /* --font-wenkai: 'LXGW WenKai', serif; */
-  --font-blog: 'ZCOOL KuaiLe', cursive;
+  /* 博客正文：霞鹜文楷（由 layout 中 next/font 注入 --font-blog，此处为 fallback） */
+  --font-blog: 'LXGW WenKai', 'LXGW WenKai TC', serif;
   /* Background */
   --color-bg-base: var(--theme-bg-base);
 
