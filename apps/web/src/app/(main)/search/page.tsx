@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect } from 'react'
 import Link from 'next/link'
 import { Search as SearchIcon, FileText, Loader2 } from 'lucide-react'
 import { apiClient } from '@/lib/api-client'
+import { getApiErrorMessage } from '@/lib/api-error'
 
 export interface SemanticSearchHit {
   postId: string
@@ -44,7 +45,7 @@ export default function SearchPage() {
       }
     } catch (err) {
       setHits([])
-      setError(err instanceof Error ? err.message : '请求失败')
+      setError(getApiErrorMessage(err))
     } finally {
       setLoading(false)
     }

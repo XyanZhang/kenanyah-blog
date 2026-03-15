@@ -4,9 +4,9 @@ import { useParams, useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { PenLine, Loader2 } from 'lucide-react'
 import { BlogEditor, type BlogEditorInitialData } from '@/components/blog/BlogEditor'
-import { HTTPError } from 'ky'
 import { apiClient, getApiBaseUrl } from '@/lib/api-client'
 import type { ApiResponse } from '@/lib/api-client'
+import { getApiErrorMessage, showApiSuccess } from '@/lib/api-error'
 
 type PostDetail = {
   id: string
@@ -47,7 +47,7 @@ export default function BlogEditPage() {
       })
       .catch((err) => {
         if (cancelled) return
-        setError(err?.message ?? '加载失败')
+        setError(getApiErrorMessage(err))
       })
       .finally(() => {
         if (!cancelled) setLoading(false)
@@ -99,6 +99,7 @@ export default function BlogEditPage() {
           details?: Array<{ path: string; message: string }>
         }>()
       if (res.success && res.data?.slug) {
+        showApiSuccess('保存成功')
         router.push(`/posts/${res.data.slug}` as import('next').Route)
         return
       }
@@ -109,25 +110,7 @@ export default function BlogEditPage() {
           '保存失败'
       )
     } catch (err: unknown) {
-      let message = '保存失败，请检查登录状态或权限后重试'
-      if (err instanceof HTTPError) {
-        try {
-          const body = (await err.response.json()) as {
-            error?: string
-            details?: Array<{ path: string; message: string }>
-          }
-          const parts = [body.error]
-          if (body.details?.length) {
-            parts.push(body.details.map((d) => `${d.path}: ${d.message}`).join('；'))
-          }
-          message = parts.filter(Boolean).join(' ') || message
-        } catch {
-          message = err.message || message
-        }
-      } else if (err && typeof err === 'object' && 'message' in err) {
-        message = String((err as { message: string }).message) || message
-      }
-      setSubmitError(message)
+      setSubmitError(getApiErrorMessage(err))
     }
   }
 

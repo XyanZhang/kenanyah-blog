@@ -8,6 +8,7 @@ import Image from 'next/image'
 import { ArrowLeft, Pencil } from 'lucide-react'
 import { apiClient, getApiBaseUrl } from '@/lib/api-client'
 import type { ApiResponse } from '@/lib/api-client'
+import { getApiErrorMessage } from '@/lib/api-error'
 
 type PostDetail = {
   id: string
@@ -72,7 +73,7 @@ export default function PostPage() {
       })
       .catch((err) => {
         if (cancelled) return
-        setError(err?.message ?? '加载失败')
+        setError(getApiErrorMessage(err))
       })
       .finally(() => {
         if (!cancelled) setLoading(false)

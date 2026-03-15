@@ -5,6 +5,7 @@ import { BlogTimeline, type BlogTimelineItem } from '@/components/blog/BlogTimel
 import { PageLoading } from '@/components/layout/PageLoading'
 import { apiClient } from '@/lib/api-client'
 import type { ApiResponse } from '@/lib/api-client'
+import { getApiErrorMessage } from '@/lib/api-error'
 
 type PostFromApi = {
   id: string
@@ -77,7 +78,7 @@ export default function BlogPage() {
       })
       .catch((err) => {
         if (cancelled) return
-        setError(err?.message ?? '加载失败')
+        setError(getApiErrorMessage(err))
         setItems([])
       })
       .finally(() => {

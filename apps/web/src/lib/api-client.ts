@@ -85,11 +85,21 @@ export const apiClient = ky.create({
         const { response } = error
         if (response) {
           try {
-            const body = await response.json()
-            error.message = (body as { error?: string }).error || error.message
+            const body = (await response.json()) as {
+              error?: string
+              code?: string
+              details?: Array<{ path: string; message: string }>
+            }
+            error.message = body.error || error.message
+            ;(error as { apiCode?: string; apiDetails?: typeof body.details }).apiCode = body.code
+            ;(error as { apiDetails?: typeof body.details }).apiDetails = body.details
           } catch {
             // Response is not JSON
           }
+        }
+        if (typeof window !== 'undefined') {
+          const { showApiError } = await import('@/lib/api-error')
+          showApiError(error)
         }
         return error
       },

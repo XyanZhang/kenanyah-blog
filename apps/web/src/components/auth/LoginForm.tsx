@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { apiClient, type ApiResponse } from '@/lib/api-client'
+import { getApiErrorMessage } from '@/lib/api-error'
 import { useCountdown } from '@/hooks/useCountdown'
 import { cn } from '@/lib/utils'
 
@@ -56,8 +57,7 @@ export function LoginForm() {
         setError(response.error || '发送验证码失败')
       }
     } catch (err) {
-      const error = err as Error & { message?: string }
-      setError(error.message || '发送验证码失败，请稍后重试')
+      setError(getApiErrorMessage(err))
     } finally {
       setLoading(false)
     }
@@ -84,8 +84,7 @@ export function LoginForm() {
         setError(response.error || '验证码错误或已过期')
       }
     } catch (err) {
-      const error = err as Error & { message?: string }
-      setError(error.message || '验证码错误或已过期')
+      setError(getApiErrorMessage(err))
     } finally {
       setLoading(false)
     }
@@ -108,8 +107,7 @@ export function LoginForm() {
         setError(response.error || '邮箱或密码错误')
       }
     } catch (err) {
-      const error = err as Error & { message?: string }
-      setError(error.message || '邮箱或密码错误')
+      setError(getApiErrorMessage(err))
     } finally {
       setLoading(false)
     }

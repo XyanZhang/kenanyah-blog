@@ -9,6 +9,7 @@ import { DashboardCard, LatestPostsCardConfig } from '@blog/types'
 import { Calendar, Loader2 } from 'lucide-react'
 import { apiClient } from '@/lib/api-client'
 import type { ApiResponse } from '@/lib/api-client'
+import { getApiErrorMessage } from '@/lib/api-error'
 
 interface LatestPostsCardProps {
   card: DashboardCard
@@ -70,7 +71,7 @@ export function LatestPostsCard({ card }: LatestPostsCardProps) {
       })
       .catch((err) => {
         if (cancelled) return
-        setError(err?.message ?? '加载失败')
+        setError(getApiErrorMessage(err))
         setPosts([])
       })
       .finally(() => {

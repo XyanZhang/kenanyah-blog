@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { apiClient, type ApiResponse } from '@/lib/api-client'
+import { getApiErrorMessage } from '@/lib/api-error'
 
 interface SetupProfileResponse {
   user: {
@@ -74,8 +75,7 @@ export function SetupProfileForm() {
         setErrors({ submit: response.error || '设置失败，用户名可能已被使用' })
       }
     } catch (err) {
-      const error = err as Error & { message?: string }
-      setErrors({ submit: error.message || '设置失败，用户名可能已被使用' })
+      setErrors({ submit: getApiErrorMessage(err) })
     } finally {
       setLoading(false)
     }

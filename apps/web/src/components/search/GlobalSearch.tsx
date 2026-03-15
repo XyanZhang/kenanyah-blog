@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { Search as SearchIcon, FileText, Loader2 } from 'lucide-react'
 import { apiClient } from '@/lib/api-client'
+import { getApiErrorMessage } from '@/lib/api-error'
 import {
   Dialog,
   DialogContent,
@@ -50,7 +51,7 @@ export function GlobalSearch() {
       }
     } catch (err) {
       setHits([])
-      setError(err instanceof Error ? err.message : '请求失败')
+      setError(getApiErrorMessage(err))
     } finally {
       setLoading(false)
     }

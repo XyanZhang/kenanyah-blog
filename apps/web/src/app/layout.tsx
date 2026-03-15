@@ -6,6 +6,7 @@ import { ThemeProvider } from '@/components/providers/ThemeProvider'
 import { FloatingActionsProvider } from '@/components/providers/FloatingActionsProvider'
 import { ThemeSwitcher } from '@/components/theme/ThemeSwitcher'
 import { RootAlignmentGuides } from '@/components/layout/RootAlignmentGuides'
+import { ToastProvider } from '@/components/providers/ToastProvider'
 import { SmokeEffect } from '@/components/background/SmokeEffect'
 import { GlobalSearch } from '@/components/search/GlobalSearch'
 import { MusicPlayerProvider } from '@/components/music/MusicPlayerProvider'
@@ -72,6 +73,7 @@ export default function RootLayout({
             <div style={{ viewTransitionName: 'page-content' }}>{children}</div>
             <MusicPlayerProvider />
             <MusicPlayerGlobal />
+            <ToastProvider />
             <ThemeSwitcher />
             <RootAlignmentGuides />
           </FloatingActionsProvider>

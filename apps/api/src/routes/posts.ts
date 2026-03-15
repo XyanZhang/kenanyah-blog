@@ -340,36 +340,58 @@ posts.patch('/:id', authMiddleware, validateBody(updatePostSchema), async (c) =>
     }
   }
   if (data.publishedAt !== undefined && data.published !== false) {
-    updateData.publishedAt = new Date(data.publishedAt)
+    const parsed = new Date(data.publishedAt)
+    if (Number.isNaN(parsed.getTime())) {
+      return c.json(
+        { success: false, error: 'publishedAt 格式无效，请使用 ISO 8601 日期时间' },
+        400
+      )
+    }
+    updateData.publishedAt = parsed
   } else if (data.published === false) {
     updateData.publishedAt = null
   }
   if (data.isFeatured !== undefined) updateData.isFeatured = data.isFeatured
 
-  const post = await prisma.post.update({
-    where: { id },
-    data: updateData,
-    include: {
-      author: {
-        select: {
-          id: true,
-          username: true,
-          name: true,
-          avatar: true,
+  let post
+  try {
+    post = await prisma.post.update({
+      where: { id },
+      data: updateData,
+      include: {
+        author: {
+          select: {
+            id: true,
+            username: true,
+            name: true,
+            avatar: true,
+          },
+        },
+        categories: {
+          include: {
+            category: true,
+          },
+        },
+        tags: {
+          include: {
+            tag: true,
+          },
         },
       },
-      categories: {
-        include: {
-          category: true,
-        },
-      },
-      tags: {
-        include: {
-          tag: true,
-        },
-      },
-    },
-  })
+    })
+  } catch (e: unknown) {
+    const prismaErr = e as { code?: string; meta?: unknown }
+    if (prismaErr?.code === 'P2002') {
+      return c.json(
+        { success: false, error: '该标题对应的 slug 已存在，请修改标题' },
+        409
+      )
+    }
+    if (prismaErr?.code === 'P2025') {
+      return c.json({ success: false, error: 'Post not found' }, 404)
+    }
+    throw e
+  }
 
   indexPost(post.id).catch((err) =>
     console.error('[semantic-search] index post failed:', err)

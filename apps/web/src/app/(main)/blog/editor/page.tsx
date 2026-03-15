@@ -5,6 +5,7 @@ import { useState } from 'react'
 import { PenLine, Sparkles } from 'lucide-react'
 import { BlogEditor } from '@/components/blog/BlogEditor'
 import { apiClient } from '@/lib/api-client'
+import { getApiErrorMessage, showApiSuccess } from '@/lib/api-error'
 
 export default function BlogEditorPage() {
   const router = useRouter()
@@ -34,16 +35,13 @@ export default function BlogEditorPage() {
         .post('posts', { json: body })
         .json<{ success: boolean; data?: { slug: string }; error?: string }>()
       if (res.success && res.data?.slug) {
+        showApiSuccess('发布成功')
         router.push(`/posts/${res.data.slug}` as import('next').Route)
         return
       }
       setSubmitError(res.error ?? '发布失败')
     } catch (err: unknown) {
-      const message =
-        err && typeof err === 'object' && 'message' in err
-          ? String((err as { message: string }).message)
-          : '发布失败，请检查登录状态或稍后重试'
-      setSubmitError(message)
+      setSubmitError(getApiErrorMessage(err))
     }
   }
 

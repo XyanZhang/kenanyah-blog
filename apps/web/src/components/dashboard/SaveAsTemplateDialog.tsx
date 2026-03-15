@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { Button, Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, Input, Label } from '@/components/ui'
 import { createHomeTemplate } from '@/lib/home-api'
+import { getApiErrorMessage } from '@/lib/api-error'
 import type { DashboardLayout } from '@blog/types'
 import type { NavConfig } from '@/store/nav-store'
 
@@ -52,7 +53,7 @@ export function SaveAsTemplateDialog({
       onSaved?.()
       onOpenChange(false)
     } catch (err) {
-      setError(err instanceof Error ? err.message : '保存失败')
+      setError(getApiErrorMessage(err))
     } finally {
       setLoading(false)
     }
