@@ -28,7 +28,15 @@ function normalizeImageUrl(url: string | null): string | null {
   if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('blob:')) {
     return url
   }
-  // 相对路径，拼接 API 基础 URL
+  // 相对路径：/uploads 由站点根路径提供（nginx 转发到 API），不要拼成 /api/uploads
+  if (url.startsWith('/uploads')) {
+    const origin =
+      typeof window !== 'undefined'
+        ? window.location.origin
+        : (process.env.NEXT_PUBLIC_APP_URL ?? '').replace(/\/$/, '')
+    return origin ? `${origin}${url}` : url
+  }
+  // 其他相对路径（若有）按 API 基础 URL 拼接
   if (url.startsWith('/')) {
     const apiBase = getApiBaseUrl()
     return `${apiBase.replace(/\/$/, '')}${url}`
