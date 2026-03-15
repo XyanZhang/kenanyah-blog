@@ -1,9 +1,12 @@
 #!/bin/bash
 # ===========================================
-# 本地构建生产镜像并导出为 tar，便于上传到服务器后 load + up 部署（无需镜像仓库）
+# 本地构建生产镜像并导出为 tar，可选通过 scp 上传到服务器（密码由执行时输入）
 # 使用 .env.prod 中的 HOST、NEXT_PUBLIC_* 构建，打本地 tag 并 docker save。
-# Usage: ./scripts/build-save.sh [输出 tar 路径]
-# 默认输出: blog-images.tar（项目根目录）
+# Usage:
+#   ./scripts/build-save.sh                    # 仅构建并导出 tar
+#   ./scripts/build-save.sh '' root@服务器IP:/path/to/blog   # 构建、导出并 scp 上传（会提示输入 root 密码）
+#   BUILD_SAVE_UPLOAD=root@IP:/path ./scripts/build-save.sh   # 同上，用环境变量指定上传目标
+# 默认输出: blog-images.tar（项目根目录，已加入 .gitignore）
 # ===========================================
 
 set -e
@@ -40,6 +43,8 @@ NEXT_PUBLIC_APP_URL="${HOST:-https://www.xyan.store}"
 IMAGE_API="blog-api:latest"
 IMAGE_WEB="blog-web:latest"
 OUTPUT_TAR="${1:-$REPO_ROOT/blog-images.tar}"
+# 上传目标：第二参数或环境变量 BUILD_SAVE_UPLOAD，如 root@192.168.1.1:/opt/blog
+UPLOAD_DEST="${BUILD_SAVE_UPLOAD:-$2}"
 
 log_info "Web build args: NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL, NEXT_PUBLIC_APP_URL=$NEXT_PUBLIC_APP_URL"
 
@@ -57,10 +62,17 @@ log_info "Saving images to $OUTPUT_TAR ..."
 docker save "$IMAGE_API" "$IMAGE_WEB" -o "$OUTPUT_TAR"
 log_info "Done. File size: $(du -h "$OUTPUT_TAR" | cut -f1)"
 
-echo ""
-log_info "下一步：将 tar 上传到服务器后执行："
-echo "  scp $OUTPUT_TAR user@your-server:/path/to/blog/"
-echo "  ssh user@your-server"
-echo "  cd /path/to/blog && docker load -i blog-images.tar"
-echo "  在 .env.prod 中设置: DOCKER_IMAGE_API=$IMAGE_API  DOCKER_IMAGE_WEB=$IMAGE_WEB"
-echo "  docker compose -f docker-compose.prod.pull.yml --env-file .env.prod up -d"
+if [ -n "$UPLOAD_DEST" ]; then
+  log_info "Uploading to $UPLOAD_DEST (scp 会提示输入 root 密码)..."
+  scp "$OUTPUT_TAR" "$UPLOAD_DEST/"
+  REMOTE_PATH="${UPLOAD_DEST#*:}"
+  TAR_NAME="$(basename "$OUTPUT_TAR")"
+  log_info "Upload done. On server run: cd $REMOTE_PATH && docker load -i $TAR_NAME && docker compose -f docker-compose.prod.pull.yml --env-file .env.prod up -d"
+else
+  echo ""
+  log_info "仅构建完成。若要上传后部署，可执行："
+  echo "  scp $OUTPUT_TAR root@服务器IP:/path/to/blog/"
+  echo "  或在下次构建时传入上传目标，例如："
+  echo "  ./scripts/build-save.sh '' root@服务器IP:/path/to/blog"
+  echo "  （scp 会提示输入 root 密码）"
+fi
