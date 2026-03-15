@@ -4,6 +4,7 @@ import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import Image from 'next/image'
 import { ArrowLeft, Pencil } from 'lucide-react'
 import { apiClient, getApiBaseUrl } from '@/lib/api-client'
@@ -184,7 +185,7 @@ export default function PostPage() {
 
         <div className="p-6 sm:p-8 pt-6">
           <div className="md-content max-w-none">
-            <ReactMarkdown>{post.content}</ReactMarkdown>
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>{post.content}</ReactMarkdown>
           </div>
         </div>
       </article>

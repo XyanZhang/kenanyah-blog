@@ -10,6 +10,7 @@ pnpm dev            # Start all dev servers
 pnpm test           # Run tests
 pnpm build          # Build all packages
 pnpm lint           # Lint code
+pnpm build-save      # 本地用 .env.prod 构建并导出 tar，上传服务器后 load + up 部署
 ```
 
 ## Structure

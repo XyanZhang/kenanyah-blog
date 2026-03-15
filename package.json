@@ -21,6 +21,7 @@
     "docker:down": "docker-compose down",
     "docker:logs": "docker-compose logs -f",
     "docker:reset": "docker-compose down -v && docker-compose up -d",
+    "build-save": "bash scripts/build-save.sh",
     "db:migrate": "pnpm --filter api run prisma:migrate",
     "db:migrate:test": "DATABASE_URL=postgresql://blog_user:blog_password@localhost:5434/blog_test_env?schema=public pnpm --filter api exec prisma migrate deploy",
     "db:push": "pnpm --filter api prisma db push",

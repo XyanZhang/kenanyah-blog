@@ -22,8 +22,10 @@ import uploads from './routes/uploads'
 // 根应用：/uploads 在根路径（图片等静态资源无需 /api 前缀），/api 下为接口
 const root = new Hono()
 root.use('*', requestLogger)
+// CORS_ORIGIN 支持逗号分隔多域名，如 https://xyan.store,https://www.xyan.store
+const corsOrigins = env.CORS_ORIGIN.split(',').map((o) => o.trim()).filter(Boolean)
 root.use('*', cors({
-  origin: env.CORS_ORIGIN,
+  origin: corsOrigins.length > 1 ? corsOrigins : corsOrigins[0] ?? env.CORS_ORIGIN,
   credentials: true,
 }))
 root.use('*', errorHandler)
