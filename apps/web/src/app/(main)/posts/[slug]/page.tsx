@@ -185,7 +185,18 @@ export default function PostPage() {
 
         <div className="p-6 sm:p-8 pt-6">
           <div className="md-content max-w-none">
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>{post.content}</ReactMarkdown>
+            <ReactMarkdown
+              remarkPlugins={[remarkGfm]}
+              components={{
+                table: ({ children, ...props }) => (
+                  <div className="md-table-wrapper">
+                    <table {...props}>{children}</table>
+                  </div>
+                ),
+              }}
+            >
+              {post.content}
+            </ReactMarkdown>
           </div>
         </div>
       </article>

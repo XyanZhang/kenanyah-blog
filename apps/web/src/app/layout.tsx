@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { Plus_Jakarta_Sans, Space_Grotesk, Nunito } from 'next/font/google'
+import { Plus_Jakarta_Sans, Space_Grotesk, Nunito, ZCOOL_KuaiLe } from 'next/font/google'
 import { Nav } from '@/components/navigation'
 import { ScrollToTop } from '@/components/layout/ScrollToTop'
 import { ThemeProvider } from '@/components/providers/ThemeProvider'
@@ -32,6 +32,13 @@ const nunito = Nunito({
   weight: ['300', '400', '500', '600', '700'],
 })
 
+const zcoolKuaiLe = ZCOOL_KuaiLe({
+  subsets: ['latin'],
+  weight: '400',
+  variable: '--font-blog',
+  display: 'swap',
+})
+
 const themeScript = `
   try {
     var stored = localStorage.getItem('blog-theme');
@@ -58,7 +65,7 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en" data-theme="default" suppressHydrationWarning className={`${plusJakartaSans.variable} ${spaceGrotesk.variable} ${nunito.variable}`}>
+    <html lang="en" data-theme="default" suppressHydrationWarning className={`${plusJakartaSans.variable} ${spaceGrotesk.variable} ${nunito.variable} ${zcoolKuaiLe.variable}`}>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>

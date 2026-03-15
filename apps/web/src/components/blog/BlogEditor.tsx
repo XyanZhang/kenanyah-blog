@@ -476,7 +476,18 @@ export function BlogEditor({ initialData, onSubmit }: BlogEditorProps) {
             <div className="flex-1 min-h-[280px] rounded-xl border border-line-primary/60 bg-surface-secondary/80 px-5 py-5 overflow-auto md-content-wrapper">
               <article className="md-content max-w-none">
                 {content.trim() ? (
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>
+                  <ReactMarkdown
+                  remarkPlugins={[remarkGfm]}
+                  components={{
+                    table: ({ children, ...props }) => (
+                      <div className="md-table-wrapper">
+                        <table {...props}>{children}</table>
+                      </div>
+                    ),
+                  }}
+                >
+                  {content}
+                </ReactMarkdown>
                 ) : (
                   <p className="text-content-tertiary text-sm">
                     开始输入内容以查看预览…

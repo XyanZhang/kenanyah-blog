@@ -1,8 +1,4 @@
-/* 博客详情页用字体：之前用的霞鹜文楷（已注释）
-@import url('https://fonts.googleapis.com/css2?family=LXGW+WenKai:wght@300;400;700&display=swap');
-*/
-/* 博客详情页用字体：站酷快乐体（ZCOOL KuaiLe）可爱圆润 */
-@import url('https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&display=swap');
+/* 博客详情页字体 ZCOOL KuaiLe 已改为在 layout.tsx 用 next/font/google 加载，保证开发/生产一致 */
 
 @import 'tailwindcss';
 @import './view-transitions.css';
@@ -297,6 +293,29 @@
     margin: 0.875rem 0;
     box-shadow: 0 4px 12px var(--theme-shadow-color);
     border: 1px solid var(--theme-border-primary);
+  }
+
+  /* 表格外层：横向溢出时出现滚动条，保证宽表能完整展示 */
+  .md-content .md-table-wrapper {
+    overflow-x: auto;
+    overflow-y: visible;
+    margin: 1rem 0;
+    -webkit-overflow-scrolling: touch;
+    border-radius: 0.75rem;
+    border: 1px solid var(--theme-border-primary);
+    box-shadow: 0 2px 8px var(--theme-shadow-color);
+  }
+
+  .md-content .md-table-wrapper table {
+    width: 100%;
+    min-width: max-content;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+    margin: 0;
+    border-radius: 0;
+    border: none;
+    background-color: var(--theme-surface-primary);
+    box-shadow: none;
   }
 
   .md-content table {
