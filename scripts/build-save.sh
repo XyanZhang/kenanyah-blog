@@ -45,14 +45,17 @@ IMAGE_WEB="blog-web:latest"
 OUTPUT_TAR="${1:-$REPO_ROOT/blog-images.tar}"
 # 上传目标：第二参数或环境变量 BUILD_SAVE_UPLOAD，如 root@192.168.1.1:/opt/blog
 UPLOAD_DEST="${BUILD_SAVE_UPLOAD:-$2}"
+# 目标平台：服务器多为 amd64，在 Mac M1/M2(arm64) 上构建时指定此项，避免服务器上平台不匹配
+PLATFORM="${BUILD_SAVE_PLATFORM:-linux/amd64}"
 
 log_info "Web build args: NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL, NEXT_PUBLIC_APP_URL=$NEXT_PUBLIC_APP_URL"
+log_info "Building for platform: $PLATFORM"
 
 log_info "Building API image: $IMAGE_API"
-docker build -f Dockerfile.api -t "$IMAGE_API" .
+docker build --platform "$PLATFORM" -f Dockerfile.api -t "$IMAGE_API" .
 
 log_info "Building Web image: $IMAGE_WEB"
-docker build -f Dockerfile.web \
+docker build --platform "$PLATFORM" -f Dockerfile.web \
   --build-arg NEXT_PUBLIC_API_URL="$NEXT_PUBLIC_API_URL" \
   --build-arg NEXT_PUBLIC_APP_URL="$NEXT_PUBLIC_APP_URL" \
   --build-arg NEXT_PUBLIC_APP_NAME="${NEXT_PUBLIC_APP_NAME:-Blog}" \
