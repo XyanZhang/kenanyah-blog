@@ -9,6 +9,8 @@ interface HomeCanvasState {
   translateY: number
   viewportWidth: number
   viewportHeight: number
+  /** 是否已经用真实视口尺寸做过一次同步，避免首页首屏从默认 1920x1080 跳到实际尺寸时出现视觉位移 */
+  hasRealViewport: boolean
   setViewportSize: (width: number, height: number) => void
   setScale: (scale: number) => void
 }
@@ -35,6 +37,7 @@ export const useHomeCanvasStore = create<HomeCanvasState>()((set) => ({
   translateY: initialTranslate.translateY,
   viewportWidth: INITIAL_VIEWPORT.w,
   viewportHeight: INITIAL_VIEWPORT.h,
+  hasRealViewport: false,
 
   setViewportSize: (width, height) => {
     set((state) => {
@@ -44,6 +47,7 @@ export const useHomeCanvasStore = create<HomeCanvasState>()((set) => ({
         viewportHeight: height,
         translateX,
         translateY,
+        hasRealViewport: true,
       }
     })
   },

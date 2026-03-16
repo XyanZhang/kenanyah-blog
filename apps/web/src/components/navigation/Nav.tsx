@@ -36,7 +36,7 @@ export function Nav() {
   const avatarSrc = useProfileAvatarFromLayout()
 
   const isHomepage = pathname === '/'
-  const { scale, translateX, translateY, setViewportSize } = useHomeCanvasStore()
+  const { scale, translateX, translateY, setViewportSize, hasRealViewport } = useHomeCanvasStore()
   const navRef = useRef<HTMLElement>(null)
 
   // 首页时同步监听窗口 resize，确保缩小/放大窗口时 store 更新、布局跟随
@@ -50,6 +50,7 @@ export function Nav() {
   const indicatorRef = useRef<HTMLDivElement>(null)
   const [hoverIndex, setHoverIndex] = useState<number | null>(null)
   const [navSize, setNavSize] = useState({ width: 200, height: 60 })
+  const [hasMeasuredSize, setHasMeasuredSize] = useState(false)
   const [layoutJustChanged, setLayoutJustChanged] = useState(false)
   const rafIdRef = useRef<number | null>(null)
   
@@ -75,6 +76,7 @@ export function Nav() {
       const rect = navRef.current.getBoundingClientRect()
       if (rect.width > 0 && rect.height > 0) {
         setNavSize({ width: rect.width, height: rect.height })
+        setHasMeasuredSize(true)
       }
     }
   }, [config.customSize, visibleNavItems.length])
@@ -291,6 +293,12 @@ export function Nav() {
   const useFixedSize = Boolean(config.customSize) || isResizing
   const displaySize = useFixedSize ? currentSize : undefined
 
+  // 首屏只在：1）导航配置已从本地存储 hydrate，2）首页时已获得真实视口、3）无自定义尺寸则已测量一次内容尺寸 后再展示，
+  // 避免「从中间位置缓动到配置位置」的跳动感
+  const isReady =
+    (!isHomepage || hasRealViewport) &&
+    (config.customSize ? true : hasMeasuredSize || !isHomepage)
+
   return (
     <nav
       ref={navRef}
@@ -302,7 +310,11 @@ export function Nav() {
         isEditMode && 'cursor-grab active:cursor-grabbing',
         isEditMode && 'ring-2 ring-accent-primary/50',
         isDragging && 'opacity-80',
-        !(isDragging || isResizing) && !layoutJustChanged && 'transition-all duration-300 ease-out'
+        // 仅在就绪后且非拖拽/缩放/布局切换时启用过渡，避免首屏从默认位置动画跳变
+        isReady &&
+          !(isDragging || isResizing) &&
+          !layoutJustChanged &&
+          'transition-all duration-300 ease-out'
       )}
       style={{
         display: 'flex',
@@ -316,6 +328,7 @@ export function Nav() {
         minHeight: 48,
         overflow: useFixedSize && !isEditMode ? 'hidden' : 'visible',
         viewTransitionName: showViewTransition ? 'main-nav' : undefined,
+        opacity: isReady ? 1 : 0,
         ...(isHomepage
           ? {
               left: homeLeft,
