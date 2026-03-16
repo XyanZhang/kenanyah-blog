@@ -5,6 +5,9 @@ import { Home, FileText, Search, User, Camera, FolderOpen, LayoutGrid, MessageCi
 import { cn } from '@/lib/utils'
 import type { NavItem as NavItemType } from './nav-items'
 
+// 记录已经预加载过的站内链接，避免重复请求
+const prefetchedHrefs = new Set<string>()
+
 const iconMap: Record<string, LucideIcon> = {
   Home,
   FileText,
@@ -29,6 +32,27 @@ export function NavItem({ item, isActive, isHovered, isAnyHovered, isCompact = f
   const IconComponent = iconMap[item.icon]
   const shouldHighlight = isAnyHovered ? isHovered : isActive
   const isExternal = item.href.startsWith('http://') || item.href.startsWith('https://')
+
+  const handleMouseEnter = (element: HTMLElement) => {
+    onMouseEnter(element)
+    if (!isExternal) {
+      if (prefetchedHrefs.has(item.href)) {
+        return
+      }
+
+      // 仅对站内路由做一次 GET 预拉取，提升首次点击体验
+      // 使用 keepalive 避免页面切换中止请求
+      void fetch(item.href, {
+        method: 'GET',
+        cache: 'force-cache',
+        keepalive: true,
+      }).catch(() => {
+        // 忽略预加载失败，避免影响正常导航
+      })
+
+      prefetchedHrefs.add(item.href)
+    }
+  }
 
   const content = (
     <>
@@ -67,7 +91,7 @@ export function NavItem({ item, isActive, isHovered, isAnyHovered, isCompact = f
             ? 'text-accent-primary-dark'
             : 'text-content-tertiary'
         )}
-        onMouseEnter={(e) => onMouseEnter(e.currentTarget)}
+        onMouseEnter={(e) => handleMouseEnter(e.currentTarget)}
       >
         {content}
       </a>
@@ -84,7 +108,7 @@ export function NavItem({ item, isActive, isHovered, isAnyHovered, isCompact = f
           ? 'text-accent-primary-dark'
           : 'text-content-tertiary'
       )}
-      onMouseEnter={(e) => onMouseEnter(e.currentTarget)}
+      onMouseEnter={(e) => handleMouseEnter(e.currentTarget)}
     >
       {content}
     </Link>
