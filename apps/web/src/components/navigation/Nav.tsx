@@ -39,14 +39,14 @@ export function Nav() {
   const { scale, translateX, translateY, setViewportSize, hasRealViewport } = useHomeCanvasStore()
   const navRef = useRef<HTMLElement>(null)
 
-  // 首页时同步监听窗口 resize，确保缩小/放大窗口时 store 更新、布局跟随
+  // 同步监听窗口 resize，确保缩小/放大窗口时 store 更新、布局跟随。
+  // 即使当前不是首页，也提前同步视口尺寸，这样从其它页面跳转回首页时不会用到默认视口导致导航位置不一致。
   useEffect(() => {
-    if (!isHomepage) return
     const sync = () => setViewportSize(window.innerWidth, window.innerHeight)
     sync()
     window.addEventListener('resize', sync)
     return () => window.removeEventListener('resize', sync)
-  }, [isHomepage, setViewportSize])
+  }, [setViewportSize])
   const indicatorRef = useRef<HTMLDivElement>(null)
   const [hoverIndex, setHoverIndex] = useState<number | null>(null)
   const [navSize, setNavSize] = useState({ width: 200, height: 60 })
@@ -79,7 +79,7 @@ export function Nav() {
         setHasMeasuredSize(true)
       }
     }
-  }, [config.customSize, visibleNavItems.length])
+  }, [config.customSize, visibleNavItems.length, isHomepage])
 
   // 首页用竖向位置（画布坐标），非首页用横向位置；首页拖拽 delta 需除以 scale 转为画布坐标
   const { isDragging, dragDelta, dragHandlers } = useDrag({
