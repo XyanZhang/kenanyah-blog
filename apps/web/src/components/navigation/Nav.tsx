@@ -14,6 +14,7 @@ import { useAlignmentRegistration } from '@/hooks/useAlignmentRegistration'
 import { useDrag } from '@/hooks/useDrag'
 import { useResize } from '@/hooks/useResize'
 import { NavItem } from './NavItem'
+import type { NavItem as NavItemType } from './nav-items'
 import { NavToolbar } from './NavToolbar'
 import { ResizeHandles } from '@/components/dashboard/ResizeHandles'
 
@@ -65,10 +66,18 @@ export function Nav() {
   } | null>(null)
 
   // 从配置取显示项（数据库同步），按 sortOrder 排序
-  const visibleNavItems = (config.items ?? [])
+  const visibleNavItems: NavItemType[] = (config.items ?? [])
     .filter((item) => item.visible !== false)
     .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
-    .map(({ id, label, href, icon }) => ({ id, label, href, icon }))
+    .map(
+      ({ id, label, href, icon }) =>
+        ({
+          id,
+          label,
+          href,
+          icon,
+        } as NavItemType)
+    )
 
   // Measure nav size when not using custom size
   useEffect(() => {

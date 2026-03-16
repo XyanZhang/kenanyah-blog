@@ -4,7 +4,7 @@ export type NavHref = '/' | '/blog' | '/search' | '/about' | '/pictures' | '/pro
 export interface NavItem {
   id: string
   label: string
-  href: string
+  href: NavHref
   icon: string
 }
 
@@ -35,4 +35,12 @@ export function getDefaultNavItemsConfig(): NavItemConfig[] {
 }
 
 /** 兼容旧代码：仅含 id/label/href/icon 的列表 */
-export const navItems: NavItem[] = DEFAULT_NAV_ITEMS.map(({ id, label, href, icon }) => ({ id, label, href, icon }))
+export const navItems: NavItem[] = DEFAULT_NAV_ITEMS.map(
+  ({ id, label, href, icon }) =>
+    ({
+      id,
+      label,
+      href: href as NavHref,
+      icon,
+    } satisfies NavItem)
+)

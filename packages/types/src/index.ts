@@ -81,4 +81,5 @@ export type {
   WeatherCardConfig,
   MusicCardConfig,
   ReadingCardConfig,
+  AiChatCardConfig,
 } from './dashboard'

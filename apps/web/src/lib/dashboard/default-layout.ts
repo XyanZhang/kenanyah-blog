@@ -113,6 +113,10 @@ export function createDefaultCard(
       showProgress: true,
       showAuthor: true,
     },
+    [CardType.AI_CHAT]: {
+      title: 'AI 小助手',
+      subtitle: '和智能助手聊聊想法、写作灵感或技术问题。',
+    },
     [CardType.WOODEN_FISH]: {},
   }
 
