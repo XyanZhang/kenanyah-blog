@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation'
 import Image from 'next/image'
 import { cn } from '@/lib/utils'
 import { useDashboard } from '@/hooks/useDashboard'
+import { useDashboardStore } from '@/store/dashboard-store'
 import { useNavStore } from '@/store/nav-store'
 import { useAlignmentStore } from '@/store/alignment-store'
 import { useHomeCanvasStore } from '@/store/home-canvas-store'
@@ -13,16 +14,26 @@ import { useAlignmentRegistration } from '@/hooks/useAlignmentRegistration'
 import { useDrag } from '@/hooks/useDrag'
 import { useResize } from '@/hooks/useResize'
 import { NavItem } from './NavItem'
-import { navItems } from './nav-items'
 import { NavToolbar } from './NavToolbar'
 import { ResizeHandles } from '@/components/dashboard/ResizeHandles'
 
 const NAV_ELEMENT_ID = 'nav-component'
 
+const DEFAULT_AVATAR = '/images/avatar/avatar-pink.png'
+
+/** 从首页布局中取 Profile 卡片的头像配置，与主卡片保持同步 */
+function useProfileAvatarFromLayout(): string {
+  const layout = useDashboardStore((s) => s.layout)
+  const profileCard = layout?.cards?.find((c) => c.type === 'profile')
+  const avatar = profileCard?.config?.avatar
+  return (typeof avatar === 'string' && avatar.trim()) ? avatar.trim() : DEFAULT_AVATAR
+}
+
 export function Nav() {
   const pathname = usePathname()
   const { isEditMode } = useDashboard()
   const { config, updatePosition, updateSize, setResizing } = useNavStore()
+  const avatarSrc = useProfileAvatarFromLayout()
 
   const isHomepage = pathname === '/'
   const { scale, translateX, translateY, setViewportSize } = useHomeCanvasStore()
@@ -52,8 +63,11 @@ export function Nav() {
     opacity: number
   } | null>(null)
 
-  // Filter visible items
-  const visibleNavItems = navItems.filter((item) => config.visibleItems.includes(item.id))
+  // 从配置取显示项（数据库同步），按 sortOrder 排序
+  const visibleNavItems = (config.items ?? [])
+    .filter((item) => item.visible !== false)
+    .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
+    .map(({ id, label, href, icon }) => ({ id, label, href, icon }))
 
   // Measure nav size when not using custom size
   useEffect(() => {
@@ -263,8 +277,7 @@ export function Nav() {
     updateIndicatorToActive()
   }, [updateIndicatorToActive])
 
-  // Only show view transition when not in edit mode and using auto layout
-  const showViewTransition = !isEditMode && config.layout === 'auto'
+  const showViewTransition = false
 
   // 首页：画布坐标系，左上角为原点；非首页：横向顶部
   const position = isHomepage ? config.verticalPosition : config.horizontalPosition
@@ -327,7 +340,7 @@ export function Nav() {
         )}
       >
         <Image
-          src="/images/avatar/avatar-pink.png"
+          src={avatarSrc}
           alt="Kenanyah"
           width={48}
           height={48}

@@ -8,15 +8,14 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@/components/ui'
-import { Button, Label, Switch } from '@/components/ui'
-import { useNavStore, type NavLayout } from '@/store/nav-store'
-import { navItems } from './nav-items'
+import { Button, Label, Switch, Input } from '@/components/ui'
+import { useNavStore } from '@/store/nav-store'
+import { getDefaultNavItemsConfig } from './nav-items'
 import {
   Home,
   FileText,
   User,
   Camera,
-  Images,
   FolderOpen,
   LayoutGrid,
   MessageCircle,
@@ -29,7 +28,6 @@ const iconMap: Record<string, LucideIcon> = {
   FileText,
   User,
   Camera,
-  Images,
   FolderOpen,
   LayoutGrid,
   MessageCircle,
@@ -42,13 +40,8 @@ interface NavConfigDialogProps {
 }
 
 export function NavConfigDialog({ open, onOpenChange }: NavConfigDialogProps) {
-  const { config, setLayout, toggleItemVisibility, resetConfig, updateSize } = useNavStore()
-
-  const layoutOptions: { value: NavLayout; label: string; description: string }[] = [
-    { value: 'auto', label: '自动', description: '首页水平显示，其他页面垂直显示' },
-    { value: 'horizontal', label: '水平', description: '始终水平排列' },
-    { value: 'vertical', label: '垂直', description: '始终垂直排列' },
-  ]
+  const { config, updateNavItem, toggleItemVisibility, resetConfig, updateSize } = useNavStore()
+  const items = config.items?.length ? config.items : getDefaultNavItemsConfig()
 
   const handleReset = () => {
     resetConfig()
@@ -61,54 +54,42 @@ export function NavConfigDialog({ open, onOpenChange }: NavConfigDialogProps) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex max-h-[90vh] max-w-md flex-col">
+      <DialogContent className="flex max-h-[90vh] max-w-3xl flex-col">
         <DialogHeader className="shrink-0">
           <DialogTitle>导航配置</DialogTitle>
-          <DialogDescription>自定义导航栏的布局和显示项目</DialogDescription>
+          <DialogDescription>配置导航显示项目与点击跳转地址，保存后同步到数据库</DialogDescription>
         </DialogHeader>
 
         <div className="min-h-0 flex-1 space-y-6 overflow-y-auto py-4">
-          {/* Layout mode */}
-          <div className="space-y-3">
-            <Label className="text-sm font-medium">布局模式</Label>
-            <div className="grid gap-2">
-              {layoutOptions.map((option) => (
-                <button
-                  key={option.value}
-                  onClick={() => setLayout(option.value)}
-                  className={`flex flex-col items-start rounded-lg border p-3 text-left transition-colors ${
-                    config.layout === option.value
-                      ? 'border-accent-primary bg-accent-primary-subtle'
-                      : 'border-line-primary hover:border-line-hover'
-                  }`}
-                >
-                  <span className="font-medium text-content-primary">{option.label}</span>
-                  <span className="text-xs text-content-muted">{option.description}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Visible items */}
-          <div className="space-y-3">
+          {/* 显示项目：每项单行展示 */}
+          <div className="space-y-2">
             <Label className="text-sm font-medium">显示项目</Label>
             <div className="space-y-2">
-              {navItems.map((item) => {
+              {items.map((item) => {
                 const IconComponent = iconMap[item.icon]
-                const isVisible = config.visibleItems.includes(item.id)
-                const isLastVisible = isVisible && config.visibleItems.length === 1
+                const isVisible = item.visible !== false
+                const isLastVisible = isVisible && items.filter((i) => i.visible !== false).length === 1
 
                 return (
                   <div
                     key={item.id}
-                    className="flex items-center justify-between rounded-lg border border-line-primary p-3"
+                    className="flex items-center gap-3 rounded-lg border border-line-primary px-3 py-2"
                   >
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-accent-primary-light to-accent-secondary-light">
-                        <IconComponent className="h-4 w-4 text-accent-primary" />
-                      </div>
-                      <span className="font-medium text-content-primary">{item.label}</span>
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-linear-to-br from-accent-primary-light to-accent-secondary-light">
+                      <IconComponent className="h-4 w-4 text-accent-primary" />
                     </div>
+                    <Input
+                      className="h-8 w-24 shrink-0 text-sm font-medium"
+                      value={item.label}
+                      onChange={(e) => updateNavItem(item.id, { label: e.target.value })}
+                      placeholder="名称"
+                    />
+                    <Input
+                      className="h-8 min-w-0 flex-1 text-sm text-content-secondary"
+                      value={item.href}
+                      onChange={(e) => updateNavItem(item.id, { href: e.target.value })}
+                      placeholder="/path 或 https://..."
+                    />
                     <Switch
                       checked={isVisible}
                       onCheckedChange={() => toggleItemVisibility(item.id)}

@@ -1,7 +1,6 @@
 'use client'
 
 import Link from 'next/link'
-import type { Route } from 'next'
 import { Home, FileText, Search, User, Camera, FolderOpen, LayoutGrid, MessageCircle, LucideIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { NavItem as NavItemType } from './nav-items'
@@ -28,22 +27,11 @@ interface NavItemProps {
 
 export function NavItem({ item, isActive, isHovered, isAnyHovered, isCompact = false, onMouseEnter }: NavItemProps) {
   const IconComponent = iconMap[item.icon]
-  // When any item is hovered, only the hovered item should be highlighted
-  // When nothing is hovered, the active item should be highlighted
   const shouldHighlight = isAnyHovered ? isHovered : isActive
+  const isExternal = item.href.startsWith('http://') || item.href.startsWith('https://')
 
-  return (
-    <Link
-      href={item.href as Route}
-      className={cn(
-        'group relative flex justify-center items-center rounded-xl transition-colors duration-150 ease-out',
-        isCompact ? 'justify-center p-2' : 'gap-3 px-3 py-2',
-        shouldHighlight
-          ? 'text-accent-primary-dark'
-          : 'text-content-tertiary'
-      )}
-      onMouseEnter={(e) => onMouseEnter(e.currentTarget)}
-    >
+  const content = (
+    <>
       <IconComponent
         className={cn(
           'h-5 w-5 transition-colors duration-150 ease-out',
@@ -53,7 +41,6 @@ export function NavItem({ item, isActive, isHovered, isAnyHovered, isCompact = f
         )}
         style={{ viewTransitionName: `nav-icon-${item.id}` }}
       />
-
       <span
         className={cn(
           'text-sm font-medium transition-colors duration-150 ease-out',
@@ -64,6 +51,42 @@ export function NavItem({ item, isActive, isHovered, isAnyHovered, isCompact = f
       >
         {item.label}
       </span>
+    </>
+  )
+
+  if (isExternal) {
+    return (
+      <a
+        href={item.href}
+        target="_blank"
+        rel="noopener noreferrer"
+        className={cn(
+          'group relative flex justify-center items-center rounded-xl transition-colors duration-150 ease-out',
+          isCompact ? 'justify-center p-2' : 'gap-3 px-3 py-2',
+          shouldHighlight
+            ? 'text-accent-primary-dark'
+            : 'text-content-tertiary'
+        )}
+        onMouseEnter={(e) => onMouseEnter(e.currentTarget)}
+      >
+        {content}
+      </a>
+    )
+  }
+
+  return (
+    <Link
+      href={item.href}
+      className={cn(
+        'group relative flex justify-center items-center rounded-xl transition-colors duration-150 ease-out',
+        isCompact ? 'justify-center p-2' : 'gap-3 px-3 py-2',
+        shouldHighlight
+          ? 'text-accent-primary-dark'
+          : 'text-content-tertiary'
+      )}
+      onMouseEnter={(e) => onMouseEnter(e.currentTarget)}
+    >
+      {content}
     </Link>
   )
 }

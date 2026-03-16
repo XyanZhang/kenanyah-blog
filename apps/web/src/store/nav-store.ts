@@ -2,17 +2,14 @@
 
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { navItems } from '@/components/navigation/nav-items'
-
-export type NavLayout = 'auto' | 'horizontal' | 'vertical'
+import { getDefaultNavItemsConfig, type NavItemConfig } from '@/components/navigation/nav-items'
 
 export interface NavConfig {
-  // Separate position offsets for horizontal and vertical layouts
   horizontalPosition: { x: number; y: number }
   verticalPosition: { x: number; y: number }
-  layout: NavLayout
   customSize: { width: number; height: number } | null
-  visibleItems: string[]
+  /** 导航项列表（含 label、href、可见性），从数据库同步 */
+  items: NavItemConfig[]
 }
 
 interface NavState {
@@ -22,9 +19,12 @@ interface NavState {
   updatePosition: (delta: { x: number; y: number }, isHorizontal: boolean) => void
   setPosition: (position: { x: number; y: number }, isHorizontal: boolean) => void
   updateSize: (size: { width: number; height: number } | null) => void
-  setLayout: (layout: NavLayout) => void
-  /** 从服务端/API 恢复完整配置（用于同步云端配置到本地） */
-  setConfigFromApi: (config: Partial<NavConfig>) => void
+  /** 从服务端/API 恢复完整配置（用于同步云端配置到本地）；兼容旧版 visibleItems */
+  setConfigFromApi: (config: Partial<NavConfig> & { visibleItems?: string[] }) => void
+  /** 更新单个导航项 */
+  updateNavItem: (id: string, patch: Partial<Pick<NavItemConfig, 'label' | 'href' | 'visible' | 'sortOrder'>>) => void
+  /** 设置完整导航项列表 */
+  setNavItems: (items: NavItemConfig[]) => void
   toggleItemVisibility: (itemId: string) => void
   setResizing: (isResizing: boolean) => void
   resetConfig: () => void
@@ -33,9 +33,8 @@ interface NavState {
 const DEFAULT_CONFIG: NavConfig = {
   horizontalPosition: { x: 0, y: 0 },
   verticalPosition: { x: 0, y: 0 },
-  layout: 'auto',
   customSize: null,
-  visibleItems: navItems.map((item) => item.id),
+  items: getDefaultNavItemsConfig(),
 }
 
 export const useNavStore = create<NavState>()(
@@ -80,48 +79,48 @@ export const useNavStore = create<NavState>()(
         })
       },
 
-      setLayout: (layout) => {
-        const { config } = get()
-        set({
-          config: {
-            ...config,
-            layout,
-          },
+      setConfigFromApi: (config: Partial<NavConfig> & { visibleItems?: string[] }) => {
+        set((state) => {
+          const merged = { ...DEFAULT_CONFIG, ...state.config, ...config } as NavConfig
+          if (config.items?.length) {
+            merged.items = config.items
+          } else if (config.visibleItems?.length && (!state.config.items?.length || state.config.items.every((i) => i.visible === undefined))) {
+            const defaultItems = getDefaultNavItemsConfig()
+            merged.items = defaultItems.map((item) => ({
+              ...item,
+              visible: config.visibleItems!.includes(item.id),
+            }))
+          } else if (!merged.items?.length) {
+            merged.items = getDefaultNavItemsConfig()
+          }
+          return { config: merged }
         })
       },
 
-      setConfigFromApi: (config) => {
+      updateNavItem: (id, patch) => {
         set((state) => ({
           config: {
-            ...DEFAULT_CONFIG,
             ...state.config,
-            ...config,
-            visibleItems: config.visibleItems?.length
-              ? config.visibleItems
-              : state.config.visibleItems?.length
-                ? state.config.visibleItems
-                : DEFAULT_CONFIG.visibleItems,
+            items: state.config.items.map((item) =>
+              item.id === id ? { ...item, ...patch } : item
+            ),
           },
+        }))
+      },
+
+      setNavItems: (items) => {
+        set((state) => ({
+          config: { ...state.config, items },
         }))
       },
 
       toggleItemVisibility: (itemId) => {
         const { config } = get()
-        const isVisible = config.visibleItems.includes(itemId)
-        const newVisibleItems = isVisible
-          ? config.visibleItems.filter((id) => id !== itemId)
-          : [...config.visibleItems, itemId]
-
-        if (newVisibleItems.length === 0) {
-          return
-        }
-
-        set({
-          config: {
-            ...config,
-            visibleItems: newVisibleItems,
-          },
-        })
+        const items = config.items.map((item) =>
+          item.id === itemId ? { ...item, visible: !item.visible } : item
+        )
+        if (items.filter((i) => i.visible).length === 0) return
+        set({ config: { ...config, items } })
       },
 
       setResizing: (isResizing) => {
@@ -134,28 +133,32 @@ export const useNavStore = create<NavState>()(
     }),
     {
       name: 'nav-config',
-      version: 3,
+      version: 4,
       merge: (persistedState, currentState) => {
-        const persisted = persistedState as { config?: NavConfig }
+        const persisted = persistedState as { config?: NavConfig & { layout?: string; visibleItems?: string[] } }
         const current = currentState as NavState
+        if (!persisted?.config) return current
+        let items = persisted.config.items
+        if (!items?.length && persisted.config.visibleItems?.length) {
+          items = getDefaultNavItemsConfig().map((item) => ({
+            ...item,
+            visible: persisted.config!.visibleItems!.includes(item.id),
+          }))
+        }
+        if (!items?.length) items = getDefaultNavItemsConfig()
         return {
           ...current,
           ...persisted,
-          config: persisted?.config
-            ? {
-                ...DEFAULT_CONFIG,
-                ...persisted.config,
-                // 如果持久化的 visibleItems 为空或不存在，使用默认值
-                visibleItems: persisted.config.visibleItems?.length
-                  ? persisted.config.visibleItems
-                  : DEFAULT_CONFIG.visibleItems,
-              }
-            : current.config,
+          config: {
+            ...DEFAULT_CONFIG,
+            ...persisted.config,
+            items,
+          },
         }
       },
       migrate: (persistedState: unknown, version: number) => {
+        const old = persistedState as { config?: { position?: { x: number; y: number }; visibleItems?: string[]; layout?: string } }
         if (version < 2) {
-          const old = persistedState as { config?: { position?: { x: number; y: number } } }
           const pos = old?.config?.position ?? { x: 0, y: 0 }
           return {
             ...old,
@@ -166,16 +169,27 @@ export const useNavStore = create<NavState>()(
             },
           }
         }
+        if (version < 4 && old?.config && !('items' in old.config) && old.config.visibleItems) {
+          const defaultItems = getDefaultNavItemsConfig()
+          return {
+            ...old,
+            config: {
+              ...old.config,
+              items: defaultItems.map((item) => ({
+                ...item,
+                visible: old.config!.visibleItems!.includes(item.id),
+              })),
+            },
+          }
+        }
         return persistedState
       },
-      // 持久化 visibleItems，支持用户自定义导航项显示/隐藏
       partialize: (state) => ({
         config: {
           horizontalPosition: state.config.horizontalPosition,
           verticalPosition: state.config.verticalPosition,
-          layout: state.config.layout,
           customSize: state.config.customSize,
-          visibleItems: state.config.visibleItems,
+          items: state.config.items,
         },
       }),
     }
