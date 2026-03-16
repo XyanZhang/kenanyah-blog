@@ -11,11 +11,12 @@
         "config": {
           "showAvatar": true,
           "showBio": true,
-          "showSocialLinks": true
+          "showSocialLinks": true,
+          "avatar": "/images/avatar/avatar_1.png"
         },
         "visible": true,
         "createdAt": "2026-02-26T07:07:19.685Z",
-        "updatedAt": "2026-02-27T07:18:57.770Z",
+        "updatedAt": "2026-03-16T08:54:28.180Z",
         "animationPriority": 1,
         "position": {
           "x": 812.6591552734375,
@@ -39,11 +40,11 @@
         },
         "visible": true,
         "createdAt": "2026-02-26T07:07:19.687Z",
-        "updatedAt": "2026-02-27T07:19:14.012Z",
+        "updatedAt": "2026-03-16T10:08:42.200Z",
         "animationPriority": 8,
         "position": {
-          "x": 1157.8446491020582,
-          "y": 462.0751089912036,
+          "x": 1157.6588532036208,
+          "y": 463.73565977245363,
           "z": 7
         },
         "customDimensions": {
@@ -124,10 +125,10 @@
         },
         "visible": true,
         "createdAt": "2026-02-26T07:16:50.468Z",
-        "updatedAt": "2026-03-04T09:28:46.910Z",
+        "updatedAt": "2026-03-16T10:08:36.542Z",
         "position": {
-          "x": 349.74351969920286,
-          "y": 441.18510480383674,
+          "x": 1157.7079327851402,
+          "y": 815.8184675968056,
           "z": 4
         },
         "customDimensions": {
@@ -151,10 +152,10 @@
         },
         "visible": true,
         "createdAt": "2026-02-26T07:17:13.717Z",
-        "updatedAt": "2026-02-28T15:53:48.696Z",
+        "updatedAt": "2026-03-16T10:08:44.125Z",
         "position": {
-          "x": 1166.8235517578123,
-          "y": 189.53528561057897,
+          "x": 1158.4187666015623,
+          "y": 189.64087643089147,
           "z": 5
         },
         "customDimensions": {
@@ -245,32 +246,6 @@
         }
       },
       {
-        "id": "image-1772616835350-wuqulf7er",
-        "type": "image",
-        "size": "custom",
-        "borderRadius": 40,
-        "padding": 8,
-        "config": {
-          "src": "/images/avatar/avatar-pink.png",
-          "alt": "Cover Image",
-          "objectFit": "cover",
-          "showOverlay": false,
-          "hideCardContainer": false
-        },
-        "visible": true,
-        "createdAt": "2026-03-04T09:33:55.350Z",
-        "updatedAt": "2026-03-04T10:24:13.091Z",
-        "position": {
-          "x": 404.05528947866225,
-          "y": 238.01564141044435,
-          "z": 8
-        },
-        "customDimensions": {
-          "width": 188.890625,
-          "height": 174.8984375
-        }
-      },
-      {
         "id": "wooden_fish-1772617754205-dl7co98r9",
         "type": "wooden_fish",
         "size": "custom",
@@ -281,21 +256,41 @@
         },
         "visible": true,
         "createdAt": "2026-03-04T09:49:14.205Z",
-        "updatedAt": "2026-03-04T09:56:45.303Z",
+        "updatedAt": "2026-03-16T10:08:32.989Z",
         "position": {
-          "x": 1157.8589176484215,
-          "y": 740.5202506062034,
+          "x": 491.58773234568724,
+          "y": 146.50393981518778,
           "z": 9
         },
         "customDimensions": {
           "width": 148.8203125,
           "height": 179.75390625
         }
+      },
+      {
+        "id": "ai_chat-1773647888071-hkp6on7cj",
+        "type": "ai_chat",
+        "size": "custom",
+        "borderRadius": 40,
+        "padding": 0,
+        "config": {},
+        "visible": true,
+        "createdAt": "2026-03-16T07:58:08.071Z",
+        "updatedAt": "2026-03-16T10:08:29.475Z",
+        "position": {
+          "x": 349.8433938337292,
+          "y": 321.060293154434,
+          "z": 10
+        },
+        "customDimensions": {
+          "width": 242.90234375,
+          "height": 194.1171875
+        }
       }
     ],
     "version": 2,
     "createdAt": "2026-02-26T07:07:19.685Z",
-    "updatedAt": "2026-03-04T10:24:13.091Z"
+    "updatedAt": "2026-03-16T10:08:44.125Z"
   },
   "nav": {
     "horizontalPosition": {
@@ -306,15 +301,72 @@
       "x": -257.658447265625,
       "y": -206.9558563232422
     },
-    "layout": "auto",
     "customSize": null,
-    "visibleItems": [
-      "home",
-      "blog",
-      "pictures",
-      "thoughts",
-      "works",
-      "about"
+    "items": [
+      {
+        "id": "home",
+        "label": "首页",
+        "href": "/",
+        "icon": "Home",
+        "visible": true,
+        "sortOrder": 0
+      },
+      {
+        "id": "blog",
+        "label": "博客",
+        "href": "/blog",
+        "icon": "FileText",
+        "visible": true,
+        "sortOrder": 1
+      },
+      {
+        "id": "search",
+        "label": "搜索",
+        "href": "/search",
+        "icon": "Search",
+        "visible": false,
+        "sortOrder": 2
+      },
+      {
+        "id": "about",
+        "label": "关于",
+        "href": "/about",
+        "icon": "User",
+        "visible": true,
+        "sortOrder": 3
+      },
+      {
+        "id": "pictures",
+        "label": "摄影",
+        "href": "/pictures",
+        "icon": "Camera",
+        "visible": true,
+        "sortOrder": 4
+      },
+      {
+        "id": "projects",
+        "label": "项目",
+        "href": "/projects",
+        "icon": "FolderOpen",
+        "visible": false,
+        "sortOrder": 5
+      },
+      {
+        "id": "works",
+        "label": "作品",
+        "href": "/works",
+        "icon": "LayoutGrid",
+        "visible": true,
+        "sortOrder": 6
+      },
+      {
+        "id": "thoughts",
+        "label": "思考",
+        "href": "/thoughts",
+        "icon": "MessageCircle",
+        "visible": true,
+        "sortOrder": 7
+      }
     ]
   },
   "canvas": {
