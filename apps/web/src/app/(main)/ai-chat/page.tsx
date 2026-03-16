@@ -256,8 +256,17 @@ export default function AiChatPage() {
                       }`}
                     >
                       {msg.role === 'assistant' ? (
-                        <div className="prose prose-sm max-w-none prose-headings:text-content-primary prose-p:text-content-secondary prose-strong:text-content-primary">
-                          <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                        <div className="md-content max-w-none">
+                          <ReactMarkdown
+                            remarkPlugins={[remarkGfm]}
+                            components={{
+                              table: ({ children, ...props }) => (
+                                <div className="md-table-wrapper">
+                                  <table {...props}>{children}</table>
+                                </div>
+                              ),
+                            }}
+                          >
                             {msg.content || (msg.pending ? '思考中…' : '')}
                           </ReactMarkdown>
                         </div>
