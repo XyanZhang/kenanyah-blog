@@ -12,9 +12,10 @@ interface ProfileCardProps {
 export function ProfileCard({ card }: ProfileCardProps) {
   const config = card.config as ProfileCardConfig
 
+  const defaultAvatar = '/images/avatar/avatar-pink.png'
   const profile = {
     name: 'Kenanyah',
-    avatar: '/images/avatar/avatar-pink.png',
+    avatar: (config.avatar && config.avatar.trim()) || defaultAvatar,
     greeting: 'Hello, I\'m',
     subtitle: 'Nice to meet you.',
     social: {

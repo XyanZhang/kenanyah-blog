@@ -65,6 +65,8 @@ export interface DashboardLayout {
 // Card-specific config types
 export interface ProfileCardConfig {
   showAvatar: boolean
+  /** 自定义头像 URL，留空则使用默认头像 */
+  avatar?: string
   showBio: boolean
   showSocialLinks: boolean
 }

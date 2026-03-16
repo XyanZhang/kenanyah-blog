@@ -1,14 +1,16 @@
 'use client'
 
-import { Label, Switch } from '@/components/ui'
+import { Label, Switch, Input } from '@/components/ui'
 
 interface ProfileConfigFormProps {
   config: Record<string, any>
   onChange: (config: Record<string, any>) => void
 }
 
+const DEFAULT_AVATAR = '/images/avatar/avatar-pink.png'
+
 export function ProfileConfigForm({ config, onChange }: ProfileConfigFormProps) {
-  const handleChange = (key: string, value: boolean) => {
+  const handleChange = (key: string, value: boolean | string) => {
     onChange({ ...config, [key]: value })
   }
 
@@ -21,6 +23,21 @@ export function ProfileConfigForm({ config, onChange }: ProfileConfigFormProps) 
           onCheckedChange={(checked) => handleChange('showAvatar', checked)}
         />
       </div>
+      {config.showAvatar !== false && (
+        <div className="space-y-2">
+          <Label htmlFor="avatar">自定义头像 URL</Label>
+          <Input
+            id="avatar"
+            type="text"
+            value={config.avatar ?? ''}
+            onChange={(e) => handleChange('avatar', e.target.value)}
+            placeholder={DEFAULT_AVATAR}
+          />
+          <p className="text-xs text-muted-foreground">
+            留空使用默认头像，可填相对路径如 /images/avatar/avatar.png
+          </p>
+        </div>
+      )}
       <div className="flex items-center justify-between">
         <Label htmlFor="showBio">Show Bio</Label>
         <Switch
