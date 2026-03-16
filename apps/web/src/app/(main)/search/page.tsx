@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useEffect } from 'react'
 import Link from 'next/link'
+import type { Route } from 'next'
 import { Search as SearchIcon, FileText, Loader2, Bot } from 'lucide-react'
 import { apiClient } from '@/lib/api-client'
 import { getApiErrorMessage } from '@/lib/api-error'
@@ -128,7 +129,7 @@ export default function SearchPage() {
                 return (
                   <li key={`${key}-${index}`}>
                     <Link
-                      href={href}
+                      href={href as Route}
                       className="block p-4 rounded-xl border border-line-glass bg-surface-glass hover:border-accent-primary/30 hover:bg-accent-primary/5 transition-colors"
                     >
                       <div className="flex items-start gap-3">

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
@@ -92,11 +92,6 @@ export default function AiChatPage() {
     if (!bottomRef.current) return
     bottomRef.current.scrollIntoView({ behavior: 'smooth' })
   }, [messages.length, sending])
-
-  const currentConversation = useMemo(
-    () => conversations.find((c) => c.id === currentId) ?? null,
-    [conversations, currentId]
-  )
 
   async function handleSend() {
     if (!currentId || !input.trim() || sending) return
