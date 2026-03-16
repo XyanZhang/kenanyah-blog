@@ -53,8 +53,22 @@ export default function AboutPage() {
               <li>碎片化思考：不成文的想法、读书笔记与灵感片段，也会零散地更新在这里。</li>
             </ul>
 
-            <div className="mt-8 text-content-tertiary text-sm">
-              希望这个项目既能帮我系统化地打磨技术能力，也能在多年之后，成为回望当下的一本「电子日记」。
+            <div className="mt-8 text-content-tertiary text-sm space-y-2">
+              <p>
+                希望这个项目既能帮我系统化地打磨技术能力，也能在多年之后，成为回望当下的一本「电子日记」。
+              </p>
+              <p className="font-medium">
+                网站整体 UI 设计灵感参考自{' '}
+                <a
+                  href="https://www.yysuni.com/"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="underline underline-offset-2 hover:text-content-secondary"
+                >
+                  YYsuni
+                </a>
+                。
+              </p>
             </div>
           </div>
         </div>
