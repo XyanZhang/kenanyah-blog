@@ -2,17 +2,26 @@
 
 import { useState, useCallback, useEffect } from 'react'
 import Link from 'next/link'
-import { Search as SearchIcon, FileText, Loader2 } from 'lucide-react'
+import { Search as SearchIcon, FileText, Loader2, Bot } from 'lucide-react'
 import { apiClient } from '@/lib/api-client'
 import { getApiErrorMessage } from '@/lib/api-error'
 
-export interface SemanticSearchHit {
-  postId: string
-  title: string
-  slug: string
-  snippet: string
-  score: number
-}
+export type SemanticSearchHit =
+  | {
+      type: 'post'
+      postId: string
+      title: string
+      slug: string
+      snippet: string
+      score: number
+    }
+  | {
+      type: 'conversation'
+      conversationId: string
+      title: string
+      snippet: string
+      score: number
+    }
 
 const SEARCH_DEBOUNCE_MS = 300
 
@@ -105,29 +114,46 @@ export default function SearchPage() {
             <p className="text-content-secondary">未找到相关文章。</p>
           ) : (
             <ul className="space-y-4">
-              {hits.map((hit) => (
-                <li key={hit.postId}>
-                  <Link
-                    href={`/posts/${hit.slug}`}
-                    className="block p-4 rounded-xl border border-line-glass bg-surface-glass hover:border-accent-primary/30 hover:bg-accent-primary/5 transition-colors"
-                  >
-                    <div className="flex items-start gap-3">
-                      <FileText className="h-5 w-5 text-accent-primary shrink-0 mt-0.5" />
-                      <div className="min-w-0 flex-1">
-                        <h2 className="font-medium text-content-primary truncate">
-                          {hit.title}
-                        </h2>
-                        <p className="text-sm text-content-secondary line-clamp-2 mt-1">
-                          {hit.snippet}
-                        </p>
-                        <span className="text-xs text-content-tertiary mt-2 inline-block">
-                          相关度 {(hit.score * 100).toFixed(0)}%
-                        </span>
+              {hits.map((hit, index) => {
+                const key = hit.type === 'post' ? hit.postId : hit.conversationId
+                const href =
+                  hit.type === 'post'
+                    ? `/posts/${(hit as Extract<SemanticSearchHit, { type: 'post' }>).slug}`
+                    : `/ai-chat?conversationId=${
+                        (hit as Extract<SemanticSearchHit, { type: 'conversation' }>).conversationId
+                      }`
+                const Icon = hit.type === 'post' ? FileText : Bot
+                const badgeText = hit.type === 'post' ? '文章' : '对话'
+
+                return (
+                  <li key={`${key}-${index}`}>
+                    <Link
+                      href={href}
+                      className="block p-4 rounded-xl border border-line-glass bg-surface-glass hover:border-accent-primary/30 hover:bg-accent-primary/5 transition-colors"
+                    >
+                      <div className="flex items-start gap-3">
+                        <Icon className="h-5 w-5 text-accent-primary shrink-0 mt-0.5" />
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2">
+                            <h2 className="font-medium text-content-primary truncate">
+                              {hit.title}
+                            </h2>
+                            <span className="inline-flex items-center rounded-full bg-surface-tertiary px-2 py-0.5 text-[11px] text-content-tertiary">
+                              {badgeText}
+                            </span>
+                          </div>
+                          <p className="text-sm text-content-secondary line-clamp-2 mt-1">
+                            {hit.snippet}
+                          </p>
+                          <span className="text-xs text-content-tertiary mt-2 inline-block">
+                            相关度 {(hit.score * 100).toFixed(0)}%
+                          </span>
+                        </div>
                       </div>
-                    </div>
-                  </Link>
-                </li>
-              ))}
+                    </Link>
+                  </li>
+                )
+              })}
             </ul>
           )}
         </section>

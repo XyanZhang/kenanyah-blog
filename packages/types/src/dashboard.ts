@@ -30,6 +30,7 @@ export enum CardType {
   MUSIC = 'music',
   READING = 'reading',
   WOODEN_FISH = 'wooden_fish',
+  AI_CHAT = 'ai_chat',
 }
 
 export interface CardPosition {
@@ -195,4 +196,9 @@ export interface ReadingCardConfig {
   showStreak: boolean
   showProgress: boolean
   showAuthor: boolean
+}
+
+export interface AiChatCardConfig {
+  title?: string
+  subtitle?: string
 }

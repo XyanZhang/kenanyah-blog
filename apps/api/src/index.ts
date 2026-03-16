@@ -15,6 +15,7 @@ import comments from './routes/comments'
 import users from './routes/users'
 import weather from './routes/weather'
 import ai from './routes/ai'
+import chat from './routes/chat'
 import search from './routes/search'
 import home from './routes/home'
 import uploads from './routes/uploads'
@@ -60,6 +61,7 @@ app.get('/', (c) => {
         users: '/users',
         weather: '/weather',
         ai: '/ai',
+        chat: '/chat',
         search: '/search',
         home: '/home',
         uploads: '/uploads',
@@ -69,6 +71,7 @@ app.get('/', (c) => {
 })
 app.route('/auth', auth)
 app.route('/ai', ai)
+app.route('/chat', chat)
 app.route('/posts', posts)
 app.route('/categories', categories)
 app.route('/tags', tags)

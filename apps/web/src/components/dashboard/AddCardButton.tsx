@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useImperativeHandle, forwardRef } from 'react'
-import { User, BarChart3, FolderTree, FileText, LayoutGrid, Clock, Shuffle, Calendar, Timer, ImageIcon, Link2, Quote, CloudSun, Music, Book, Fish } from 'lucide-react'
+import { User, BarChart3, FolderTree, FileText, LayoutGrid, Clock, Shuffle, Calendar, Timer, ImageIcon, Link2, Quote, CloudSun, Music, Book, Fish, Bot } from 'lucide-react'
 import { CardType, CardSize } from '@blog/types'
 import { useDashboard } from '@/hooks/useDashboard'
 import { Button } from '@/components/ui'
@@ -32,6 +32,7 @@ const cardTypeOptions = [
   { value: CardType.MUSIC, label: 'Music', icon: Music, description: '音乐播放卡片' },
   { value: CardType.READING, label: 'Reading', icon: Book, description: '读书进度卡片' },
   { value: CardType.WOODEN_FISH, label: '木鱼', icon: Fish, description: 'Q版木鱼敲钟·功德+1' },
+  { value: CardType.AI_CHAT, label: 'AI Chat', icon: Bot, description: 'AI 聊天入口' },
 ]
 
 const cardSizeOptions = [
@@ -65,7 +66,7 @@ export const AddCardDialog = forwardRef<AddCardDialogHandle>(function AddCardDia
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent>
+      <DialogContent className="sm:max-w-[520px] md:max-w-[720px]">
         <DialogHeader>
           <DialogTitle>Add New Card</DialogTitle>
           <DialogDescription>
@@ -76,7 +77,7 @@ export const AddCardDialog = forwardRef<AddCardDialogHandle>(function AddCardDia
         <div className="space-y-4 py-4">
           <div className="space-y-2">
             <label className="text-sm font-medium">Card Type</label>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
               {cardTypeOptions.map((option) => {
                 const Icon = option.icon
                 return (

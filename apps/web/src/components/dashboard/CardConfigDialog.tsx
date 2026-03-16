@@ -33,6 +33,7 @@ import { MusicConfigForm } from './config-forms/MusicConfigForm'
 import { ReadingConfigForm } from './config-forms/ReadingConfigForm'
 import { WoodenFishConfigForm } from './config-forms/WoodenFishConfigForm'
 import { NavigateConfigForm } from './config-forms/NavigateConfigForm'
+import { AiChatConfigForm } from './config-forms/AiChatConfigForm'
 
 interface CardConfigDialogProps {
   card: DashboardCard
@@ -58,6 +59,7 @@ function getCardTypeLabel(type: CardType): string {
     [CardType.MUSIC]: 'Music',
     [CardType.READING]: 'Reading',
     [CardType.WOODEN_FISH]: '木鱼',
+    [CardType.AI_CHAT]: 'AI Chat',
   }
   return labels[type]
 }
@@ -80,6 +82,7 @@ function getConfigForm(type: CardType) {
     [CardType.MUSIC]: MusicConfigForm,
     [CardType.READING]: ReadingConfigForm,
     [CardType.WOODEN_FISH]: WoodenFishConfigForm,
+    [CardType.AI_CHAT]: AiChatConfigForm,
   }
   return forms[type]
 }

@@ -32,6 +32,7 @@ const cardComponents = {
   [CardType.MUSIC]: lazy(() => import('./cards/MusicCard').then(m => ({ default: m.MusicCard }))),
   [CardType.READING]: lazy(() => import('./cards/ReadingCard').then(m => ({ default: m.ReadingCard }))),
   [CardType.WOODEN_FISH]: lazy(() => import('./cards/WoodenFishCard').then(m => ({ default: m.WoodenFishCard }))),
+  [CardType.AI_CHAT]: lazy(() => import('./cards/AiChatCard').then(m => ({ default: m.AiChatCard }))),
 }
 
 function CardPlaceholder() {
