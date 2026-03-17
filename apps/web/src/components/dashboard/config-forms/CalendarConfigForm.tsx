@@ -28,6 +28,16 @@ export function CalendarConfigForm({ config, onChange }: CalendarConfigFormProps
           onCheckedChange={(checked) => handleChange('highlightToday', checked)}
         />
       </div>
+      <div className="flex items-center justify-between">
+        <div>
+          <Label htmlFor="showAnnotations">显示日期标注</Label>
+          <p className="text-xs text-content-muted mt-0.5">点击日期可添加/编辑标注（与账号绑定）</p>
+        </div>
+        <Switch
+          checked={config.showAnnotations !== false}
+          onCheckedChange={(checked) => handleChange('showAnnotations', checked)}
+        />
+      </div>
     </div>
   )
 }

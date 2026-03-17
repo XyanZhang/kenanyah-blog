@@ -34,6 +34,7 @@ import { ReadingConfigForm } from './config-forms/ReadingConfigForm'
 import { WoodenFishConfigForm } from './config-forms/WoodenFishConfigForm'
 import { NavigateConfigForm } from './config-forms/NavigateConfigForm'
 import { AiChatConfigForm } from './config-forms/AiChatConfigForm'
+import { CountdownConfigForm } from './config-forms/CountdownConfigForm'
 
 interface CardConfigDialogProps {
   card: DashboardCard
@@ -60,6 +61,7 @@ function getCardTypeLabel(type: CardType): string {
     [CardType.READING]: 'Reading',
     [CardType.WOODEN_FISH]: '木鱼',
     [CardType.AI_CHAT]: 'AI Chat',
+    [CardType.COUNTDOWN]: '倒计时',
   }
   return labels[type]
 }
@@ -83,6 +85,7 @@ function getConfigForm(type: CardType) {
     [CardType.READING]: ReadingConfigForm,
     [CardType.WOODEN_FISH]: WoodenFishConfigForm,
     [CardType.AI_CHAT]: AiChatConfigForm,
+    [CardType.COUNTDOWN]: CountdownConfigForm,
   }
   return forms[type]
 }

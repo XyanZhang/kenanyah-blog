@@ -19,6 +19,8 @@ import chat from './routes/chat'
 import search from './routes/search'
 import home from './routes/home'
 import uploads from './routes/uploads'
+import countdown from './routes/countdown'
+import calendar from './routes/calendar'
 
 // 根应用：/uploads 在根路径（图片等静态资源无需 /api 前缀），/api 下为接口
 const root = new Hono()
@@ -80,6 +82,8 @@ app.route('/users', users)
 app.route('/weather', weather)
 app.route('/search', search)
 app.route('/home', home)
+app.route('/countdown', countdown)
+app.route('/calendar', calendar)
 
 root.route('/api', app)
 

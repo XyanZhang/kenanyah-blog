@@ -82,4 +82,6 @@ export type {
   MusicCardConfig,
   ReadingCardConfig,
   AiChatCardConfig,
+  CountdownCardConfig,
+  CountdownEventType,
 } from './dashboard'

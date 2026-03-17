@@ -103,6 +103,41 @@ posts.get('/', validateQuery(postQuerySchema), async (c) => {
   })
 })
 
+/** 获取有发布文章的日期列表（供日历卡片「有文章」圆点使用），公开接口，无需鉴权 */
+posts.get('/published-dates', async (c) => {
+  const from = c.req.query('from') // YYYY-MM-DD
+  const to = c.req.query('to')     // YYYY-MM-DD
+  const fromDate = from ? new Date(from + 'T00:00:00.000Z') : null
+  const toDate = to ? new Date(to + 'T23:59:59.999Z') : null
+  if (from && Number.isNaN(fromDate!.getTime())) {
+    return c.json({ success: false, error: '无效的 from 日期' }, 400)
+  }
+  if (to && Number.isNaN(toDate!.getTime())) {
+    return c.json({ success: false, error: '无效的 to 日期' }, 400)
+  }
+
+  const dateFilter: { not?: null; gte?: Date; lte?: Date } =
+    fromDate || toDate
+      ? { ...(fromDate && { gte: fromDate }), ...(toDate && { lte: toDate }) }
+      : { not: null }
+  const where = {
+    published: true,
+    publishedAt: dateFilter,
+  }
+
+  const postsWithDates = await prisma.post.findMany({
+    where,
+    select: { publishedAt: true },
+  })
+  const dates = [...new Set(
+    postsWithDates
+      .map((p) => p.publishedAt)
+      .filter((d): d is Date => d != null)
+      .map((d) => d.toISOString().slice(0, 10))
+  )].sort()
+  return c.json({ success: true, data: dates })
+})
+
 // Get post by id (for edit page)
 posts.get('/by-id/:id', async (c) => {
   const { id } = c.req.param()

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useImperativeHandle, forwardRef } from 'react'
-import { User, BarChart3, FolderTree, FileText, LayoutGrid, Clock, Shuffle, Calendar, Timer, ImageIcon, Link2, Quote, CloudSun, Music, Book, Fish, Bot } from 'lucide-react'
+import { User, BarChart3, FolderTree, FileText, LayoutGrid, Clock, Shuffle, Calendar, Timer, ImageIcon, Link2, Quote, CloudSun, Music, Book, Fish, Bot, CalendarHeart } from 'lucide-react'
 import { CardType, CardSize } from '@blog/types'
 import { useDashboard } from '@/hooks/useDashboard'
 import { Button } from '@/components/ui'
@@ -33,6 +33,7 @@ const cardTypeOptions = [
   { value: CardType.READING, label: 'Reading', icon: Book, description: '读书进度卡片' },
   { value: CardType.WOODEN_FISH, label: '木鱼', icon: Fish, description: 'Q版木鱼敲钟·功德+1' },
   { value: CardType.AI_CHAT, label: 'AI Chat', icon: Bot, description: 'AI 聊天入口' },
+  { value: CardType.COUNTDOWN, label: '倒计时', icon: CalendarHeart, description: '生日/纪念日/考试/活动，显示最近三项还剩 x 天 x 时' },
 ]
 
 const cardSizeOptions = [

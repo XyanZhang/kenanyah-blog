@@ -2,11 +2,15 @@ import { Hono } from 'hono'
 import { prisma } from '../lib/db'
 import { authMiddleware } from '../middleware/auth'
 
+type HomeVariables = {
+  user: { userId: string }
+}
+
 /**
  * 首页配置与模板 API（已接入用户系统）。
  * 所有配置均按当前登录用户的 userId 进行隔离存储。
  */
-const home = new Hono()
+const home = new Hono<{ Variables: HomeVariables }>()
 
 // GET /home/config — 拉取当前登录用户的首页配置
 home.get('/config', authMiddleware, async (c) => {

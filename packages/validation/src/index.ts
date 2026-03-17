@@ -90,3 +90,21 @@ export {
   validateDashboardCard,
   validateDashboardLayout,
 } from './dashboard'
+
+// Countdown events
+export {
+  createCountdownEventSchema,
+  updateCountdownEventSchema,
+  type CreateCountdownEventInput,
+  type UpdateCountdownEventInput,
+} from './countdown'
+
+// Calendar annotations
+export {
+  createCalendarAnnotationSchema,
+  updateCalendarAnnotationSchema,
+  calendarAnnotationQuerySchema,
+  type CreateCalendarAnnotationInput,
+  type UpdateCalendarAnnotationInput,
+  type CalendarAnnotationQueryInput,
+} from './calendarAnnotation'

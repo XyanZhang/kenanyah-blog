@@ -7,5 +7,8 @@
     "typescript",
     "eslint",
     "prettier"
-  ]
+  ],
+  "devDependencies": {
+    "eslint-config-prettier": "^10.1.8"
+  }
 }

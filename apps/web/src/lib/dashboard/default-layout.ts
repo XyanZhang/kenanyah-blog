@@ -118,6 +118,10 @@ export function createDefaultCard(
       subtitle: '和智能助手聊聊想法、写作灵感或技术问题。',
     },
     [CardType.WOODEN_FISH]: {},
+    [CardType.COUNTDOWN]: {
+      limit: 3,
+      futureOnly: true,
+    },
   }
 
   return {

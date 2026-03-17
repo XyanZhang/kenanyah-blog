@@ -118,9 +118,13 @@ export async function indexConversation(conversationId: string): Promise<void> {
         take: 50,
       },
     },
-  } as any)
+  })
 
   if (!conversation) return
+
+  const convWithMessages = conversation as typeof conversation & {
+    messages: { role: string; content: string }[]
+  }
 
   await (prisma as any).$executeRawUnsafe(
     'DELETE FROM conversation_embeddings WHERE conversation_id = $1',
@@ -128,9 +132,9 @@ export async function indexConversation(conversationId: string): Promise<void> {
   )
 
   const text = buildConversationIndexText({
-    id: conversation.id,
-    title: conversation.title,
-    messages: conversation.messages,
+    id: convWithMessages.id,
+    title: convWithMessages.title,
+    messages: convWithMessages.messages,
   })
 
   const vectors = await embedDocuments([text])

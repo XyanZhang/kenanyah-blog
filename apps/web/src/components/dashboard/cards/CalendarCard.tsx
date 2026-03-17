@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import {
   startOfMonth,
   endOfMonth,
@@ -9,7 +9,6 @@ import {
   eachDayOfInterval,
   format,
   isSameMonth,
-  isSameDay,
   addMonths,
   subMonths,
   isToday,
@@ -17,6 +16,17 @@ import {
 import { zhCN } from 'date-fns/locale'
 import { DashboardCard, CalendarCardConfig } from '@blog/types'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { getCalendarAnnotations, getPublishedPostDates, saveCalendarAnnotation } from '@/lib/calendar-api'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  Button,
+  Label,
+  Input,
+} from '@/components/ui'
 
 interface CalendarCardProps {
   card: DashboardCard
@@ -27,27 +37,46 @@ const WEEKDAYS = ['日', '一', '二', '三', '四', '五', '六']
 export function CalendarCard({ card }: CalendarCardProps) {
   const config = card.config as CalendarCardConfig
   const [currentDate, setCurrentDate] = useState(new Date())
+  const [annotations, setAnnotations] = useState<Map<string, string>>(new Map())
+  const [annotationDialogOpen, setAnnotationDialogOpen] = useState(false)
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null)
+  const [annotationLabel, setAnnotationLabel] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [annotationError, setAnnotationError] = useState<string | null>(null)
+  const [postDatesSet, setPostDatesSet] = useState<Set<string>>(new Set())
 
-  const postDates = useMemo(
-    () => [
-      new Date(2026, 0, 25),
-      new Date(2026, 0, 22),
-      new Date(2026, 0, 18),
-      new Date(2026, 0, 15),
-      new Date(2026, 0, 10),
-      new Date(2026, 0, 5),
-    ],
-    []
-  )
+  const showAnnotations = config.showAnnotations !== false
+
+  const monthStart = useMemo(() => startOfMonth(currentDate), [currentDate])
+  const monthEnd = useMemo(() => endOfMonth(currentDate), [currentDate])
+
+  useEffect(() => {
+    if (!showAnnotations) return
+    const from = format(monthStart, 'yyyy-MM-dd')
+    const to = format(monthEnd, 'yyyy-MM-dd')
+    getCalendarAnnotations({ from, to })
+      .then((list) => {
+        const map = new Map<string, string>()
+        list.forEach((a) => map.set(a.date, a.label))
+        setAnnotations(map)
+      })
+      .catch(() => setAnnotations(new Map()))
+  }, [showAnnotations, monthStart, monthEnd])
+
+  useEffect(() => {
+    if (!config.showPostDots) return
+    const from = format(monthStart, 'yyyy-MM-dd')
+    const to = format(monthEnd, 'yyyy-MM-dd')
+    getPublishedPostDates({ from, to })
+      .then((dates) => setPostDatesSet(new Set(dates)))
+      .catch(() => setPostDatesSet(new Set()))
+  }, [config.showPostDots, monthStart, monthEnd])
 
   const calendarDays = useMemo(() => {
-    const monthStart = startOfMonth(currentDate)
-    const monthEnd = endOfMonth(currentDate)
     const calendarStart = startOfWeek(monthStart, { weekStartsOn: 0 })
     const calendarEnd = endOfWeek(monthEnd, { weekStartsOn: 0 })
-
     return eachDayOfInterval({ start: calendarStart, end: calendarEnd })
-  }, [currentDate])
+  }, [monthStart, monthEnd])
 
   const goToPreviousMonth = () => {
     setCurrentDate(subMonths(currentDate, 1))
@@ -62,7 +91,39 @@ export function CalendarCard({ card }: CalendarCardProps) {
   }
 
   const hasPost = (date: Date) => {
-    return postDates.some((postDate) => isSameDay(postDate, date))
+    return postDatesSet.has(format(date, 'yyyy-MM-dd'))
+  }
+
+  const getAnnotation = (date: Date) => {
+    return annotations.get(format(date, 'yyyy-MM-dd')) ?? null
+  }
+
+  const openAnnotationDialog = (date: Date) => {
+    setSelectedDate(date)
+    setAnnotationLabel(getAnnotation(date) ?? '')
+    setAnnotationDialogOpen(true)
+  }
+
+  const handleSaveAnnotation = async () => {
+    if (!selectedDate) return
+    const dateStr = format(selectedDate, 'yyyy-MM-dd')
+    setSaving(true)
+    setAnnotationError(null)
+    try {
+      await saveCalendarAnnotation({ date: dateStr, label: annotationLabel.trim() || dateStr })
+      setAnnotations((prev) => {
+        const next = new Map(prev)
+        next.set(dateStr, annotationLabel.trim() || dateStr)
+        return next
+      })
+      setAnnotationDialogOpen(false)
+      setSelectedDate(null)
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : '保存失败'
+      setAnnotationError(msg.includes('401') || msg.includes('未登录') ? '请先登录后再保存标注' : msg)
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (
@@ -109,10 +170,17 @@ export function CalendarCard({ card }: CalendarCardProps) {
           const isCurrentMonth = isSameMonth(day, currentDate)
           const isCurrentDay = isToday(day)
           const dayHasPost = hasPost(day)
+          const dayAnnotation = getAnnotation(day)
 
           return (
             <button
               key={index}
+              type="button"
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                if (showAnnotations) openAnnotationDialog(day)
+              }}
               className={`
                 relative aspect-square rounded-lg p-1 text-sm transition-all
                 ${!isCurrentMonth ? 'text-content-disabled' : 'text-content-secondary'}
@@ -134,6 +202,12 @@ export function CalendarCard({ card }: CalendarCardProps) {
                   `}
                 />
               )}
+              {showAnnotations && dayAnnotation && isCurrentMonth && (
+                <span
+                  className="absolute bottom-0.5 left-1/2 h-1.5 w-1.5 -translate-x-1/2 rounded-full bg-accent-secondary"
+                  title={dayAnnotation}
+                />
+              )}
             </button>
           )
         })}
@@ -150,7 +224,46 @@ export function CalendarCard({ card }: CalendarCardProps) {
             <span>有文章</span>
           </div>
         )}
+        {showAnnotations && (
+          <div className="flex items-center gap-1">
+            <span className="h-1.5 w-1.5 rounded-full bg-accent-secondary" />
+            <span>标注</span>
+          </div>
+        )}
       </div>
+
+      <Dialog open={annotationDialogOpen} onOpenChange={setAnnotationDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {selectedDate ? format(selectedDate, 'yyyy年M月d日', { locale: zhCN }) : '标注日期'}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="annotation-label">标注内容</Label>
+              <Input
+                id="annotation-label"
+                value={annotationLabel}
+                onChange={(e) => setAnnotationLabel(e.target.value)}
+                placeholder="例如：生日、纪念日、待办…"
+              />
+            </div>
+            <p className="text-xs text-content-muted">登录后可保存标注，未登录时仅可查看当月已有标注。</p>
+            {annotationError && (
+              <p className="text-sm text-red-600 dark:text-red-400">{annotationError}</p>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAnnotationDialogOpen(false)}>
+              取消
+            </Button>
+            <Button onClick={handleSaveAnnotation} disabled={saving}>
+              {saving ? '保存中…' : '保存'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

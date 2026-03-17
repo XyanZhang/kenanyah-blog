@@ -31,6 +31,7 @@ export enum CardType {
   READING = 'reading',
   WOODEN_FISH = 'wooden_fish',
   AI_CHAT = 'ai_chat',
+  COUNTDOWN = 'countdown',
 }
 
 export interface CardPosition {
@@ -109,6 +110,8 @@ export interface RandomPostsCardConfig {
 export interface CalendarCardConfig {
   showPostDots: boolean
   highlightToday: boolean
+  /** 是否显示用户标注（点击日期可添加/编辑标注，与用户绑定） */
+  showAnnotations?: boolean
 }
 
 export interface ClockCardConfig {
@@ -201,4 +204,13 @@ export interface ReadingCardConfig {
 export interface AiChatCardConfig {
   title?: string
   subtitle?: string
+}
+
+export type CountdownEventType = 'birthday' | 'anniversary' | 'exam' | 'activity'
+
+export interface CountdownCardConfig {
+  /** 卡片展示的最近事件条数，默认 3 */
+  limit?: number
+  /** 是否只显示未过期的目标日（默认 true） */
+  futureOnly?: boolean
 }

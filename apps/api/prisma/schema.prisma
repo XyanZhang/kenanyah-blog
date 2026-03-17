@@ -40,8 +40,10 @@ model User {
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt
 
-  posts    Post[]
-  comments Comment[]
+  posts              Post[]
+  comments           Comment[]
+  countdownEvents    CountdownEvent[]
+  calendarAnnotations CalendarAnnotation[]
 
   @@index([email])
   @@index([username])
@@ -174,6 +176,39 @@ model HomeConfig {
   updatedAt  DateTime @updatedAt
 
   @@map("home_configs")
+}
+
+// 用户倒计时事件（生日、纪念日、考试、活动等），与用户绑定
+model CountdownEvent {
+  id         String   @id @default(cuid())
+  userId     String   @map("user_id")
+  title      String
+  targetDate DateTime @map("target_date")
+  type       String   // birthday | anniversary | exam | activity
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([userId, targetDate])
+  @@map("countdown_events")
+}
+
+// 用户日历标注：某日的备注，与用户绑定，用于日历卡片点击日期标注
+model CalendarAnnotation {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  date      DateTime @db.Date // 仅日期部分有效
+  label     String   @db.Text
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date])
+  @@index([userId])
+  @@map("calendar_annotations")
 }
 
 // 用户保存的「另存为」模板（含 layout + nav 定位与尺寸，应用时一并恢复）
