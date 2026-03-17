@@ -50,7 +50,7 @@ chat.post('/conversations', async (c) => {
 
   const conversation = await prisma.chatConversation.create({
     data: {
-      title: initialMessage.slice(0, 50) || '新的对话',
+      title: initialMessage ? initialMessage.slice(0, 50) : null,
       userId: user.userId,
     },
   })
@@ -75,6 +75,37 @@ chat.post('/conversations', async (c) => {
   return c.json({
     success: true,
     data: conversation,
+  })
+})
+
+const TITLE_MAX_LEN = 100
+
+// 更新会话标题
+chat.patch('/conversations/:id', async (c) => {
+  const user = c.get('user')
+  const { id } = c.req.param()
+  const body = await c.req.json().catch(() => ({} as any))
+  const title = typeof body.title === 'string' ? body.title.trim().slice(0, TITLE_MAX_LEN) : ''
+
+  const conversation = await prisma.chatConversation.findFirst({
+    where: {
+      id,
+      OR: [{ userId: user.userId }, { userId: null }],
+    },
+  })
+
+  if (!conversation) {
+    return c.json({ success: false, error: '会话不存在' }, 404)
+  }
+
+  const updated = await prisma.chatConversation.update({
+    where: { id },
+    data: { title: title || null },
+  })
+
+  return c.json({
+    success: true,
+    data: updated,
   })
 })
 

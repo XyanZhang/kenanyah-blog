@@ -4,12 +4,13 @@ import { useEffect, useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import { Loader2, MessageCircle, Send, Bot } from 'lucide-react'
+import { Loader2, MessageCircle, Send, Bot, Pencil } from 'lucide-react'
 import {
   listConversations,
   createConversation,
   getConversation,
   streamChatMessage,
+  updateConversation,
   type ChatConversation,
   type ChatMessage,
 } from '@/lib/ai-chat-api'
@@ -31,6 +32,8 @@ export default function AiChatPage() {
   const [loadingMessages, setLoadingMessages] = useState(false)
   const [sending, setSending] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editingTitle, setEditingTitle] = useState('')
   const bottomRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
@@ -196,22 +199,81 @@ export default function AiChatPage() {
             <ul className="space-y-1">
               {conversations.map((conv) => (
                 <li key={conv.id}>
-                  <button
-                    type="button"
-                    onClick={() => setCurrentId(conv.id)}
-                    className={`w-full text-left px-3 py-2 rounded-xl text-sm transition-colors ${
-                      conv.id === currentId
-                        ? 'bg-accent-primary/10 text-accent-primary'
-                        : 'bg-transparent text-content-secondary hover:bg-surface-tertiary'
-                    }`}
-                  >
-                    <div className="truncate">
-                      {conv.title || '未命名会话'}
+                  {editingId === conv.id ? (
+                    <div className="px-3 py-2 rounded-xl bg-surface-tertiary/50">
+                      <input
+                        type="text"
+                        value={editingTitle}
+                        onChange={(e) => setEditingTitle(e.target.value.slice(0, 100))}
+                        onBlur={async () => {
+                          const title = editingTitle.trim()
+                          setEditingId(null)
+                          if (title === (conv.title ?? '')) return
+                          try {
+                            const updated = await updateConversation(conv.id, {
+                              title: title || '',
+                            })
+                            setConversations((prev) =>
+                              prev.map((c) => (c.id === conv.id ? { ...c, title: updated.title } : c))
+                            )
+                          } catch {
+                            setEditingId(conv.id)
+                            setEditingTitle(conv.title ?? '')
+                          }
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.currentTarget.blur()
+                          } else if (e.key === 'Escape') {
+                            setEditingTitle(conv.title ?? '')
+                            setEditingId(null)
+                            e.currentTarget.blur()
+                          }
+                        }}
+                        className="w-full rounded-lg border border-line-glass bg-surface-glass px-2 py-1.5 text-sm text-content-primary focus:outline-none focus:ring-2 focus:ring-accent-primary/50"
+                        placeholder="会话标题"
+                        autoFocus
+                      />
                     </div>
-                    <div className="mt-1 text-[11px] text-content-tertiary">
-                      共 {conv.messageCount} 条消息
+                  ) : (
+                    <div
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => setCurrentId(conv.id)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault()
+                          setCurrentId(conv.id)
+                        }
+                      }}
+                      className={`flex items-start gap-1 w-full text-left px-3 py-2 rounded-xl text-sm transition-colors cursor-pointer ${
+                        conv.id === currentId
+                          ? 'bg-accent-primary/10 text-accent-primary'
+                          : 'bg-transparent text-content-secondary hover:bg-surface-tertiary'
+                      }`}
+                    >
+                      <div className="flex-1 min-w-0">
+                        <div className="truncate">
+                          {conv.title || '未命名会话'}
+                        </div>
+                        <div className="mt-1 text-[11px] text-content-tertiary">
+                          共 {conv.messageCount} 条消息
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setEditingId(conv.id)
+                          setEditingTitle(conv.title ?? '')
+                        }}
+                        className="shrink-0 p-1 rounded-md text-content-tertiary hover:text-content-primary hover:bg-surface-tertiary"
+                        aria-label="编辑会话标题"
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </button>
                     </div>
-                  </button>
+                  )}
                 </li>
               ))}
             </ul>

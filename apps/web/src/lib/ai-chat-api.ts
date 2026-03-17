@@ -75,6 +75,23 @@ export async function getConversation(id: string): Promise<ChatConversationDetai
   return json.data
 }
 
+export async function updateConversation(
+  id: string,
+  payload: { title: string }
+): Promise<ChatConversation> {
+  const res = await fetch(`${API_BASE_URL}/chat/conversations/${encodeURIComponent(id)}`, {
+    method: 'PATCH',
+    credentials: 'include',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(payload),
+  })
+  const json = (await res.json()) as ApiResponse<ChatConversation>
+  if (!json.success || !json.data) {
+    throw new Error(json.error || '更新会话失败')
+  }
+  return json.data
+}
+
 export async function streamChatMessage(
   conversationId: string,
   content: string,
