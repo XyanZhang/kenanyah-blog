@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import Link from 'next/link'
 import { ExternalLink } from 'lucide-react'
 
 export const metadata: Metadata = {
@@ -26,6 +27,12 @@ const projects = [
     description: '微服务 API 网关',
     tags: ['Hono', 'TypeScript', 'Docker'],
   },
+  {
+    name: 'PDF 解读',
+    description: '上传 PDF，解析与向量化构建阅读 Agent，并生成可下载的 Markdown 文档。',
+    tags: ['PDF', 'RAG', 'pgvector'],
+    href: '/pdf-agent',
+  },
 ]
 
 export default function ProjectsPage() {
@@ -34,9 +41,10 @@ export default function ProjectsPage() {
       <div className="max-w-4xl mx-auto">
         <div className="grid gap-4 md:grid-cols-2">
           {projects.map((project) => (
-            <article
+            <Link
               key={project.name}
-              className="group rounded-2xl border border-line-primary bg-surface-glass p-6 backdrop-blur-sm transition-all hover:border-line-hover hover:shadow-lg"
+              href={(project as any).href ?? '/projects'}
+              className="group rounded-2xl border border-line-primary bg-surface-glass p-6 backdrop-blur-sm transition-all hover:border-line-hover hover:shadow-lg focus:outline-hidden focus:ring-2 focus:ring-accent-primary/50"
             >
               <div className="flex items-start justify-between mb-3">
                 <h2 className="text-xl font-semibold text-content-primary">
@@ -55,7 +63,7 @@ export default function ProjectsPage() {
                   </span>
                 ))}
               </div>
-            </article>
+            </Link>
           ))}
         </div>
       </div>

@@ -269,3 +269,53 @@ model PostEmbedding {
   @@index([postId], map: "idx_post_embeddings_post_id")
   @@map("post_embeddings")
 }
+
+model PdfDocument {
+  id        String   @id @default(cuid())
+  userId    String?  @map("user_id")
+  filename  String
+  mimeType  String   @map("mime_type")
+  size      Int
+  fileUrl   String   @map("file_url")
+  status    String   @default("uploaded") // uploaded | parsed | indexed
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  chunks PdfChunk[]
+
+  @@index([userId])
+  @@index([createdAt])
+  @@map("pdf_documents")
+}
+
+model PdfChunk {
+  id         String   @id @default(cuid())
+  documentId String   @map("document_id")
+  chunkIndex Int      @map("chunk_index")
+  pageStart  Int?     @map("page_start")
+  pageEnd    Int?     @map("page_end")
+  content    String   @db.Text
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  document  PdfDocument       @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  embedding PdfChunkEmbedding?
+
+  @@unique([documentId, chunkIndex])
+  @@index([documentId])
+  @@map("pdf_chunks")
+}
+
+model PdfChunkEmbedding {
+  id         String   @id
+  documentId String   @map("document_id")
+  chunkId    String   @unique @map("chunk_id")
+  chunkIndex Int      @map("chunk_index")
+  content    String   @db.Text
+  embedding  Unsupported("vector(1024)")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  chunk PdfChunk @relation(fields: [chunkId], references: [id], onDelete: Cascade)
+
+  @@index([documentId], map: "idx_pdf_chunk_embeddings_document_id")
+  @@map("pdf_chunk_embeddings")
+}

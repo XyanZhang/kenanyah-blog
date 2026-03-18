@@ -4,7 +4,7 @@ import { prisma } from '../lib/db'
 import { authMiddleware } from '../middleware/auth'
 import { rateLimit } from '../middleware/rate-limit'
 import { streamChat } from '../lib/llm'
-import { indexConversation } from '../lib/semantic-search'
+import { indexConversation, searchSemanticAll } from '../lib/semantic-search'
 
 type ChatVariables = {
   user: { userId: string; role: string }
@@ -145,6 +145,7 @@ chat.post('/conversations/:id/messages/stream', async (c) => {
   const { id } = c.req.param()
   const body = await c.req.json().catch(() => ({} as any))
   const content = typeof body.content === 'string' ? body.content.trim() : ''
+  const useKnowledgeBase = body.useKnowledgeBase === true
 
   if (!content) {
     return c.json({ success: false, error: '消息内容不能为空' }, 400)
@@ -188,7 +189,35 @@ chat.post('/conversations/:id/messages/stream', async (c) => {
     .map((m) => (m.role === 'user' ? `用户：${m.content}` : `助手：${m.content}`))
     .join('\n')
 
-  const userPrompt = `${historyText}\n\n用户最新问题：${content}`
+  let kbContext = ''
+  if (useKnowledgeBase) {
+    try {
+      const hits = await searchSemanticAll(content, 8)
+      if (hits.length > 0) {
+        const lines = hits.map((h: any, idx: number) => {
+          const source =
+            h.type === 'post'
+              ? `post:${h.slug ?? h.postId ?? ''}`
+              : h.type === 'conversation'
+                ? `conversation:${h.conversationId ?? ''}`
+                : `pdf:${(h as any).documentId ?? ''}#${(h as any).chunkIndex ?? ''}`
+          return `【${idx + 1}】【${source}】【score=${h.score.toFixed(3)}】${h.title}\n${h.snippet}`
+        })
+        kbContext = [
+          '以下是本地知识库检索结果（可能包含博客文章、历史对话、PDF 知识库），请优先基于这些内容回答。',
+          '若检索内容不足以回答，请明确说明并再进行推理/补充建议；不要编造不存在于检索结果中的“原文”。',
+          '',
+          lines.join('\n\n'),
+        ].join('\n')
+      }
+    } catch {
+      // 忽略检索失败，继续走普通对话
+    }
+  }
+
+  const userPrompt = kbContext
+    ? `${kbContext}\n\n---\n\n对话历史：\n${historyText}\n\n用户最新问题：${content}`
+    : `${historyText}\n\n用户最新问题：${content}`
 
   let fullAssistant = ''
 

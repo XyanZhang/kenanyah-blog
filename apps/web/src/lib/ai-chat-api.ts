@@ -96,7 +96,8 @@ export async function streamChatMessage(
   conversationId: string,
   content: string,
   onChunk: (chunk: string) => void,
-  onError?: (err: string) => void
+  onError?: (err: string) => void,
+  options?: { useKnowledgeBase?: boolean }
 ): Promise<void> {
   const res = await fetch(
     `${API_BASE_URL}/chat/conversations/${encodeURIComponent(conversationId)}/messages/stream`,
@@ -104,7 +105,7 @@ export async function streamChatMessage(
       method: 'POST',
       credentials: 'include',
       headers: getAuthHeaders(),
-      body: JSON.stringify({ content }),
+      body: JSON.stringify({ content, useKnowledgeBase: options?.useKnowledgeBase === true }),
     }
   )
 

@@ -183,6 +183,16 @@ export type SemanticSearchHit = {
   score: number
 }
 
+export type PdfSemanticHit = {
+  type: 'pdf'
+  documentId: string
+  chunkId: string
+  chunkIndex: number
+  title: string
+  snippet: string
+  score: number
+}
+
 /** 语义搜索：返回带标题、slug、摘要、相关度的列表 */
 export async function searchSemantic(
   query: string,
@@ -271,4 +281,65 @@ export async function searchSemantic(
     })
 
   return [...postHits, ...convHits].sort((a, b) => b.score - a.score).slice(0, limit)
+}
+
+export async function searchPdfSemantic(
+  query: string,
+  limit: number = 10
+): Promise<PdfSemanticHit[]> {
+  const model = getEmbeddingsModel()
+  if (!model) {
+    throw new Error('OPENAI_API_KEY is not configured for semantic search')
+  }
+
+  const queryVector = await embedQuery(query)
+  const vectorStr = vectorToPgString(queryVector)
+
+  type Row = { document_id: string; chunk_id: string; chunk_index: number; content: string; score: number }
+  const rows = (await (prisma as any).$queryRawUnsafe(
+    `SELECT pce.document_id, pce.chunk_id, pce.chunk_index, pce.content,
+            1 - (pce.embedding <=> $1::vector) AS score
+     FROM pdf_chunk_embeddings pce
+     ORDER BY pce.embedding <=> $1::vector
+     LIMIT $2`,
+    vectorStr,
+    limit
+  ).catch(() => [])) as Row[]
+
+  if (rows.length === 0) return []
+
+  const docIds = [...new Set(rows.map((r) => r.document_id))]
+  const docs = await prisma.pdfDocument.findMany({
+    where: { id: { in: docIds } },
+    select: { id: true, filename: true },
+  })
+  const docMap = new Map<string, { id: string; filename: string }>(docs.map((d) => [d.id, d]))
+
+  return rows
+    .filter((r) => docMap.has(r.document_id))
+    .map((r) => {
+      const d = docMap.get(r.document_id)!
+      return {
+        type: 'pdf' as const,
+        documentId: r.document_id,
+        chunkId: r.chunk_id,
+        chunkIndex: r.chunk_index,
+        title: d.filename,
+        snippet: r.content.slice(0, 180).replace(/\s+/g, ' '),
+        score: Number(r.score),
+      }
+    })
+}
+
+export async function searchSemanticAll(
+  query: string,
+  limit: number = 10
+): Promise<(SemanticSearchHit | PdfSemanticHit)[]> {
+  const [a, b, c] = await Promise.all([
+    searchSemantic(query, limit).catch(() => []),
+    searchPdfSemantic(query, limit).catch(() => []),
+    // 未来可扩展更多 KB（例如代码库、笔记等）
+    Promise.resolve([] as never[]),
+  ])
+  return [...a, ...b, ...c].sort((x, y) => y.score - x.score).slice(0, limit)
 }

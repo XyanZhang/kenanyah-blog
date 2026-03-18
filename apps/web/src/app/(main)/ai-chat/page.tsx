@@ -34,7 +34,25 @@ export default function AiChatPage() {
   const [error, setError] = useState<string | null>(null)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editingTitle, setEditingTitle] = useState('')
+  const [useKnowledgeBase, setUseKnowledgeBase] = useState(false)
   const bottomRef = useRef<HTMLDivElement | null>(null)
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('aiChat.useKnowledgeBase')
+      setUseKnowledgeBase(raw === 'true')
+    } catch {
+      // ignore
+    }
+  }, [])
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('aiChat.useKnowledgeBase', String(useKnowledgeBase))
+    } catch {
+      // ignore
+    }
+  }, [useKnowledgeBase])
 
   useEffect(() => {
     let cancelled = false
@@ -137,7 +155,8 @@ export default function AiChatPage() {
         },
         (err) => {
           setError(err)
-        }
+        },
+        { useKnowledgeBase }
       )
       setMessages((prev) =>
         prev.map((m) =>
@@ -170,6 +189,15 @@ export default function AiChatPage() {
             <Bot className="h-5 w-5 text-accent-primary" />
             AI 对话
           </h1>
+          <label className="inline-flex items-center gap-2 rounded-lg border border-line-glass bg-surface-glass/60 px-2 py-1 text-xs text-content-secondary">
+            <input
+              type="checkbox"
+              checked={useKnowledgeBase}
+              onChange={(e) => setUseKnowledgeBase(e.currentTarget.checked)}
+              className="accent-accent-primary"
+            />
+            检索本地知识库
+          </label>
           <button
             type="button"
             className="inline-flex items-center gap-1 rounded-lg border border-line-primary bg-surface-glass px-2 py-1 text-xs font-medium text-content-primary hover:border-accent-primary/60 hover:bg-accent-primary/10"

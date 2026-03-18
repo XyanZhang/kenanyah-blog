@@ -32,5 +32,17 @@ export async function embedQuery(text: string): Promise<number[]> {
 export async function embedDocuments(texts: string[]): Promise<number[][]> {
   const model = getEmbeddingsModel()
   if (!model) throw new Error('Embedding 未配置：请设置 EMBEDDINGS_API_KEY 或 OPENAI_API_KEY')
-  return model.embedDocuments(texts)
+  if (texts.length === 0) return []
+
+  // 部分 OpenAI 兼容 Embeddings 接口会限制批量大小（例如 DashScope text-embedding-v4 <= 10）。
+  // 这里统一做分批，避免上层调用（如 PDF 索引）一次性塞入过多文本导致 400。
+  const MAX_BATCH = 10
+  const out: number[][] = []
+  for (let i = 0; i < texts.length; i += MAX_BATCH) {
+    const batch = texts.slice(i, i + MAX_BATCH)
+    // 顺序执行更稳（避免并发触发限流/队列）
+    const vectors = await model.embedDocuments(batch)
+    out.push(...vectors)
+  }
+  return out
 }

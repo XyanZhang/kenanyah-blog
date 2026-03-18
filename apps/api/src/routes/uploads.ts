@@ -52,6 +52,8 @@ uploads.get('/:subdir/:filename', async (c) => {
           ? 'image/gif'
           : ext === '.webp'
             ? 'image/webp'
+            : ext === '.pdf'
+              ? 'application/pdf'
             : 'application/octet-stream'
   const stream = createReadStream(resolved)
   const webStream = Readable.toWeb(stream) as ReadableStream
