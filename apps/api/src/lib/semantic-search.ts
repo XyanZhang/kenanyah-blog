@@ -193,19 +193,10 @@ export type PdfSemanticHit = {
   score: number
 }
 
-/** 语义搜索：返回带标题、slug、摘要、相关度的列表 */
-export async function searchSemantic(
-  query: string,
-  limit: number = 10
+async function searchSemanticByVector(
+  vectorStr: string,
+  limit: number
 ): Promise<SemanticSearchHit[]> {
-  const model = getEmbeddingsModel()
-  if (!model) {
-    throw new Error('OPENAI_API_KEY is not configured for semantic search')
-  }
-
-  const queryVector = await embedQuery(query)
-  const vectorStr = vectorToPgString(queryVector)
-
   type PostRow = { post_id: string; content: string; score: number }
   const postRows = (await (prisma as any).$queryRawUnsafe(
     `SELECT pe.post_id, pe.content,
@@ -283,18 +274,10 @@ export async function searchSemantic(
   return [...postHits, ...convHits].sort((a, b) => b.score - a.score).slice(0, limit)
 }
 
-export async function searchPdfSemantic(
-  query: string,
-  limit: number = 10
+async function searchPdfSemanticByVector(
+  vectorStr: string,
+  limit: number
 ): Promise<PdfSemanticHit[]> {
-  const model = getEmbeddingsModel()
-  if (!model) {
-    throw new Error('OPENAI_API_KEY is not configured for semantic search')
-  }
-
-  const queryVector = await embedQuery(query)
-  const vectorStr = vectorToPgString(queryVector)
-
   type Row = { document_id: string; chunk_id: string; chunk_index: number; content: string; score: number }
   const rows = (await (prisma as any).$queryRawUnsafe(
     `SELECT pce.document_id, pce.chunk_id, pce.chunk_index, pce.content,
@@ -331,15 +314,54 @@ export async function searchPdfSemantic(
     })
 }
 
+/** 语义搜索：返回带标题、slug、摘要、相关度的列表 */
+export async function searchSemantic(
+  query: string,
+  limit: number = 10
+): Promise<SemanticSearchHit[]> {
+  const model = getEmbeddingsModel()
+  if (!model) {
+    throw new Error('OPENAI_API_KEY is not configured for semantic search')
+  }
+
+  const queryVector = await embedQuery(query)
+  const vectorStr = vectorToPgString(queryVector)
+  return searchSemanticByVector(vectorStr, limit)
+}
+
+export async function searchPdfSemantic(
+  query: string,
+  limit: number = 10
+): Promise<PdfSemanticHit[]> {
+  const model = getEmbeddingsModel()
+  if (!model) {
+    throw new Error('OPENAI_API_KEY is not configured for semantic search')
+  }
+
+  const queryVector = await embedQuery(query)
+  const vectorStr = vectorToPgString(queryVector)
+  return searchPdfSemanticByVector(vectorStr, limit)
+}
+
 export async function searchSemanticAll(
   query: string,
   limit: number = 10
 ): Promise<(SemanticSearchHit | PdfSemanticHit)[]> {
+  const model = getEmbeddingsModel()
+  if (!model) {
+    throw new Error('OPENAI_API_KEY is not configured for semantic search')
+  }
+
+  // 关键优化：同一个 query 只做一次 embedding，然后复用 queryVector 查询 post/conv/pdf
+  const queryVector = await embedQuery(query)
+  const vectorStr = vectorToPgString(queryVector)
+
   const [a, b, c] = await Promise.all([
-    searchSemantic(query, limit).catch(() => []),
-    searchPdfSemantic(query, limit).catch(() => []),
+    searchSemanticByVector(vectorStr, limit).catch(() => []),
+    searchPdfSemanticByVector(vectorStr, limit).catch(() => []),
     // 未来可扩展更多 KB（例如代码库、笔记等）
     Promise.resolve([] as never[]),
   ])
+
   return [...a, ...b, ...c].sort((x, y) => y.score - x.score).slice(0, limit)
 }
