@@ -29,6 +29,16 @@ const envSchema = z.object({
   OPENAI_API_KEY: z.string().min(1).optional(),
   OPENAI_BASE_URL: z.string().url().optional(), // 直连 DeepSeek: https://api.deepseek.com；代理则填代理提供的 base URL
   OPENAI_MODEL: z.string().default('gpt-4o-mini'), // DeepSeek 直连: deepseek-chat
+  // 按用途可选覆盖（provider + model）：fast/reasoning/default
+  OPENAI_API_KEY_DEFAULT: z.string().min(1).optional(),
+  OPENAI_BASE_URL_DEFAULT: z.string().url().optional(),
+  OPENAI_MODEL_DEFAULT: z.string().optional(),
+  OPENAI_API_KEY_FAST: z.string().min(1).optional(),
+  OPENAI_BASE_URL_FAST: z.string().url().optional(),
+  OPENAI_MODEL_FAST: z.string().optional(),
+  OPENAI_API_KEY_REASONING: z.string().min(1).optional(),
+  OPENAI_BASE_URL_REASONING: z.string().url().optional(),
+  OPENAI_MODEL_REASONING: z.string().optional(),
   // 语义搜索：Embedding 模型（需与 OpenAI 兼容接口，如 text-embedding-3-small）
   EMBEDDINGS_BASE_URL: z.string().url().optional(),
   EMBEDDINGS_API_KEY: z.string().min(1).optional(),

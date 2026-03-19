@@ -503,7 +503,7 @@ pdf.post('/documents/:id/generate-doc', async (c) => {
       '',
       '请输出该批次的局部总结（Markdown）。',
     ].join('\n')
-    const partial = (await invokeChat(userPrompt, localSystemPrompt)).trim()
+    const partial = (await invokeChat(userPrompt, localSystemPrompt, { model: 'fast' })).trim()
     logger.info(
       {
         op: 'pdf.generateDoc.localBatch',
@@ -546,7 +546,8 @@ pdf.post('/documents/:id/generate-doc', async (c) => {
   const llmStartedAt = Date.now()
   const markdown = await invokeChat(
     `以下是由完整 PDF 分批总结并归并后的结果，请基于它生成最终 Markdown 文档：\n\n${finalInput}`,
-    finalSystemPrompt
+    finalSystemPrompt,
+    { model: 'fast' }
   )
   logger.info(
     {

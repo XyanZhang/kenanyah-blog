@@ -79,7 +79,8 @@ ai.post('/rewrite', validateBody(aiRewriteSchema), async (c) => {
     try {
       const text = await invokeChat(
         body.text,
-        rewriteSystemPrompt(body.style)
+        rewriteSystemPrompt(body.style),
+        { model: 'reasoning' }
       )
       return c.json({ success: true, data: { text } })
     } catch (err) {
@@ -91,7 +92,7 @@ ai.post('/rewrite', validateBody(aiRewriteSchema), async (c) => {
   return streamSSE(c, async (stream) => {
     try {
       await stream.writeSSE({ data: JSON.stringify({ type: 'start' }) })
-      for await (const chunk of streamChat(body.text, rewriteSystemPrompt(body.style))) {
+      for await (const chunk of streamChat(body.text, rewriteSystemPrompt(body.style), { model: 'reasoning' })) {
         await stream.writeSSE({ data: JSON.stringify({ content: chunk }) })
       }
     } catch (err) {
@@ -110,7 +111,7 @@ ai.post('/expand', validateBody(aiExpandSchema), async (c) => {
 
   if (!stream) {
     try {
-      const text = await invokeChat(body.text, expandSystemPrompt())
+      const text = await invokeChat(body.text, expandSystemPrompt(), { model: 'reasoning' })
       return c.json({ success: true, data: { text } })
     } catch (err) {
       const message = err instanceof Error ? err.message : 'AI 服务暂时不可用'
@@ -121,7 +122,7 @@ ai.post('/expand', validateBody(aiExpandSchema), async (c) => {
   return streamSSE(c, async (stream) => {
     try {
       await stream.writeSSE({ data: JSON.stringify({ type: 'start' }) })
-      for await (const chunk of streamChat(body.text, expandSystemPrompt())) {
+      for await (const chunk of streamChat(body.text, expandSystemPrompt(), { model: 'reasoning' })) {
         await stream.writeSSE({ data: JSON.stringify({ content: chunk }) })
       }
     } catch (err) {
@@ -142,7 +143,8 @@ ai.post('/shrink', validateBody(aiShrinkSchema), async (c) => {
     try {
       const text = await invokeChat(
         body.maxLength ? `${body.text}\n\n请控制在 ${body.maxLength} 字以内。` : body.text,
-        shrinkSystemPrompt(body.maxLength)
+        shrinkSystemPrompt(body.maxLength),
+        { model: 'reasoning' }
       )
       return c.json({ success: true, data: { text } })
     } catch (err) {
@@ -157,7 +159,7 @@ ai.post('/shrink', validateBody(aiShrinkSchema), async (c) => {
       const userPrompt = body.maxLength
         ? `${body.text}\n\n请控制在 ${body.maxLength} 字以内。`
         : body.text
-      for await (const chunk of streamChat(userPrompt, shrinkSystemPrompt(body.maxLength))) {
+      for await (const chunk of streamChat(userPrompt, shrinkSystemPrompt(body.maxLength), { model: 'reasoning' })) {
         await stream.writeSSE({ data: JSON.stringify({ content: chunk }) })
       }
     } catch (err) {
@@ -176,7 +178,7 @@ ai.post('/headings', validateBody(aiHeadingsSchema), async (c) => {
 
   if (!stream) {
     try {
-      const text = await invokeChat(body.content, headingsSystemPrompt())
+      const text = await invokeChat(body.content, headingsSystemPrompt(), { model: 'reasoning' })
       return c.json({ success: true, data: { text } })
     } catch (err) {
       const message = err instanceof Error ? err.message : 'AI 服务暂时不可用'
@@ -187,7 +189,7 @@ ai.post('/headings', validateBody(aiHeadingsSchema), async (c) => {
   return streamSSE(c, async (stream) => {
     try {
       await stream.writeSSE({ data: JSON.stringify({ type: 'start' }) })
-      for await (const chunk of streamChat(body.content, headingsSystemPrompt())) {
+      for await (const chunk of streamChat(body.content, headingsSystemPrompt(), { model: 'reasoning' })) {
         await stream.writeSSE({ data: JSON.stringify({ content: chunk }) })
       }
     } catch (err) {
@@ -206,7 +208,7 @@ ai.post('/summary', validateBody(aiSummarySchema), async (c) => {
 
   if (!stream) {
     try {
-      const text = await invokeChat(body.content, summarySystemPrompt())
+      const text = await invokeChat(body.content, summarySystemPrompt(), { model: 'reasoning' })
       return c.json({ success: true, data: { text } })
     } catch (err) {
       const message = err instanceof Error ? err.message : 'AI 服务暂时不可用'
@@ -217,7 +219,7 @@ ai.post('/summary', validateBody(aiSummarySchema), async (c) => {
   return streamSSE(c, async (stream) => {
     try {
       await stream.writeSSE({ data: JSON.stringify({ type: 'start' }) })
-      for await (const chunk of streamChat(body.content, summarySystemPrompt())) {
+      for await (const chunk of streamChat(body.content, summarySystemPrompt(), { model: 'reasoning' })) {
         await stream.writeSSE({ data: JSON.stringify({ content: chunk }) })
       }
     } catch (err) {
@@ -238,7 +240,7 @@ ai.post('/generate-article', validateBody(aiGenerateArticleSchema), async (c) =>
 
   if (!stream) {
     try {
-      const text = await invokeChat(userPrompt, generateArticleSystemPrompt())
+      const text = await invokeChat(userPrompt, generateArticleSystemPrompt(), { model: 'reasoning' })
       return c.json({ success: true, data: { text } })
     } catch (err) {
       const message = err instanceof Error ? err.message : 'AI 服务暂时不可用'
@@ -252,7 +254,7 @@ ai.post('/generate-article', validateBody(aiGenerateArticleSchema), async (c) =>
         keywords: body.keywords.slice(0, 60),
       })
       await stream.writeSSE({ data: JSON.stringify({ type: 'start' }) })
-      for await (const chunk of streamChat(userPrompt, generateArticleSystemPrompt())) {
+      for await (const chunk of streamChat(userPrompt, generateArticleSystemPrompt(), { model: 'reasoning' })) {
         await stream.writeSSE({ data: JSON.stringify({ content: chunk }) })
       }
     } catch (err) {
@@ -272,7 +274,7 @@ ai.post('/generate-cover', validateBody(aiGenerateCoverSchema), async (c) => {
     logger.debug({ title: body.title?.slice(0, 50) }, '[AI][generate-cover] start')
     const excerpt = body.content.slice(0, 2000).replace(/#+|\*\*|`/g, ' ').trim()
     const userPrompt = `文章标题：${body.title}\n\n正文摘要：\n${excerpt}`
-    const imagePrompt = await invokeChat(userPrompt, coverPromptSystemPrompt())
+    const imagePrompt = await invokeChat(userPrompt, coverPromptSystemPrompt(), { model: 'reasoning' })
     const trimmed = imagePrompt.trim().slice(0, 800)
     logger.debug({
       length: trimmed.length,
