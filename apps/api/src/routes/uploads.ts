@@ -65,4 +65,53 @@ uploads.get('/:subdir/:filename', async (c) => {
   })
 })
 
+/** GET /uploads/:subdir/:subsubdir/:filename — 提供两级目录文件访问（如 pdfs/:id/:filename） */
+uploads.get('/:subdir/:subsubdir/:filename', async (c) => {
+  const subdir = c.req.param('subdir')
+  const subsubdir = c.req.param('subsubdir')
+  const filename = c.req.param('filename')
+  if (!subdir || !subsubdir || !filename) {
+    return c.json({ success: false, error: 'Invalid path' }, 400)
+  }
+  // 防止路径穿越
+  if (subdir.includes('..') || subsubdir.includes('..') || filename.includes('..')) {
+    return c.json({ success: false, error: 'Invalid path' }, 400)
+  }
+  const root = getUploadDir()
+  const filePath = path.join(root, subdir, subsubdir, filename)
+  const resolved = path.resolve(filePath)
+  if (!resolved.startsWith(path.resolve(root))) {
+    return c.json({ success: false, error: 'Invalid path' }, 400)
+  }
+  try {
+    const st = await stat(resolved)
+    if (!st.isFile()) {
+      return c.json({ success: false, error: 'Not found' }, 404)
+    }
+  } catch {
+    return c.json({ success: false, error: 'Not found' }, 404)
+  }
+  const ext = path.extname(filename).toLowerCase()
+  const mime =
+    ext === '.png'
+      ? 'image/png'
+      : ext === '.jpg' || ext === '.jpeg'
+        ? 'image/jpeg'
+        : ext === '.gif'
+          ? 'image/gif'
+          : ext === '.webp'
+            ? 'image/webp'
+            : ext === '.pdf'
+              ? 'application/pdf'
+            : 'application/octet-stream'
+  const stream = createReadStream(resolved)
+  const webStream = Readable.toWeb(stream) as ReadableStream
+  return new Response(webStream, {
+    headers: {
+      'Content-Type': mime,
+      'Cache-Control': 'public, max-age=86400',
+    },
+  })
+})
+
 export default uploads
