@@ -319,3 +319,22 @@ model PdfChunkEmbedding {
   @@index([documentId], map: "idx_pdf_chunk_embeddings_document_id")
   @@map("pdf_chunk_embeddings")
 }
+
+// 收藏文章：标题、地址、备注，供浏览器插件同步；暂不关联用户
+model Bookmark {
+  id        String   @id @default(cuid())
+  title     String
+  url       String   @db.Text
+  notes     String?  @db.Text
+  category  String?
+  tags      Json?    // string[]
+  source    String   @default("manual") // browser_extension | manual | api
+  favicon   String?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([url])
+  @@index([category])
+  @@index([createdAt])
+  @@map("bookmarks")
+}

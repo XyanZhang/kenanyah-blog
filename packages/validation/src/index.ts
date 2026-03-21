@@ -108,3 +108,14 @@ export {
   type UpdateCalendarAnnotationInput,
   type CalendarAnnotationQueryInput,
 } from './calendarAnnotation'
+
+// Bookmarks
+export {
+  createBookmarkSchema,
+  updateBookmarkSchema,
+  bookmarkSyncSchema,
+  type CreateBookmarkInput,
+  type UpdateBookmarkInput,
+  type BookmarkSyncInput,
+  type BookmarkSyncItemInput,
+} from './bookmark'

@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import type { Route } from 'next'
-import { Home, FileText, Search, User, Camera, FolderOpen, LayoutGrid, MessageCircle, LucideIcon } from 'lucide-react'
+import { Home, FileText, Search, User, Camera, FolderOpen, LayoutGrid, MessageCircle, Bookmark, LucideIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { NavItem as NavItemType } from './nav-items'
 
@@ -18,6 +18,7 @@ const iconMap: Record<string, LucideIcon> = {
   FolderOpen,
   LayoutGrid,
   MessageCircle,
+  Bookmark,
 }
 
 interface NavItemProps {

@@ -22,6 +22,7 @@ import uploads from './routes/uploads'
 import countdown from './routes/countdown'
 import calendar from './routes/calendar'
 import pdf from './routes/pdf'
+import bookmarks from './routes/bookmarks'
 
 // 根应用：/uploads 在根路径（图片等静态资源无需 /api 前缀），/api 下为接口
 const root = new Hono()
@@ -86,6 +87,7 @@ app.route('/home', home)
 app.route('/countdown', countdown)
 app.route('/calendar', calendar)
 app.route('/pdf', pdf)
+app.route('/bookmarks', bookmarks)
 
 root.route('/api', app)
 
