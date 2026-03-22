@@ -1,0 +1,15 @@
+{
+  "manifest_version": 3,
+  "name": "Blog Bookmark Sync",
+  "version": "0.1.0",
+  "description": "Save current page to blog bookmarks",
+  "permissions": ["tabs", "storage"],
+  "host_permissions": ["<all_urls>"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_title": "Save Bookmark",
+    "default_popup": "popup.html"
+  }
+}

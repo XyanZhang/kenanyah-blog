@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Bookmark Sync</title>
+    <link rel="stylesheet" href="./popup.css" />
+  </head>
+  <body>
+    <main class="container">
+      <h1 class="title">收藏到 Blog</h1>
+      <p class="desc">抓取当前页并写入 /api/bookmarks</p>
+
+      <label class="label" for="apiBaseUrl">API Base URL</label>
+      <input
+        id="apiBaseUrl"
+        class="input"
+        placeholder="http://localhost:3001/api"
+        autocomplete="off"
+      />
+
+      <button id="saveBtn" class="button" type="button">保存当前页面</button>
+      <p id="status" class="status"></p>
+    </main>
+    <script src="./popup.js"></script>
+  </body>
+</html>

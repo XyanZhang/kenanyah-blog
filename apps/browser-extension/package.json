@@ -1,0 +1,13 @@
+{
+  "name": "browser-extension",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Browser extension for bookmark capture",
+  "scripts": {
+    "dev": "echo \"Load apps/browser-extension as unpacked extension in Chrome\"",
+    "build": "echo \"No build step required for MVP\"",
+    "lint": "echo \"No lint configured yet\"",
+    "type-check": "echo \"No type check configured yet\"",
+    "clean": "echo \"Nothing to clean\""
+  }
+}
