@@ -10,6 +10,8 @@ import { ArrowLeft, Pencil } from 'lucide-react'
 import { apiClient, getApiBaseUrl } from '@/lib/api-client'
 import type { ApiResponse } from '@/lib/api-client'
 import { getApiErrorMessage } from '@/lib/api-error'
+import { useAuthSession } from '@/hooks/useAuthSession'
+import { cn } from '@/lib/utils'
 
 type PostDetail = {
   id: string
@@ -57,6 +59,7 @@ function formatDate(iso: string) {
 export default function PostPage() {
   const params = useParams()
   const slug = params?.slug as string | undefined
+  const { isAuthenticated, authChecked } = useAuthSession()
   const [post, setPost] = useState<PostDetail | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -129,7 +132,12 @@ export default function PostPage() {
 
   return (
     <main className="min-h-[60vh] w-full max-w-3xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
-      <div className="flex items-center justify-between mb-8">
+      <div
+        className={cn(
+          'flex items-center mb-8',
+          authChecked && isAuthenticated ? 'justify-between' : ''
+        )}
+      >
         <Link
           href="/blog"
           className="inline-flex items-center gap-2 text-sm text-content-tertiary transition-colors hover:text-accent-primary"
@@ -137,13 +145,15 @@ export default function PostPage() {
           <ArrowLeft className="h-4 w-4" />
           返回博客
         </Link>
-        <Link
-          href={`/blog/editor/${post.id}` as import('next').Route}
-          className="inline-flex items-center gap-2 rounded-xl border border-line-primary bg-surface-glass px-4 py-2.5 text-sm font-medium text-content-primary transition-colors hover:border-accent-primary/50 hover:bg-accent-primary/10"
-        >
-          <Pencil className="h-4 w-4" />
-          编辑
-        </Link>
+        {authChecked && isAuthenticated ? (
+          <Link
+            href={`/blog/editor/${post.id}` as import('next').Route}
+            className="inline-flex items-center gap-2 rounded-xl border border-line-primary bg-surface-glass px-4 py-2.5 text-sm font-medium text-content-primary transition-colors hover:border-accent-primary/50 hover:bg-accent-primary/10"
+          >
+            <Pencil className="h-4 w-4" />
+            编辑
+          </Link>
+        ) : null}
       </div>
 
       <article className="font-blog overflow-hidden rounded-2xl border border-line-glass bg-surface-glass/60 shadow-lg backdrop-blur-sm">

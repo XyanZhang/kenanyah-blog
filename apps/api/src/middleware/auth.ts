@@ -10,7 +10,7 @@ export interface AuthContext {
 const DEV_DEFAULT_USER_EMAIL = 'admin@blog.com'
 let devDefaultUser: JwtPayload | null = null
 
-export async function authMiddleware(c: Context, next: Next) {
+async function authMiddlewareCore(c: Context, next: Next, allowDevFallback: boolean) {
   try {
     let token = getCookie(c, 'access_token')
     if (!token) {
@@ -22,7 +22,7 @@ export async function authMiddleware(c: Context, next: Next) {
 
     if (!token) {
       const isDevOrTest = process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test'
-      if (isDevOrTest) {
+      if (allowDevFallback && isDevOrTest) {
         if (!devDefaultUser) {
           const user =
             (await prisma.user.findUnique({
@@ -68,6 +68,14 @@ export async function authMiddleware(c: Context, next: Next) {
       401
     )
   }
+}
+
+export async function authMiddleware(c: Context, next: Next) {
+  return authMiddlewareCore(c, next, true)
+}
+
+export async function authMiddlewareStrict(c: Context, next: Next) {
+  return authMiddlewareCore(c, next, false)
 }
 
 export function requireRole(...roles: string[]) {

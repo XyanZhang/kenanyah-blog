@@ -5,7 +5,7 @@ import { generateTokenPair, verifyRefreshToken } from '../lib/jwt'
 import { hashPassword, verifyPassword } from '../lib/password'
 import { validateBody } from '../middleware/validation'
 import { rateLimit } from '../middleware/rate-limit'
-import { authMiddleware } from '../middleware/auth'
+import { authMiddleware, authMiddlewareStrict } from '../middleware/auth'
 import {
   registerSchema,
   loginSchema,
@@ -203,7 +203,7 @@ auth.post('/refresh', async (c) => {
 })
 
 // Get current user
-auth.get('/me', authMiddleware, async (c) => {
+auth.get('/me', authMiddlewareStrict, async (c) => {
   const { userId } = c.get('user')
 
   const user = await prisma.user.findUnique({

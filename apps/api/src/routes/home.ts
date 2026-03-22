@@ -1,34 +1,79 @@
-import { Hono } from 'hono'
+import { Hono, type Context } from 'hono'
+import { getCookie } from 'hono/cookie'
 import { prisma } from '../lib/db'
+import { verifyAccessToken } from '../lib/jwt'
 import { authMiddleware } from '../middleware/auth'
 
 type HomeVariables = {
   user: { userId: string }
 }
 
-/**
- * 首页配置与模板 API（已接入用户系统）。
- * 所有配置均按当前登录用户的 userId 进行隔离存储。
- */
+function parseHomeConfigRow(config: {
+  layoutJson: string
+  navJson: string
+  canvasJson: string | null
+}) {
+  return {
+    layout: JSON.parse(config.layoutJson),
+    nav: JSON.parse(config.navJson),
+    canvas: config.canvasJson ? JSON.parse(config.canvasJson) : null,
+  }
+}
+
+function readOptionalAccessToken(c: Context): string | null {
+  const fromCookie = getCookie(c, 'access_token')
+  if (fromCookie) return fromCookie
+  const authHeader = c.req.header('Authorization')
+  if (authHeader?.startsWith('Bearer ')) return authHeader.slice(7).trim() || null
+  return null
+}
+
+function optionalSessionUserId(c: Context): string | null {
+  const token = readOptionalAccessToken(c)
+  if (!token) return null
+  try {
+    return verifyAccessToken(token).userId
+  } catch {
+    return null
+  }
+}
+
+async function getPublicHomeConfigPayload() {
+  const admin = await prisma.user.findFirst({
+    where: { role: 'ADMIN' },
+    orderBy: { createdAt: 'asc' },
+    select: { id: true },
+  })
+  if (admin) {
+    const config = await prisma.homeConfig.findUnique({
+      where: { userId: admin.id },
+    })
+    if (config) return parseHomeConfigRow(config)
+  }
+  const anyConfig = await prisma.homeConfig.findFirst({
+    orderBy: { updatedAt: 'desc' },
+  })
+  if (anyConfig) return parseHomeConfigRow(anyConfig)
+  return null
+}
+
 const home = new Hono<{ Variables: HomeVariables }>()
 
-// GET /home/config — 拉取当前登录用户的首页配置
-home.get('/config', authMiddleware, async (c) => {
-  const { userId } = c.get('user')
-  const config = await prisma.homeConfig.findUnique({
-    where: { userId },
-  })
-  if (!config) {
-    return c.json({ success: true, data: null })
+// GET /home/config — 已登录：当前用户配置；未登录：公开首页配置（无则 data 为 null）
+home.get('/config', async (c) => {
+  const sessionUserId = optionalSessionUserId(c)
+  if (sessionUserId) {
+    const config = await prisma.homeConfig.findUnique({
+      where: { userId: sessionUserId },
+    })
+    if (!config) {
+      return c.json({ success: true, data: null })
+    }
+    return c.json({ success: true, data: parseHomeConfigRow(config) })
   }
-  return c.json({
-    success: true,
-    data: {
-      layout: JSON.parse(config.layoutJson),
-      nav: JSON.parse(config.navJson),
-      canvas: config.canvasJson ? JSON.parse(config.canvasJson) : null,
-    },
-  })
+
+  const publicData = await getPublicHomeConfigPayload()
+  return c.json({ success: true, data: publicData })
 })
 
 // PUT /home/config — 同步当前登录用户的布局与导航到数据库

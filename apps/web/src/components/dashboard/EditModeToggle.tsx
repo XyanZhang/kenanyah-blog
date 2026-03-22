@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Edit3, Eye, Plus, LayoutTemplate, PenSquare, CloudUpload, Loader2, FileJson } from 'lucide-react'
 import { useDashboard } from '@/hooks/useDashboard'
+import { useAuthSession } from '@/hooks/useAuthSession'
 import { useFloatingActions } from '@/components/providers/FloatingActionsProvider'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui'
 
@@ -53,7 +54,7 @@ function EditModeActions({ onAddCard, onSelectLayout, onSyncToCloud, onSyncToSta
 
   return (
     <div className="flex flex-col items-center gap-3">
-      {/* 博客编辑入口：始终展示 */}
+      {/* 博客编辑入口（仅已登录用户在首页悬浮栏可见） */}
       <motion.button
         type="button"
         onClick={handleGoToBlogEditor}
@@ -236,8 +237,13 @@ interface EditModeToggleProps {
 
 export function EditModeToggle({ onAddCard, onSelectLayout, onSyncToCloud, onSyncToStatic }: EditModeToggleProps) {
   const { setExtraActions } = useFloatingActions()
+  const { isAuthenticated, authChecked } = useAuthSession()
 
   useEffect(() => {
+    if (!authChecked || !isAuthenticated) {
+      setExtraActions(null)
+      return () => setExtraActions(null)
+    }
     setExtraActions(
       <EditModeActions
         onAddCard={onAddCard}
@@ -247,7 +253,15 @@ export function EditModeToggle({ onAddCard, onSelectLayout, onSyncToCloud, onSyn
       />
     )
     return () => setExtraActions(null)
-  }, [setExtraActions, onAddCard, onSelectLayout, onSyncToCloud, onSyncToStatic])
+  }, [
+    setExtraActions,
+    onAddCard,
+    onSelectLayout,
+    onSyncToCloud,
+    onSyncToStatic,
+    authChecked,
+    isAuthenticated,
+  ])
 
   return null
 }
