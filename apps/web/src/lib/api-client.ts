@@ -97,7 +97,8 @@ export const apiClient = ky.create({
             // Response is not JSON
           }
         }
-        if (typeof window !== 'undefined') {
+        // 未登录或会话失效时接口常返回 401；全局 Toast 会干扰访客浏览，由页面自行处理即可
+        if (typeof window !== 'undefined' && response?.status !== 401) {
           const { showApiError } = await import('@/lib/api-error')
           showApiError(error)
         }
