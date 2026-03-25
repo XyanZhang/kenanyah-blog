@@ -35,7 +35,8 @@ packages/config/    # Shared configs
 
 ```bash
 pnpm docker:up      # Start PostgreSQL (使用 pgvector/pgvector:pg16 以支持语义搜索)
-pnpm db:migrate     # Run migrations
+pnpm db:migrate     # 开发库：prisma migrate dev（需主 docker-compose + .env.development，见 db:migrate:dev）
+pnpm db:migrate:test # 测试库：prisma migrate deploy（读根目录 .env.test 的 DATABASE_URL，适合 5434 测试 Postgres）
 pnpm db:export      # Export blog_dev to backups/
 pnpm db:import <file> # Import from backup
 pnpm db:studio      # Open Prisma Studio

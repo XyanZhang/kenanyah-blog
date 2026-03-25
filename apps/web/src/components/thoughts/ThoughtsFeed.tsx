@@ -2,12 +2,14 @@
 
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { ThoughtCard } from './ThoughtCard'
-import { fetchThoughtsPage } from './mock-data'
+import { fetchThoughtsPage } from '@/lib/thoughts-api'
+import { useAuthSession } from '@/hooks/useAuthSession'
 import type { ThoughtPostWithInteraction } from './types'
 
 const PAGE_SIZE = 5
 
 export function ThoughtsFeed() {
+  const { user } = useAuthSession()
   const [posts, setPosts] = useState<ThoughtPostWithInteraction[]>([])
   const [hasMore, setHasMore] = useState(true)
   const [loading, setLoading] = useState(false)
@@ -21,7 +23,7 @@ export function ThoughtsFeed() {
     loadingRef.current = true
     setLoading(true)
     try {
-      const next = fetchThoughtsPage(pageToLoad, PAGE_SIZE)
+      const next = await fetchThoughtsPage(pageToLoad, PAGE_SIZE)
       setPosts((prev) => [...prev, ...next.map((p) => ({ ...p, liked: false, disliked: false, questioned: false }))])
       nextPageRef.current = pageToLoad + 1
       if (next.length < PAGE_SIZE) setHasMore(false)
@@ -33,7 +35,7 @@ export function ThoughtsFeed() {
 
   useEffect(() => {
     loadMore()
-  }, [])
+  }, [loadMore])
 
   useEffect(() => {
     const el = sentinelRef.current
@@ -70,7 +72,7 @@ export function ThoughtsFeed() {
 
   const handleComment = useCallback((id: string) => {
     // 可后续接评论弹窗或跳转
-    console.log('comment', id)
+    void id
   }, [])
 
   return (
@@ -79,6 +81,11 @@ export function ThoughtsFeed() {
         <ThoughtCard
           key={post.id}
           post={post}
+          canEdit={Boolean(
+            user?.id &&
+              post.authorId &&
+              (post.authorId === user.id || user.role === 'ADMIN')
+          )}
           onLike={handleLike}
           onDislike={handleDislike}
           onQuestion={handleQuestion}

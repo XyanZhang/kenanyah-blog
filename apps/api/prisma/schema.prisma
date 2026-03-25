@@ -44,6 +44,7 @@ model User {
   comments           Comment[]
   countdownEvents    CountdownEvent[]
   calendarAnnotations CalendarAnnotation[]
+  thoughts            Thought[]
 
   @@index([email])
   @@index([username])
@@ -337,4 +338,37 @@ model Bookmark {
   @@index([category])
   @@index([createdAt])
   @@map("bookmarks")
+}
+
+// 思考流：类似朋友圈的短文本/图片流
+model Thought {
+  id           String   @id @default(cuid())
+  authorId     String?  @map("author_id")
+  content      String   @db.Text
+  images       Json?    // string[]
+  likeCount    Int      @default(0) @map("like_count")
+  commentCount Int      @default(0) @map("comment_count")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  author     User?             @relation(fields: [authorId], references: [id], onDelete: SetNull)
+  embeddings ThoughtEmbedding[]
+
+  @@index([authorId])
+  @@index([createdAt])
+  @@map("thoughts")
+}
+
+model ThoughtEmbedding {
+  id         String   @id
+  thoughtId  String   @map("thought_id")
+  chunkIndex Int      @default(0) @map("chunk_index")
+  content    String   @db.Text
+  embedding  Unsupported("vector(1024)")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  thought Thought @relation(fields: [thoughtId], references: [id], onDelete: Cascade)
+
+  @@index([thoughtId], map: "idx_thought_embeddings_thought_id")
+  @@map("thought_embeddings")
 }

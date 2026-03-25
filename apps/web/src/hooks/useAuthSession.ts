@@ -8,7 +8,7 @@ import type { UserPublic } from '@blog/types'
  * 通过 GET /auth/me 判断当前是否已登录（cookie 会话有效）
  */
 export function useAuthSession() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [user, setUser] = useState<UserPublic | null>(null)
   const [checked, setChecked] = useState(false)
 
   useEffect(() => {
@@ -18,12 +18,13 @@ export function useAuthSession() {
       .json<ApiResponse<{ user: UserPublic }>>()
       .then((res) => {
         if (cancelled) return
-        setIsAuthenticated(Boolean(res.success && res.data?.user))
+        const u = res.success && res.data?.user ? res.data.user : null
+        setUser(u)
         setChecked(true)
       })
       .catch(() => {
         if (cancelled) return
-        setIsAuthenticated(false)
+        setUser(null)
         setChecked(true)
       })
     return () => {
@@ -31,5 +32,9 @@ export function useAuthSession() {
     }
   }, [])
 
-  return { isAuthenticated, authChecked: checked }
+  return {
+    user,
+    isAuthenticated: Boolean(user),
+    authChecked: checked,
+  }
 }

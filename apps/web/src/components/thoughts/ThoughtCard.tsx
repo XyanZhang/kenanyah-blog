@@ -2,17 +2,21 @@
 
 import { useState } from 'react'
 import Image from 'next/image'
+import Link from 'next/link'
 import {
   MessageCircle,
   ThumbsUp,
   ThumbsDown,
   HelpCircle,
+  Pencil,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { ThoughtPostWithInteraction } from './types'
 
 interface ThoughtCardProps {
   post: ThoughtPostWithInteraction
+  /** 当前登录用户是否为作者（用于展示编辑入口） */
+  canEdit?: boolean
   onLike: (id: string, liked: boolean) => void
   onDislike: (id: string, disliked: boolean) => void
   onQuestion: (id: string, questioned: boolean) => void
@@ -21,6 +25,7 @@ interface ThoughtCardProps {
 
 export function ThoughtCard({
   post,
+  canEdit = false,
   onLike,
   onDislike,
   onQuestion,
@@ -82,11 +87,24 @@ export function ThoughtCard({
           />
         </div>
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 text-content-secondary">
-            <span className="font-medium text-content-primary">
-              {post.authorName}
-            </span>
-            <span className="text-sm text-content-tertiary">{post.date}</span>
+          <div className="flex items-center justify-between gap-2 text-content-secondary">
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="font-medium text-content-primary truncate">
+                {post.authorName}
+              </span>
+              <span className="text-sm text-content-tertiary shrink-0">
+                {post.date}
+              </span>
+            </div>
+            {canEdit && (
+              <Link
+                href={`/thoughts/${post.id}/edit`}
+                className="shrink-0 inline-flex items-center gap-1 text-sm text-content-tertiary hover:text-accent-primary transition-colors"
+              >
+                <Pencil className="h-3.5 w-3.5" />
+                编辑
+              </Link>
+            )}
           </div>
           {post.content && (
             <p className="mt-1 text-content-primary text-[15px] leading-relaxed whitespace-pre-wrap wrap-break-word">
