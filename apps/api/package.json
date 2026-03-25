@@ -18,7 +18,8 @@
     "prisma:seed": "tsx --env-file=../../.env.test prisma/seed.ts",
     "index-posts": "tsx --env-file=../../.env.test scripts/index-all-posts.ts",
     "check-embeddings": "tsx --env-file=../../.env.test scripts/check-embeddings.ts",
-    "gen-password": "tsx scripts/gen-password.ts"
+    "gen-password": "tsx scripts/gen-password.ts",
+    "fetch-statics-images": "tsx scripts/fetch-statics-images.ts"
   },
   "dependencies": {
     "@blog/types": "workspace:*",
@@ -40,6 +41,7 @@
     "pg": "^8.13.0",
     "pino": "^10.3.1",
     "pino-pretty": "^13.1.3",
+    "sharp": "^0.34.5",
     "zod": "^3.24.1"
   },
   "devDependencies": {

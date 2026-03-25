@@ -10,6 +10,7 @@ import { Calendar, Loader2 } from 'lucide-react'
 import { apiClient } from '@/lib/api-client'
 import type { ApiResponse } from '@/lib/api-client'
 import { getApiErrorMessage } from '@/lib/api-error'
+import { buildDynamicImageUrl, isStaticsSource } from '@/lib/image-service'
 
 interface LatestPostsCardProps {
   card: DashboardCard
@@ -44,6 +45,18 @@ function mapPostToItem(post: PostFromApi): PostItem {
     coverImage: post.coverImage ?? '',
     publishedAt: new Date(dateStr),
   }
+}
+
+function resolveCardImage(src: string): string {
+  if (!src) return src
+  if (!isStaticsSource(src)) return src
+  return buildDynamicImageUrl(src, {
+    width: 160,
+    height: 160,
+    quality: 70,
+    fit: 'cover',
+    format: 'webp',
+  })
 }
 
 export function LatestPostsCard({ card }: LatestPostsCardProps) {
@@ -120,10 +133,10 @@ export function LatestPostsCard({ card }: LatestPostsCardProps) {
               className="group flex gap-3 rounded-xl border border-line-glass/50 bg-surface-glass/40 p-2 backdrop-blur-sm transition-all hover:border-line-hover hover:bg-surface-glass/60 hover:shadow-md"
             >
               {config.showImage && (
-                <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-lg bg-gradient-to-br from-accent-primary-light to-accent-secondary-light">
+                <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-lg bg-linear-to-br from-accent-primary-light to-accent-secondary-light">
                   {post.coverImage ? (
                     <Image
-                      src={post.coverImage}
+                      src={resolveCardImage(post.coverImage)}
                       alt={post.title}
                       fill
                       className="object-cover transition-transform group-hover:scale-105"

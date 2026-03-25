@@ -1,11 +1,14 @@
 'use client'
 
 import { useMemo, useState, useCallback, useRef, useEffect } from 'react'
-import { createPortal } from 'react-dom'
 import Image from 'next/image'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion } from 'framer-motion'
 import { useDrag } from '@/hooks/useDrag'
 import { cn } from '@/lib/utils'
+import { buildPicturesImageUrl, isPicturesSource } from '@/lib/image-service'
+import Lightbox from 'yet-another-react-lightbox'
+import Zoom from 'yet-another-react-lightbox/plugins/zoom'
+import 'yet-another-react-lightbox/styles.css'
 
 export interface PictureStackItem {
   id: string
@@ -82,6 +85,22 @@ function getStackStyle(
 const STAGGER_DELAY = 0.1
 const ENTRANCE_DURATION = 0.4
 
+function resolvePictureListSrc(src: string): string {
+  if (!isPicturesSource(src)) return src
+  return buildPicturesImageUrl(src, {
+    width: 440,
+    height: 360,
+    quality: 70,
+    fit: 'cover',
+    format: 'webp',
+  })
+}
+
+function resolvePictureDetailSrc(src: string): string {
+  if (!isPicturesSource(src)) return src
+  return buildPicturesImageUrl(src)
+}
+
 function DraggableCard({
   item,
   index,
@@ -98,7 +117,7 @@ function DraggableCard({
   totalCount: number
   offset: { x: number; y: number }
   onOffsetChange: (delta: { x: number; y: number }) => void
-  onSelect?: (item: PictureStackItem, rect: DOMRect) => void
+  onSelect?: (item: PictureStackItem) => void
   zIndex: number
   containerWidth: number
   containerHeight: number
@@ -126,8 +145,7 @@ function DraggableCard({
   const { dragDelta, dragHandlers } = useDrag({
     onDragEnd: (delta) => onOffsetChange(clampDelta(delta)),
     onTap: () => {
-      const rect = cardRef.current?.getBoundingClientRect()
-      if (rect) onSelect?.(item, rect)
+      onSelect?.(item)
     },
   })
 
@@ -169,7 +187,7 @@ function DraggableCard({
         <div className="flex-1 min-h-0 p-2.5 pb-1">
           <div className="relative w-full h-full min-h-[160px]">
             <Image
-              src={item.src}
+              src={resolvePictureListSrc(item.src)}
               alt=""
               fill
               sizes={`${CARD_WIDTH}px`}
@@ -186,137 +204,11 @@ function DraggableCard({
   )
 }
 
-/** 预览相框最大宽高（px），限制在视口内 */
-const PREVIEW_MAX_W = 680
-const PREVIEW_MAX_H = 560
-
-const springTransition = { type: 'spring' as const, damping: 26, stiffness: 300 }
-const durationTransition = { duration: 0.35, ease: [0.32, 0.72, 0, 1] as const }
-
-function PicturePreviewOverlay({
-  item,
-  fromRect,
-  onClose,
-}: {
-  item: PictureStackItem
-  fromRect: DOMRect
-  onClose: () => void
-}) {
-  const handleBackdropClick = useCallback(
-    (e: React.MouseEvent) => {
-      if (e.target === e.currentTarget) onClose()
-    },
-    [onClose]
-  )
-
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
-    }
-    document.addEventListener('keydown', onKey)
-
-    const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth
-    const prevOverflow = document.body.style.overflow
-    const prevPaddingRight = document.body.style.paddingRight
-    document.body.style.overflow = 'hidden'
-    if (scrollbarWidth > 0) {
-      document.body.style.paddingRight = `${scrollbarWidth}px`
-    }
-    return () => {
-      document.removeEventListener('keydown', onKey)
-      document.body.style.overflow = prevOverflow
-      document.body.style.paddingRight = prevPaddingRight
-    }
-  }, [onClose])
-
-  return (
-    <motion.div
-      role="dialog"
-      aria-modal
-      aria-label="图片预览"
-      className="fixed inset-0 z-9999 flex items-center justify-center"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      transition={durationTransition}
-    >
-        {/* 背景遮罩 */}
-        <div
-          className="absolute inset-0 bg-black/65 backdrop-blur-sm"
-          onClick={handleBackdropClick}
-          aria-hidden
-        />
-        {/* 黑色外框 + 白色卡纸 + 图片：现代画框风格 */}
-        <motion.div
-          className="absolute z-10 flex overflow-visible bg-black"
-          style={{
-            boxShadow: '0 12px 40px rgba(0,0,0,0.2), 0 4px 12px rgba(0,0,0,0.12)',
-            padding: 12,
-          }}
-          initial={{
-            position: 'fixed' as const,
-            left: fromRect.left,
-            top: fromRect.top,
-            width: fromRect.width,
-            height: fromRect.height,
-            x: 0,
-            y: 0,
-            opacity: 1,
-          }}
-          animate={(() => {
-            const scale = Math.min(
-              PREVIEW_MAX_W / fromRect.width,
-              PREVIEW_MAX_H / fromRect.height
-            )
-            return {
-              left: '50%',
-              top: '50%',
-              x: '-50%',
-              y: '-50%',
-              width: fromRect.width * scale,
-              height: fromRect.height * scale,
-              opacity: 1,
-            }
-          })()}
-          exit={{
-            left: fromRect.left,
-            top: fromRect.top,
-            width: fromRect.width,
-            height: fromRect.height,
-            x: 0,
-            y: 0,
-            opacity: 0,
-            transition: durationTransition,
-          }}
-          transition={springTransition}
-          onClick={(e) => e.stopPropagation()}
-        >
-          {/* 白色卡纸（passe-partout） */}
-          <div className="relative flex-1 min-h-0 min-w-0 bg-white p-6 sm:p-8 md:p-10">
-            <div className="relative h-full w-full overflow-hidden bg-neutral-100">
-              <Image
-                src={item.src}
-                alt=""
-                fill
-                className="object-contain"
-                unoptimized={item.src.startsWith('http')}
-                sizes={`${PREVIEW_MAX_W}px`}
-              />
-            </div>
-          </div>
-        </motion.div>
-    </motion.div>
-  )
-}
-
 export function PictureStack({ items, className }: PictureStackProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   /** 未测量前为 null，避免用 fallback 尺寸导致首次布局闪烁 */
   const [size, setSize] = useState<{ width: number; height: number } | null>(null)
-  const [preview, setPreview] = useState<{
-    item: PictureStackItem
-    fromRect: DOMRect
-  } | null>(null)
+  const [previewIndex, setPreviewIndex] = useState<number>(-1)
 
   useEffect(() => {
     const el = containerRef.current
@@ -360,9 +252,21 @@ export function PictureStack({ items, className }: PictureStackProps) {
     }))
   }, [])
 
-  const handleSelect = useCallback((item: PictureStackItem, rect: DOMRect) => {
-    setPreview({ item, fromRect: rect })
-  }, [])
+  const slides = useMemo(
+    () =>
+      sorted.map((item) => ({
+        src: resolvePictureDetailSrc(item.src),
+      })),
+    [sorted]
+  )
+
+  const handleSelect = useCallback(
+    (item: PictureStackItem) => {
+      const idx = sorted.findIndex((it) => it.id === item.id)
+      if (idx >= 0) setPreviewIndex(idx)
+    },
+    [sorted]
+  )
 
   return (
     <>
@@ -383,20 +287,14 @@ export function PictureStack({ items, className }: PictureStackProps) {
             />
           ))}
       </div>
-      {typeof document !== 'undefined' &&
-        createPortal(
-          <AnimatePresence>
-            {preview && (
-              <PicturePreviewOverlay
-                key={preview.item.id}
-                item={preview.item}
-                fromRect={preview.fromRect}
-                onClose={() => setPreview(null)}
-              />
-            )}
-          </AnimatePresence>,
-          document.body
-        )}
+      <Lightbox
+        open={previewIndex >= 0}
+        close={() => setPreviewIndex(-1)}
+        slides={slides}
+        index={previewIndex >= 0 ? previewIndex : 0}
+        plugins={[Zoom]}
+        controller={{ closeOnBackdropClick: true }}
+      />
     </>
   )
 }

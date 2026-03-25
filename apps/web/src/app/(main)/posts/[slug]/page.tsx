@@ -12,6 +12,7 @@ import type { ApiResponse } from '@/lib/api-client'
 import { getApiErrorMessage } from '@/lib/api-error'
 import { useAuthSession } from '@/hooks/useAuthSession'
 import { cn } from '@/lib/utils'
+import { buildDynamicImageUrl, isStaticsSource } from '@/lib/image-service'
 
 type PostDetail = {
   id: string
@@ -45,6 +46,19 @@ function normalizeImageUrl(url: string | null): string | null {
     return `${apiBase.replace(/\/$/, '')}${url}`
   }
   return url
+}
+
+function resolvePostCover(url: string | null): string | null {
+  const normalized = normalizeImageUrl(url)
+  if (!normalized) return null
+  if (!isStaticsSource(normalized)) return normalized
+  return buildDynamicImageUrl(normalized, {
+    width: 1344,
+    height: 756,
+    quality: 82,
+    fit: 'cover',
+    format: 'webp',
+  })
 }
 
 function formatDate(iso: string) {
@@ -179,10 +193,10 @@ export default function PostPage() {
           )}
         </header>
 
-        {normalizeImageUrl(post.coverImage) && (
+        {resolvePostCover(post.coverImage) && (
           <div className="relative w-full aspect-video bg-surface-tertiary">
             <Image
-              src={normalizeImageUrl(post.coverImage)!}
+              src={resolvePostCover(post.coverImage)!}
               alt=""
               fill
               className="object-cover"

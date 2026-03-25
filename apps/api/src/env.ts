@@ -52,6 +52,7 @@ const envSchema = z.object({
     .default('https://dashscope.aliyuncs.com'), // 北京地域；新加坡用 https://dashscope-intl.aliyuncs.com
   // 上传文件存储：本地 upload 目录，后续可切换 OSS
   UPLOAD_DIR: z.string().optional(), // 绝对路径，默认 apps/api/uploads
+  STATICS_DIR: z.string().optional(), // 绝对路径，默认 apps/api/statics
   UPLOAD_BASE_URL: z
     .string()
     .url()

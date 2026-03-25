@@ -33,6 +33,21 @@ export function getApiBaseUrl(): string {
   return 'http://localhost:3001/api'
 }
 
+/**
+ * 服务端 fetch 用：getApiBaseUrl 在生产环境可能是相对路径 /api，需拼 NEXT_PUBLIC_APP_URL 作为 origin。
+ */
+export function getApiFetchUrl(pathWithQuery: string): string {
+  const pathPart = pathWithQuery.startsWith('/') ? pathWithQuery : `/${pathWithQuery}`
+  const base = getApiBaseUrl().replace(/\/$/, '')
+  if (base.startsWith('http')) {
+    return `${base}${pathPart}`
+  }
+  const origin = (process.env.NEXT_PUBLIC_APP_URL ?? '').replace(/\/$/, '')
+  const o = origin || 'http://localhost:3000'
+  const prefix = base.startsWith('/') ? base : `/${base}`
+  return `${o}${prefix}${pathPart}`
+}
+
 const API_BASE_URL = getApiBaseUrl()
 
 // 401 自动刷新：仅浏览器端，用于携带 cookie 调用 /auth/refresh 后重试

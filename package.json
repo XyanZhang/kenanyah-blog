@@ -30,6 +30,7 @@
     "db:studio": "pnpm --filter api prisma studio",
     "db:reset": "pnpm --filter api run prisma:reset",
     "db:generate": "pnpm --filter api prisma generate",
+    "statics:fetch-images": "pnpm --filter @blog/api run fetch-statics-images",
     "db:export": "bash scripts/db-export.sh",
     "db:export:custom": "bash scripts/db-export.sh --custom",
     "db:export:schema": "bash scripts/db-export.sh --schema-only",

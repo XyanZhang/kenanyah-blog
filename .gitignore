@@ -48,6 +48,7 @@ apps/api/src/generated/
 # Uploads (generated images，Docker 映射到此处便于宿主机管理)
 apps/api/uploads/
 apps/api/uploads-test/
+apps/api/statics/
 
 # Database backups
 backups/
