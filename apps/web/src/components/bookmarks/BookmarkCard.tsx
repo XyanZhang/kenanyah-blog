@@ -58,7 +58,7 @@ export function BookmarkCard({ item, className }: BookmarkCardProps) {
       <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-md bg-accent-primary-light ring-1 ring-line-glass/30">
         {showFavicon ? (
           <img
-            src={item.favicon}
+            src={item.favicon ?? undefined}
             alt=""
             className="h-5 w-5 object-contain"
             onError={() => setFaviconError(true)}

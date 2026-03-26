@@ -107,7 +107,7 @@ export function ThoughtCard({
             )}
           </div>
           {post.content && (
-            <p className="mt-1 text-content-primary text-[15px] leading-relaxed whitespace-pre-wrap wrap-break-word">
+            <p className="mt-1 font-blog text-content-primary text-[15px] leading-[1.75] tracking-[0.01em] whitespace-pre-wrap wrap-break-word">
               {post.content}
             </p>
           )}
