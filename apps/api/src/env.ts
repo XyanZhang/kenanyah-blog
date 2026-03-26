@@ -39,6 +39,13 @@ const envSchema = z.object({
   OPENAI_API_KEY_REASONING: z.string().min(1).optional(),
   OPENAI_BASE_URL_REASONING: z.string().url().optional(),
   OPENAI_MODEL_REASONING: z.string().optional(),
+  /**
+   * 文本聊天厂商路由（按用途槽位）：openai = 走 OPENAI_*；qwen = 走 DashScope 兼容模式 + DASHSCOPE_API_KEY。
+   * Agent 也可在 invokeChat/streamChat 里传 options.provider 覆盖。
+   */
+  LLM_PROVIDER_DEFAULT: z.enum(['openai', 'qwen']).default('openai'),
+  LLM_PROVIDER_FAST: z.enum(['openai', 'qwen']).optional(),
+  LLM_PROVIDER_REASONING: z.enum(['openai', 'qwen']).optional(),
   // 语义搜索：Embedding 模型（需与 OpenAI 兼容接口，如 text-embedding-3-small）
   EMBEDDINGS_BASE_URL: z.string().url().optional(),
   EMBEDDINGS_API_KEY: z.string().min(1).optional(),
@@ -50,8 +57,10 @@ const envSchema = z.object({
     .url()
     .optional()
     .default('https://dashscope.aliyuncs.com'), // 北京地域；新加坡用 https://dashscope-intl.aliyuncs.com
-  /** 思考 AI：DashScope 兼容 OpenAI 模式的文本模型（qwen-turbo / qwen-plus 等） */
+  /** DashScope 兼容 OpenAI 模式的文本模型（qwen-turbo / qwen-plus 等），按用途可细分 */
   DASHSCOPE_CHAT_MODEL: z.string().default('qwen-turbo'),
+  DASHSCOPE_CHAT_MODEL_FAST: z.string().optional(),
+  DASHSCOPE_CHAT_MODEL_REASONING: z.string().optional(),
   // 上传文件存储：本地 upload 目录，后续可切换 OSS
   UPLOAD_DIR: z.string().optional(), // 绝对路径，默认 apps/api/uploads
   STATICS_DIR: z.string().optional(), // 绝对路径，默认 apps/api/statics

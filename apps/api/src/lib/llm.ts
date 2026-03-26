@@ -1,70 +1,69 @@
 import { ChatOpenAI } from '@langchain/openai'
 import { HumanMessage, SystemMessage } from '@langchain/core/messages'
-import { env } from '../env'
+import {
+  resolveLlmChatConfig,
+  llmConfigCacheKey,
+  peekLlmProviderKind,
+  type LlmCallOptionsInput,
+  type LlmModelPurpose,
+  type LlmProviderKind,
+} from './llm-providers'
 
-export type LlmModelPurpose = 'default' | 'fast' | 'reasoning'
-export type LlmCallOptions = {
-  model?: LlmModelPurpose | string
-  temperature?: number
-}
+export type LlmCallOptions = LlmCallOptionsInput
+export type { LlmModelPurpose, LlmProviderKind }
+
+export {
+  resolveLlmChatConfig,
+  peekLlmProviderKind,
+  getDashScopeOpenAICompatBaseUrl,
+} from './llm-providers'
 
 const modelCache = new Map<string, ChatOpenAI>()
 
-function isPurpose(value: string): value is LlmModelPurpose {
-  return value === 'default' || value === 'fast' || value === 'reasoning'
-}
-
-function getDefaultModelName(): string {
-  return env.OPENAI_MODEL_DEFAULT || env.OPENAI_MODEL
-}
-
-function resolveModelName(model?: LlmModelPurpose | string): string {
-  if (!model) return getDefaultModelName()
-  if (!isPurpose(model)) return model
-  if (model === 'fast') return env.OPENAI_MODEL_FAST || getDefaultModelName()
-  if (model === 'reasoning') return env.OPENAI_MODEL_REASONING || env.OPENAI_MODEL_FAST || getDefaultModelName()
-  return getDefaultModelName()
-}
-
-function resolveApiKey(model?: LlmModelPurpose | string): string | undefined {
-  if (model && isPurpose(model)) {
-    if (model === 'fast') return env.OPENAI_API_KEY_FAST || env.OPENAI_API_KEY_DEFAULT || env.OPENAI_API_KEY
-    if (model === 'reasoning') return env.OPENAI_API_KEY_REASONING || env.OPENAI_API_KEY_FAST || env.OPENAI_API_KEY_DEFAULT || env.OPENAI_API_KEY
+/** 统一解析模型返回（千问等可能返回多段 content） */
+function normalizeMessageContent(content: unknown): string {
+  if (typeof content === 'string') return content
+  if (Array.isArray(content)) {
+    return content
+      .map((p) =>
+        typeof p === 'string'
+          ? p
+          : p && typeof p === 'object' && 'text' in p
+            ? String((p as { text: unknown }).text)
+            : ''
+      )
+      .join('')
   }
-  return env.OPENAI_API_KEY_DEFAULT || env.OPENAI_API_KEY
-}
-
-function resolveBaseUrl(model?: LlmModelPurpose | string): string | undefined {
-  if (model && isPurpose(model)) {
-    if (model === 'fast') return env.OPENAI_BASE_URL_FAST || env.OPENAI_BASE_URL_DEFAULT || env.OPENAI_BASE_URL
-    if (model === 'reasoning') return env.OPENAI_BASE_URL_REASONING || env.OPENAI_BASE_URL_FAST || env.OPENAI_BASE_URL_DEFAULT || env.OPENAI_BASE_URL
-  }
-  return env.OPENAI_BASE_URL_DEFAULT || env.OPENAI_BASE_URL
+  return ''
 }
 
 function getChatModel(options?: LlmCallOptions): ChatOpenAI | null {
-  const apiKey = resolveApiKey(options?.model)
-  if (!apiKey) {
-    return null
-  }
-  const modelName = resolveModelName(options?.model)
-  const baseURL = resolveBaseUrl(options?.model)
-  const temperature = options?.temperature ?? 1.5
-  const cacheKey = `${baseURL || ''}::${modelName}::${temperature}`
+  const resolved = resolveLlmChatConfig(options)
+  if (!resolved) return null
 
+  const cacheKey = llmConfigCacheKey(resolved)
   let chatModel = modelCache.get(cacheKey) ?? null
   if (!chatModel) {
     chatModel = new ChatOpenAI({
-      modelName,
-      temperature,
-      apiKey,
+      modelName: resolved.modelName,
+      temperature: resolved.temperature,
+      ...(resolved.maxTokens != null ? { maxTokens: resolved.maxTokens } : {}),
+      apiKey: resolved.apiKey,
       configuration: {
-        baseURL,
+        baseURL: resolved.baseURL,
       },
     })
     modelCache.set(cacheKey, chatModel)
   }
   return chatModel ?? null
+}
+
+function chatConfigErrorHint(options?: LlmCallOptions): string {
+  const kind = peekLlmProviderKind(options)
+  if (kind === 'qwen') {
+    return 'DASHSCOPE_API_KEY 未配置，或当前槽位的 LLM_PROVIDER_* 指向 qwen 但 Key 无效'
+  }
+  return 'OPENAI_API_KEY / OPENAI_API_KEY_* 未配置，或当前槽位指向的 OpenAI 兼容服务不可用'
 }
 
 export async function* streamChat(
@@ -74,7 +73,7 @@ export async function* streamChat(
 ): AsyncGenerator<string, void, undefined> {
   const model = getChatModel(options)
   if (!model) {
-    throw new Error('OPENAI_API_KEY is not configured for selected model/provider')
+    throw new Error(chatConfigErrorHint(options))
   }
   const messages = [
     ...(systemPrompt ? [new SystemMessage(systemPrompt)] : []),
@@ -82,10 +81,8 @@ export async function* streamChat(
   ]
   const stream = await model.stream(messages)
   for await (const chunk of stream) {
-    const content = chunk.content
-    if (typeof content === 'string' && content) {
-      yield content
-    }
+    const text = normalizeMessageContent(chunk.content)
+    if (text) yield text
   }
 }
 
@@ -96,12 +93,12 @@ export async function invokeChat(
 ): Promise<string> {
   const model = getChatModel(options)
   if (!model) {
-    throw new Error('OPENAI_API_KEY is not configured for selected model/provider')
+    throw new Error(chatConfigErrorHint(options))
   }
   const messages = [
     ...(systemPrompt ? [new SystemMessage(systemPrompt)] : []),
     new HumanMessage(userPrompt),
   ]
   const res = await model.invoke(messages)
-  return typeof res.content === 'string' ? res.content : ''
+  return normalizeMessageContent(res.content)
 }

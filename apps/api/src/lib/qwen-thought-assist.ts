@@ -1,19 +1,9 @@
 /**
- * 使用阿里云 DashScope「兼容 OpenAI」模式调用千问文本模型，辅助生成/润色「思考」正文。
- * 文档：https://help.aliyun.com/zh/model-studio/developer-reference/use-qwen-by-calling-api
+ * 「思考」辅助：走统一 LLM 层，强制使用千问（DashScope 兼容模式），
+ * 模型名与前缀 temperature 仍由本模块收口，便于产品侧调参。
  */
-import { ChatOpenAI } from '@langchain/openai'
-import { HumanMessage, SystemMessage } from '@langchain/core/messages'
 import { env } from '../env'
-
-/** 兼容模式路径（与 base 域名拼接，勿与 multimodal-generation 混用） */
-const OPENAI_COMPAT_PATH = '/compatible-mode/v1'
-
-function getOpenAICompatBaseUrl(): string {
-  const raw = env.DASHSCOPE_BASE_URL || 'https://dashscope.aliyuncs.com'
-  const origin = new URL(raw).origin
-  return `${origin}${OPENAI_COMPAT_PATH}`
-}
+import { invokeChat } from './llm'
 
 const SYSTEM_GENERATE = [
   '你是中文写作助手，帮用户把「关键词或碎片想法」写成一条适合发在「思考流」里的随笔。',
@@ -28,7 +18,7 @@ const SYSTEM_POLISH = [
   '只输出润色后的正文，不要解释。',
 ].join('\n')
 
-/** 生成：略高 temperature 便于联想；润色：略低更稳 */
+/** 生成：略高 temperature；美化：略低更稳 */
 const TEMP_GENERATE = 0.82
 const TEMP_POLISH = 0.55
 
@@ -39,13 +29,6 @@ export async function assistThoughtWithQwen(input: {
   keywords: string
   draft?: string
 }): Promise<string> {
-  const apiKey = env.DASHSCOPE_API_KEY
-  if (!apiKey) {
-    throw new Error(
-      'DASHSCOPE_API_KEY 未配置，无法使用千问辅助。请在环境变量中配置百炼 API Key。'
-    )
-  }
-
   const keywords = input.keywords.trim()
   const draft = (input.draft ?? '').trim()
 
@@ -56,40 +39,25 @@ export async function assistThoughtWithQwen(input: {
     throw new Error('请先在正文里写好草稿，再使用美化')
   }
 
-  const modelName = env.DASHSCOPE_CHAT_MODEL
-  const temperature = input.mode === 'generate' ? TEMP_GENERATE : TEMP_POLISH
-
-  const chat = new ChatOpenAI({
-    modelName,
-    temperature,
-    maxTokens: 2048,
-    apiKey,
-    configuration: {
-      baseURL: getOpenAICompatBaseUrl(),
-    },
-  })
-
   const userContent =
     input.mode === 'generate'
       ? `关键词与要点：\n${keywords}`
       : `关键词（供把握语气与主题侧重）：\n${keywords || '（无额外关键词，以草稿为准）'}\n\n草稿：\n${draft}`
 
-  const res = await chat.invoke([
-    new SystemMessage(input.mode === 'generate' ? SYSTEM_GENERATE : SYSTEM_POLISH),
-    new HumanMessage(userContent),
-  ])
+  const systemPrompt = input.mode === 'generate' ? SYSTEM_GENERATE : SYSTEM_POLISH
+  const temperature = input.mode === 'generate' ? TEMP_GENERATE : TEMP_POLISH
 
-  const text =
-    typeof res.content === 'string'
-      ? res.content
-      : Array.isArray(res.content)
-        ? res.content
-            .map((p) => (typeof p === 'string' ? p : 'text' in p ? String(p.text) : ''))
-            .join('')
-        : ''
-  const out = text.trim()
-  if (!out) {
+  const text = (
+    await invokeChat(userContent, systemPrompt, {
+      provider: 'qwen',
+      model: env.DASHSCOPE_CHAT_MODEL,
+      temperature,
+      maxTokens: 2048,
+    })
+  ).trim()
+
+  if (!text) {
     throw new Error('模型未返回有效正文，请稍后重试')
   }
-  return out
+  return text
 }
