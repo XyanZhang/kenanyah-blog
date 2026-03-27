@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { ArrowUp } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { TocHeading } from '@/lib/heading'
@@ -30,10 +30,64 @@ function useReadingProgress() {
   return progress
 }
 
+function useCompletionConfetti(progress: number) {
+  const firedRef = useRef(false)
+  const timerRef = useRef<number | null>(null)
+
+  useEffect(() => {
+    if (firedRef.current) return
+    if (progress < 1) return
+
+    const key = `easterEgg:confetti:${window.location.pathname}`
+    if (sessionStorage.getItem(key) === '1') {
+      firedRef.current = true
+      return
+    }
+
+    timerRef.current = window.setTimeout(async () => {
+      const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches ?? false
+      if (reduceMotion) {
+        sessionStorage.setItem(key, '1')
+        firedRef.current = true
+        return
+      }
+
+      const { default: confetti } = await import('canvas-confetti')
+
+      const burst = (particleCount: number, spread: number, originX: number) =>
+        confetti({
+          particleCount,
+          spread,
+          startVelocity: 45,
+          gravity: 1.15,
+          ticks: 220,
+          scalar: 0.95,
+          origin: { x: originX, y: 0.78 },
+          zIndex: 9999,
+        })
+
+      burst(120, 70, 0.25)
+      burst(120, 70, 0.75)
+
+      sessionStorage.setItem(key, '1')
+      firedRef.current = true
+    }, 1000)
+
+    return () => {
+      if (timerRef.current != null) {
+        window.clearTimeout(timerRef.current)
+        timerRef.current = null
+      }
+    }
+  }, [progress])
+}
+
 export function PostAside({ headings }: PostAsideProps) {
   const progress = useReadingProgress()
   const progressPct = Math.round(progress * 100)
   const items = useMemo(() => headings.slice(0, 18), [headings])
+
+  useCompletionConfetti(progress)
 
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' })
