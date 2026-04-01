@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState, useCallback, useRef, useEffect } from 'react'
+import { memo, useMemo, useState, useCallback, useRef, useEffect } from 'react'
 import Image from 'next/image'
 import { motion } from 'framer-motion'
 import { useDrag } from '@/hooks/useDrag'
@@ -25,6 +25,7 @@ const PAD = 32
 /** Polaroid 桌面：白边相纸比例，略高以留出底部白边 */
 const CARD_WIDTH = 200
 const CARD_HEIGHT = 250
+const ZERO_OFFSET = { x: 0, y: 0 }
 
 /** Polaroid 桌面布局：模拟相片随意散落桌面的感觉，允许重叠与随机倾斜 */
 function getStackStyle(
@@ -101,7 +102,51 @@ function resolvePictureDetailSrc(src: string): string {
   return buildPicturesImageUrl(src)
 }
 
-function DraggableCard({
+const PictureCardFace = memo(function PictureCardFace({
+  item,
+  index,
+}: {
+  item: PictureStackItem
+  index: number
+}) {
+  return (
+    <motion.div
+      className="w-full h-full flex flex-col bg-white rounded-sm overflow-hidden transition-shadow duration-200"
+      style={{
+        boxShadow: '0 4px 20px rgba(0,0,0,0.1), 0 1px 3px rgba(0,0,0,0.08)',
+      }}
+      initial={{ opacity: 0, scale: 0.92 }}
+      animate={{ opacity: 1, scale: 1 }}
+      whileHover={{
+        boxShadow: '0 12px 40px rgba(0,0,0,0.15), 0 4px 12px rgba(0,0,0,0.1)',
+        transition: { duration: 0.2 },
+      }}
+      transition={{
+        duration: ENTRANCE_DURATION,
+        delay: index * STAGGER_DELAY,
+        ease: [0.32, 0.72, 0, 1],
+      }}
+    >
+      <div className="flex-1 min-h-0 p-2.5 pb-1">
+        <div className="relative w-full h-full min-h-[160px]">
+          <Image
+            src={resolvePictureListSrc(item.src)}
+            alt=""
+            fill
+            sizes={`${CARD_WIDTH}px`}
+            className="pointer-events-none object-cover"
+            unoptimized={item.src.startsWith('http')}
+          />
+        </div>
+      </div>
+      <div className="h-10 flex items-center justify-center text-xs text-neutral-400 font-mono">
+        {item.date}
+      </div>
+    </motion.div>
+  )
+})
+
+const DraggableCard = memo(function DraggableCard({
   item,
   index,
   totalCount,
@@ -116,7 +161,7 @@ function DraggableCard({
   index: number
   totalCount: number
   offset: { x: number; y: number }
-  onOffsetChange: (delta: { x: number; y: number }) => void
+  onOffsetChange: (id: string, nextOffset: { x: number; y: number }) => void
   onSelect?: (item: PictureStackItem) => void
   zIndex: number
   containerWidth: number
@@ -133,24 +178,62 @@ function DraggableCard({
   const minTy = PAD - top
   const maxTy = containerHeight - PAD - CARD_HEIGHT - top
 
-  const clampDelta = useCallback(
-    (delta: { x: number; y: number }) => {
-      const clampedX = Math.max(minTx, Math.min(maxTx, offset.x + delta.x))
-      const clampedY = Math.max(minTy, Math.min(maxTy, offset.y + delta.y))
-      return { x: clampedX - offset.x, y: clampedY - offset.y }
+  const clampOffset = useCallback(
+    (nextOffset: { x: number; y: number }) => {
+      const clampedX = Math.max(minTx, Math.min(maxTx, nextOffset.x))
+      const clampedY = Math.max(minTy, Math.min(maxTy, nextOffset.y))
+      return { x: clampedX, y: clampedY }
     },
-    [left, top, offset, containerWidth, containerHeight, minTx, maxTx, minTy, maxTy]
+    [minTx, maxTx, minTy, maxTy]
   )
 
-  const { dragDelta, dragHandlers } = useDrag({
-    onDragEnd: (delta) => onOffsetChange(clampDelta(delta)),
+  const [visualOffset, setVisualOffset] = useState(() => clampOffset(offset))
+  const visualOffsetRef = useRef(visualOffset)
+
+  const setCardTransform = useCallback(
+    (nextOffset: { x: number; y: number }) => {
+      if (!cardRef.current) return
+      cardRef.current.style.transform = `translate3d(${nextOffset.x}px, ${nextOffset.y}px, 0) rotate(${rotate}deg)`
+    },
+    [rotate]
+  )
+
+  const { isDragging, dragHandlers } = useDrag({
+    syncDragDelta: false,
+    onDragMove: (delta) => {
+      const nextOffset = clampOffset({
+        x: visualOffsetRef.current.x + delta.x,
+        y: visualOffsetRef.current.y + delta.y,
+      })
+      setCardTransform(nextOffset)
+    },
+    onDragEnd: (delta) => {
+      const nextOffset = clampOffset({
+        x: visualOffsetRef.current.x + delta.x,
+        y: visualOffsetRef.current.y + delta.y,
+      })
+
+      visualOffsetRef.current = nextOffset
+      setVisualOffset((prev) =>
+        prev.x === nextOffset.x && prev.y === nextOffset.y ? prev : nextOffset
+      )
+      onOffsetChange(item.id, nextOffset)
+    },
     onTap: () => {
       onSelect?.(item)
     },
   })
 
-  const translateX = Math.max(minTx, Math.min(maxTx, offset.x + dragDelta.x))
-  const translateY = Math.max(minTy, Math.min(maxTy, offset.y + dragDelta.y))
+  useEffect(() => {
+    if (isDragging) return
+
+    const nextOffset = clampOffset(offset)
+    visualOffsetRef.current = nextOffset
+    setVisualOffset((prev) => (prev.x === nextOffset.x && prev.y === nextOffset.y ? prev : nextOffset))
+  }, [clampOffset, isDragging, offset])
+
+  const clampedVisualOffset = clampOffset(visualOffset)
+  visualOffsetRef.current = clampedVisualOffset
 
   return (
     <div
@@ -162,47 +245,17 @@ function DraggableCard({
         width: CARD_WIDTH,
         height: CARD_HEIGHT,
         zIndex,
-        transform: `translate(${translateX}px, ${translateY}px) rotate(${rotate}deg)`,
+        transform: `translate3d(${clampedVisualOffset.x}px, ${clampedVisualOffset.y}px, 0) rotate(${rotate}deg)`,
         transition: 'box-shadow 0.2s ease',
+        willChange: isDragging ? 'transform' : undefined,
+        backfaceVisibility: 'hidden',
       }}
       {...dragHandlers}
     >
-      <motion.div
-        className="w-full h-full flex flex-col bg-white rounded-sm overflow-hidden transition-shadow duration-200"
-        style={{
-          boxShadow: '0 4px 20px rgba(0,0,0,0.1), 0 1px 3px rgba(0,0,0,0.08)',
-        }}
-        initial={{ opacity: 0, scale: 0.92 }}
-        animate={{ opacity: 1, scale: 1 }}
-        whileHover={{
-          boxShadow: '0 12px 40px rgba(0,0,0,0.15), 0 4px 12px rgba(0,0,0,0.1)',
-          transition: { duration: 0.2 },
-        }}
-        transition={{
-          duration: ENTRANCE_DURATION,
-          delay: index * STAGGER_DELAY,
-          ease: [0.32, 0.72, 0, 1],
-        }}
-      >
-        <div className="flex-1 min-h-0 p-2.5 pb-1">
-          <div className="relative w-full h-full min-h-[160px]">
-            <Image
-              src={resolvePictureListSrc(item.src)}
-              alt=""
-              fill
-              sizes={`${CARD_WIDTH}px`}
-              className="pointer-events-none object-cover"
-              unoptimized={item.src.startsWith('http')}
-            />
-          </div>
-        </div>
-        <div className="h-10 flex items-center justify-center text-xs text-neutral-400 font-mono">
-          {item.date}
-        </div>
-      </motion.div>
+      <PictureCardFace item={item} index={index} />
     </div>
   )
-}
+})
 
 export function PictureStack({ items, className }: PictureStackProps) {
   const containerRef = useRef<HTMLDivElement>(null)
@@ -242,14 +295,18 @@ export function PictureStack({ items, className }: PictureStackProps) {
 
   const [offsets, setOffsets] = useState<Record<string, { x: number; y: number }>>({})
 
-  const handleOffsetChange = useCallback((id: string, delta: { x: number; y: number }) => {
-    setOffsets((prev) => ({
-      ...prev,
-      [id]: {
-        x: (prev[id]?.x ?? 0) + delta.x,
-        y: (prev[id]?.y ?? 0) + delta.y,
-      },
-    }))
+  const handleOffsetChange = useCallback((id: string, nextOffset: { x: number; y: number }) => {
+    setOffsets((prev) => {
+      const current = prev[id]
+      if (current?.x === nextOffset.x && current?.y === nextOffset.y) {
+        return prev
+      }
+
+      return {
+        ...prev,
+        [id]: nextOffset,
+      }
+    })
   }, [])
 
   const slides = useMemo(
@@ -278,8 +335,8 @@ export function PictureStack({ items, className }: PictureStackProps) {
               item={item}
               index={index}
               totalCount={sorted.length}
-              offset={offsets[item.id] ?? { x: 0, y: 0 }}
-              onOffsetChange={(delta) => handleOffsetChange(item.id, delta)}
+              offset={offsets[item.id] ?? ZERO_OFFSET}
+              onOffsetChange={handleOffsetChange}
               onSelect={handleSelect}
               zIndex={sorted.length - 1 - index}
               containerWidth={size.width}
