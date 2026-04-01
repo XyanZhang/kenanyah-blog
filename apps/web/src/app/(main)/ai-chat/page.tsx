@@ -4,19 +4,25 @@ import { useEffect, useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import { Loader2, MessageCircle, Send, Bot, Pencil } from 'lucide-react'
+import { Loader2, MessageCircle, Send, Bot, Pencil, FilePenLine } from 'lucide-react'
 import {
   listConversations,
   createConversation,
   getConversation,
   streamChatMessage,
+  runBlogWorkflow,
   updateConversation,
+  type BlogWorkflowResult,
   type ChatConversation,
   type ChatMessage,
 } from '@/lib/ai-chat-api'
 
 type UiMessage = ChatMessage & {
   pending?: boolean
+}
+
+function isWorkflowFollowupMessage(content: string): boolean {
+  return content.includes('【BLOG_WORKFLOW_FOLLOWUP】')
 }
 
 export default function AiChatPage() {
@@ -31,6 +37,8 @@ export default function AiChatPage() {
   const [loadingConversations, setLoadingConversations] = useState(true)
   const [loadingMessages, setLoadingMessages] = useState(false)
   const [sending, setSending] = useState(false)
+  const [runningWorkflow, setRunningWorkflow] = useState(false)
+  const [workflowFollowupMode, setWorkflowFollowupMode] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editingTitle, setEditingTitle] = useState('')
@@ -94,7 +102,12 @@ export default function AiChatPage() {
     getConversation(currentId)
       .then((detail) => {
         if (cancelled) return
-        setMessages(detail.messages as UiMessage[])
+        const loaded = detail.messages as UiMessage[]
+        setMessages(loaded)
+        const lastAssistant = [...loaded].reverse().find((m) => m.role === 'assistant')
+        setWorkflowFollowupMode(
+          lastAssistant ? isWorkflowFollowupMessage(lastAssistant.content || '') : false
+        )
       })
       .catch((err: unknown) => {
         if (cancelled) return
@@ -177,12 +190,136 @@ export default function AiChatPage() {
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
-      handleSend()
+      if (workflowFollowupMode) {
+        void handleWorkflowFollowupSend()
+      } else {
+        void handleSend()
+      }
     }
   }
 
+  async function handleGenerateBlog() {
+    if (!currentId || !input.trim() || sending || runningWorkflow) return
+    const content = input.trim()
+    setInput('')
+    setRunningWorkflow(true)
+    setError(null)
+
+    const userMsg: UiMessage = {
+      id: `local-workflow-user-${Date.now()}`,
+      conversationId: currentId,
+      role: 'user',
+      content,
+      createdAt: new Date().toISOString(),
+      pending: true,
+    }
+    const assistantMsg: UiMessage = {
+      id: `local-workflow-assistant-${Date.now()}`,
+      conversationId: currentId,
+      role: 'assistant',
+      content: '正在规划并生成博客，请稍候…',
+      createdAt: new Date().toISOString(),
+      pending: true,
+    }
+    setMessages((prev) => [...prev, userMsg, assistantMsg])
+
+    try {
+      const result = await runBlogWorkflow({
+        conversationId: currentId,
+        message: content,
+        publishDirectly: true,
+      })
+      const assistantContent = formatWorkflowAssistantMessage(result)
+      setWorkflowFollowupMode(result.status === 'need_more_info')
+
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === userMsg.id
+            ? { ...m, pending: false }
+            : m.id === assistantMsg.id
+              ? { ...m, pending: false, content: assistantContent }
+              : m
+        )
+      )
+      listConversations()
+        .then((list) => setConversations(list))
+        .catch(() => undefined)
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : String(err))
+      setMessages((prev) => prev.filter((m) => m.id !== userMsg.id && m.id !== assistantMsg.id))
+    } finally {
+      setRunningWorkflow(false)
+    }
+  }
+
+  async function handleWorkflowFollowupSend() {
+    if (!currentId || !input.trim() || sending || runningWorkflow) return
+    const content = input.trim()
+    setInput('')
+    setRunningWorkflow(true)
+    setError(null)
+
+    const userMsg: UiMessage = {
+      id: `local-workflow-followup-user-${Date.now()}`,
+      conversationId: currentId,
+      role: 'user',
+      content,
+      createdAt: new Date().toISOString(),
+      pending: true,
+    }
+    const assistantMsg: UiMessage = {
+      id: `local-workflow-followup-assistant-${Date.now()}`,
+      conversationId: currentId,
+      role: 'assistant',
+      content: '正在根据你补充的信息继续生成…',
+      createdAt: new Date().toISOString(),
+      pending: true,
+    }
+    setMessages((prev) => [...prev, userMsg, assistantMsg])
+
+    try {
+      const result = await runBlogWorkflow({
+        conversationId: currentId,
+        message: content,
+        publishDirectly: true,
+      })
+      const assistantContent = formatWorkflowAssistantMessage(result)
+      setWorkflowFollowupMode(result.status === 'need_more_info')
+
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === userMsg.id
+            ? { ...m, pending: false }
+            : m.id === assistantMsg.id
+              ? { ...m, pending: false, content: assistantContent }
+              : m
+        )
+      )
+      listConversations()
+        .then((list) => setConversations(list))
+        .catch(() => undefined)
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : String(err))
+      setMessages((prev) => prev.filter((m) => m.id !== userMsg.id && m.id !== assistantMsg.id))
+    } finally {
+      setRunningWorkflow(false)
+    }
+  }
+
+  function formatWorkflowAssistantMessage(result: BlogWorkflowResult): string {
+    if (result.status === 'need_more_info') {
+      return `【BLOG_WORKFLOW_FOLLOWUP】\n在继续生成前，请你补充以下信息：\n\n${result.followupQuestions
+        .map((q, idx) => `${idx + 1}. ${q}`)
+        .join('\n')}`
+    }
+    if (result.status === 'published') {
+      return `文章已生成并发布。\n\n标题：${result.post.title}\n链接：[点击查看](${result.postUrl})`
+    }
+    return `文章已生成并保存为草稿。\n\n标题：${result.post.title}\n链接：[点击查看](${result.postUrl})`
+  }
+
   return (
-    <main className="w-full max-w-6xl mx-auto px-4 py-6 md:py-8 flex flex-col md:flex-row gap-4 bg-gradient-to-b from-surface-glass/40 via-surface-glass/10 to-surface-glass/40">
+    <main className="w-full max-w-6xl mx-auto px-4 py-6 md:py-8 flex flex-col md:flex-row gap-4 bg-linear-to-b from-surface-glass/40 via-surface-glass/10 to-surface-glass/40">
       <section className="w-full md:w-72 shrink-0 md:h-[calc(100vh-140px)] md:max-h-[calc(100vh-140px)] flex flex-col">
         <div className="mb-4 flex items-center justify-between">
           <h1 className="text-lg font-semibold text-content-primary flex items-center gap-2">
@@ -350,6 +487,11 @@ export default function AiChatPage() {
                                   <table {...props}>{children}</table>
                                 </div>
                               ),
+                              a: ({ children, ...props }) => (
+                                <a {...props} target="_blank" rel="noopener noreferrer">
+                                  {children}
+                                </a>
+                              ),
                             }}
                           >
                             {msg.content || (msg.pending ? '思考中…' : '')}
@@ -376,21 +518,39 @@ export default function AiChatPage() {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              disabled={sending || !currentId}
+              disabled={sending || runningWorkflow || !currentId}
             />
             <button
               type="button"
-              onClick={handleSend}
-              disabled={sending || !input.trim() || !currentId}
+              onClick={workflowFollowupMode ? handleWorkflowFollowupSend : handleSend}
+              disabled={sending || runningWorkflow || !input.trim() || !currentId}
               className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-accent-primary text-white shadow-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-accent-primary/90 transition-colors"
             >
-              {sending ? (
+              {sending || runningWorkflow ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
                 <Send className="h-4 w-4" />
               )}
             </button>
+            <button
+              type="button"
+              onClick={handleGenerateBlog}
+              disabled={runningWorkflow || sending || !input.trim() || !currentId}
+              className="inline-flex h-9 items-center gap-1 rounded-full border border-accent-primary/50 px-3 text-xs text-accent-primary disabled:opacity-50 disabled:cursor-not-allowed hover:bg-accent-primary/10 transition-colors"
+            >
+              {runningWorkflow ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <FilePenLine className="h-4 w-4" />
+              )}
+              生成博客
+            </button>
           </div>
+          {workflowFollowupMode && (
+            <p className="mt-2 px-1 text-xs text-content-tertiary">
+              当前处于博客生成补充信息模式，直接发送会继续走生成并入库流程。
+            </p>
+          )}
         </div>
       </section>
     </main>

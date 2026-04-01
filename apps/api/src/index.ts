@@ -26,6 +26,7 @@ import bookmarks from './routes/bookmarks'
 import pictures from './routes/pictures'
 import statics from './routes/statics'
 import thoughts from './routes/thoughts'
+import blogWorkflow from './routes/blog-workflow'
 
 // 根应用：/uploads 在根路径（图片等静态资源无需 /api 前缀），/api 下为接口
 const root = new Hono()
@@ -75,6 +76,7 @@ app.get('/', (c) => {
         uploads: '/uploads',
         pictures: '/pictures',
         thoughts: '/thoughts',
+        blogWorkflow: '/blog-workflow',
       },
     },
   })
@@ -96,6 +98,7 @@ app.route('/pdf', pdf)
 app.route('/bookmarks', bookmarks)
 app.route('/pictures', pictures)
 app.route('/thoughts', thoughts)
+app.route('/blog-workflow', blogWorkflow)
 
 root.route('/api', app)
 

@@ -31,6 +31,22 @@ export interface ChatConversationDetail {
   messages: ChatMessage[]
 }
 
+export type BlogWorkflowResult =
+  | {
+      status: 'need_more_info'
+      followupQuestions: string[]
+    }
+  | {
+      status: 'published' | 'draft_saved'
+      post: {
+        id: string
+        slug: string
+        title: string
+        published: boolean
+      }
+      postUrl: string
+    }
+
 type ApiResponse<T> = {
   success: boolean
   data?: T
@@ -168,5 +184,23 @@ export async function streamChatMessage(
       onChunk(data)
     }
   }
+}
+
+export async function runBlogWorkflow(payload: {
+  conversationId: string
+  message: string
+  publishDirectly?: boolean
+}): Promise<BlogWorkflowResult> {
+  const res = await fetch(`${API_BASE_URL}/blog-workflow/run`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(payload),
+  })
+  const json = (await res.json()) as ApiResponse<BlogWorkflowResult>
+  if (!json.success || !json.data) {
+    throw new Error(json.error || '博客工作流执行失败')
+  }
+  return json.data
 }
 
