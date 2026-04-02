@@ -4,7 +4,15 @@ import { useEffect, useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import { Loader2, MessageCircle, Send, Bot, Pencil, FilePenLine } from 'lucide-react'
+import {
+  Loader2,
+  Send,
+  Bot,
+  Pencil,
+  FilePenLine,
+  Database,
+  Plus,
+} from 'lucide-react'
 import {
   listConversations,
   createConversation,
@@ -21,8 +29,104 @@ type UiMessage = ChatMessage & {
   pending?: boolean
 }
 
+type FollowupField = 'topic' | 'audience' | 'tone' | 'goals' | 'general'
+
+type FollowupQuestionSpec = {
+  id: string
+  question: string
+  field: FollowupField
+  title: string
+  options: string[]
+  multiple: boolean
+  placeholder: string
+}
+
+type FollowupAnswerDraft = {
+  selectedOptions: string[]
+  customText: string
+}
+
 function isWorkflowFollowupMessage(content: string): boolean {
   return content.includes('【BLOG_WORKFLOW_FOLLOWUP】')
+}
+
+function getWorkflowFollowupDisplayContent(content: string): string {
+  return content.replace('【BLOG_WORKFLOW_FOLLOWUP】', '').trim()
+}
+
+function getWorkflowFollowupQuestions(content: string): string[] {
+  return getWorkflowFollowupDisplayContent(content)
+    .split('\n')
+    .map((line) => line.trim())
+    .map((line) => line.replace(/^\d+\.\s*/, ''))
+    .filter((line) => Boolean(line) && !line.startsWith('在开始生成前') && !line.startsWith('在继续生成前'))
+}
+
+function buildFollowupQuestionSpec(question: string, index: number): FollowupQuestionSpec {
+  if (/(读者|受众|面向|给谁看)/.test(question)) {
+    return {
+      id: `audience-${index}`,
+      question,
+      field: 'audience',
+      title: '目标读者',
+      options: ['前端工程师', '后端工程师', '全栈开发者', '产品/设计同学'],
+      multiple: false,
+      placeholder: '例如：有 React 基础的前端开发者',
+    }
+  }
+
+  if (/(语气|风格|调性|文风)/.test(question)) {
+    return {
+      id: `tone-${index}`,
+      question,
+      field: 'tone',
+      title: '文章语气',
+      options: ['专业严谨', '通俗易懂', '偏实战', '简洁克制'],
+      multiple: true,
+      placeholder: '例如：专业但不要太学术，适合博客阅读',
+    }
+  }
+
+  if (/(目标|重点|收获|想达到|解决什么|希望读者)/.test(question)) {
+    return {
+      id: `goals-${index}`,
+      question,
+      field: 'goals',
+      title: '写作重点',
+      options: ['快速入门', '解释原理', '提供示例代码', '总结最佳实践', '补充避坑建议'],
+      multiple: true,
+      placeholder: '例如：突出关键步骤、注意事项和代码示例',
+    }
+  }
+
+  if (/(主题|聚焦|写什么|内容方向|标题)/.test(question)) {
+    return {
+      id: `topic-${index}`,
+      question,
+      field: 'topic',
+      title: '文章主题',
+      options: ['沿用当前对话主题', '聚焦实战教程', '聚焦方案设计', '聚焦问题排查'],
+      multiple: false,
+      placeholder: '例如：围绕 AI 聊天页的博客工作流交互优化',
+    }
+  }
+
+  return {
+    id: `general-${index}`,
+    question,
+    field: 'general',
+    title: `补充要求 ${index + 1}`,
+    options: ['按合理默认值', '结合当前上下文', '偏简洁', '偏详细'],
+    multiple: true,
+    placeholder: '例如：结构分成背景、方案、实现与总结四部分',
+  }
+}
+
+function getEmptyFollowupAnswerDraft(): FollowupAnswerDraft {
+  return {
+    selectedOptions: [],
+    customText: '',
+  }
 }
 
 export default function AiChatPage() {
@@ -43,7 +147,10 @@ export default function AiChatPage() {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editingTitle, setEditingTitle] = useState('')
   const [useKnowledgeBase, setUseKnowledgeBase] = useState(false)
+  const [followupDrafts, setFollowupDrafts] = useState<Record<string, Record<string, FollowupAnswerDraft>>>({})
   const bottomRef = useRef<HTMLDivElement | null>(null)
+  const isComposingRef = useRef(false)
+  const inputRef = useRef<HTMLTextAreaElement | null>(null)
 
   useEffect(() => {
     try {
@@ -127,6 +234,17 @@ export default function AiChatPage() {
     bottomRef.current.scrollIntoView({ behavior: 'smooth' })
   }, [messages.length, sending])
 
+  async function handleCreateConversation() {
+    try {
+      const conv = await createConversation()
+      setConversations((prev) => [conv, ...prev])
+      setCurrentId(conv.id)
+      router.push('/ai-chat')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    }
+  }
+
   async function handleSend() {
     if (!currentId || !input.trim() || sending) return
     const content = input.trim()
@@ -188,6 +306,12 @@ export default function AiChatPage() {
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
+    const nativeEvent = e.nativeEvent as KeyboardEvent
+
+    if (isComposingRef.current || nativeEvent.isComposing || nativeEvent.keyCode === 229) {
+      return
+    }
+
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
       if (workflowFollowupMode) {
@@ -252,10 +376,12 @@ export default function AiChatPage() {
     }
   }
 
-  async function handleWorkflowFollowupSend() {
-    if (!currentId || !input.trim() || sending || runningWorkflow) return
-    const content = input.trim()
-    setInput('')
+  async function submitWorkflowFollowup(content: string, options?: { clearInput?: boolean }) {
+    if (!currentId || !content.trim() || sending || runningWorkflow) return
+    const trimmedContent = content.trim()
+    if (options?.clearInput !== false) {
+      setInput('')
+    }
     setRunningWorkflow(true)
     setError(null)
 
@@ -263,7 +389,7 @@ export default function AiChatPage() {
       id: `local-workflow-followup-user-${Date.now()}`,
       conversationId: currentId,
       role: 'user',
-      content,
+      content: trimmedContent,
       createdAt: new Date().toISOString(),
       pending: true,
     }
@@ -280,7 +406,7 @@ export default function AiChatPage() {
     try {
       const result = await runBlogWorkflow({
         conversationId: currentId,
-        message: content,
+        message: trimmedContent,
         publishDirectly: true,
       })
       const assistantContent = formatWorkflowAssistantMessage(result)
@@ -306,6 +432,87 @@ export default function AiChatPage() {
     }
   }
 
+  async function handleWorkflowFollowupSend() {
+    await submitWorkflowFollowup(input)
+  }
+
+  async function handleWorkflowFollowupUseDefaults(questions: string[]) {
+    const defaultReply = `以下问题我没有额外要求，请你按合理默认值自行补全并继续生成，不必再次提问：\n${questions
+      .map((question, idx) => `${idx + 1}. ${question}`)
+      .join('\n')}`
+    await submitWorkflowFollowup(defaultReply, { clearInput: false })
+  }
+
+  function getFollowupAnswerDraft(messageId: string, questionId: string): FollowupAnswerDraft {
+    return followupDrafts[messageId]?.[questionId] ?? getEmptyFollowupAnswerDraft()
+  }
+
+  function updateFollowupAnswerDraft(
+    messageId: string,
+    questionId: string,
+    updater: (draft: FollowupAnswerDraft) => FollowupAnswerDraft
+  ) {
+    setFollowupDrafts((prev) => {
+      const messageDrafts = prev[messageId] ?? {}
+      const currentDraft = messageDrafts[questionId] ?? getEmptyFollowupAnswerDraft()
+      return {
+        ...prev,
+        [messageId]: {
+          ...messageDrafts,
+          [questionId]: updater(currentDraft),
+        },
+      }
+    })
+  }
+
+  function toggleFollowupOption(messageId: string, spec: FollowupQuestionSpec, option: string) {
+    updateFollowupAnswerDraft(messageId, spec.id, (draft) => {
+      if (spec.multiple) {
+        const exists = draft.selectedOptions.includes(option)
+        return {
+          ...draft,
+          selectedOptions: exists
+            ? draft.selectedOptions.filter((item) => item !== option)
+            : [...draft.selectedOptions, option],
+        }
+      }
+
+      return {
+        ...draft,
+        selectedOptions: draft.selectedOptions[0] === option ? [] : [option],
+      }
+    })
+  }
+
+  function handleFollowupCustomTextChange(messageId: string, questionId: string, value: string) {
+    updateFollowupAnswerDraft(messageId, questionId, (draft) => ({
+      ...draft,
+      customText: value,
+    }))
+  }
+
+  function hasFollowupSelections(messageId: string, specs: FollowupQuestionSpec[]): boolean {
+    return specs.some((spec) => {
+      const draft = getFollowupAnswerDraft(messageId, spec.id)
+      return draft.selectedOptions.length > 0 || draft.customText.trim().length > 0
+    })
+  }
+
+  function buildFollowupFormSubmission(messageId: string, specs: FollowupQuestionSpec[]): string {
+    return `请根据以下表单补充继续生成博客：\n${specs
+      .map((spec, index) => {
+        const draft = getFollowupAnswerDraft(messageId, spec.id)
+        const answer = draft.customText.trim() || draft.selectedOptions.join('、') || '按合理默认值处理'
+        return `${index + 1}. ${spec.title}：${answer}`
+      })
+      .join('\n')}\n若未特别说明的细节，请按合理默认值处理。`
+  }
+
+  async function handleSubmitFollowupForm(messageId: string, specs: FollowupQuestionSpec[]) {
+    if (!hasFollowupSelections(messageId, specs)) return
+    await submitWorkflowFollowup(buildFollowupFormSubmission(messageId, specs), { clearInput: false })
+  }
+
   function formatWorkflowAssistantMessage(result: BlogWorkflowResult): string {
     if (result.status === 'need_more_info') {
       return `【BLOG_WORKFLOW_FOLLOWUP】\n在继续生成前，请你补充以下信息：\n\n${result.followupQuestions
@@ -321,37 +528,54 @@ export default function AiChatPage() {
   return (
     <main className="w-full max-w-6xl mx-auto px-4 py-6 md:py-8 flex flex-col md:flex-row gap-4 bg-linear-to-b from-surface-glass/40 via-surface-glass/10 to-surface-glass/40">
       <section className="w-full md:w-72 shrink-0 md:h-[calc(100vh-140px)] md:max-h-[calc(100vh-140px)] flex flex-col">
-        <div className="mb-4 flex items-center justify-between">
-          <h1 className="text-lg font-semibold text-content-primary flex items-center gap-2">
-            <Bot className="h-5 w-5 text-accent-primary" />
-            AI 对话
-          </h1>
-          <label className="inline-flex items-center gap-2 rounded-lg border border-line-glass bg-surface-glass/60 px-2 py-1 text-xs text-content-secondary">
-            <input
-              type="checkbox"
-              checked={useKnowledgeBase}
-              onChange={(e) => setUseKnowledgeBase(e.currentTarget.checked)}
-              className="accent-accent-primary"
-            />
-            检索本地知识库
-          </label>
-          <button
-            type="button"
-            className="inline-flex items-center gap-1 rounded-lg border border-line-primary bg-surface-glass px-2 py-1 text-xs font-medium text-content-primary hover:border-accent-primary/60 hover:bg-accent-primary/10"
-            onClick={async () => {
-              try {
-                const conv = await createConversation()
-                setConversations((prev) => [conv, ...prev])
-                setCurrentId(conv.id)
-                router.push('/ai-chat')
-              } catch (err) {
-                setError(err instanceof Error ? err.message : String(err))
-              }
-            }}
-          >
-            <MessageCircle className="h-3 w-3" />
-            新建会话
-          </button>
+        <div className="mb-4 rounded-2xl border border-line-glass bg-surface-glass/75 p-3 backdrop-blur-sm">
+          <div className="flex items-start gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-accent-primary/12 text-accent-primary">
+              <Bot className="h-5 w-5" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <h1 className="text-base font-semibold text-content-primary">AI 对话</h1>
+              <p className="mt-1 text-xs leading-5 text-content-secondary">
+                管理会话并切换知识库检索模式。
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-3 grid gap-2">
+            <button
+              type="button"
+              onClick={() => setUseKnowledgeBase((prev) => !prev)}
+              aria-pressed={useKnowledgeBase}
+              className={`flex w-full items-center justify-between rounded-xl border px-3 py-2.5 text-left transition-colors ${
+                useKnowledgeBase
+                  ? 'border-accent-primary/30 bg-accent-primary/10 text-accent-primary'
+                  : 'border-line-glass bg-surface-glass/70 text-content-secondary hover:border-accent-primary/20 hover:bg-surface-glass'
+              }`}
+            >
+              <span className="flex items-center gap-2">
+                <Database className="h-4 w-4" />
+                <span className="text-sm font-medium">检索本地知识库</span>
+              </span>
+              <span
+                className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${
+                  useKnowledgeBase
+                    ? 'bg-accent-primary/15 text-accent-primary'
+                    : 'bg-surface-tertiary text-content-tertiary'
+                }`}
+              >
+                {useKnowledgeBase ? '已开启' : '已关闭'}
+              </span>
+            </button>
+
+            <button
+              type="button"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-accent-primary px-3 py-2.5 text-sm font-medium text-white shadow-md transition-colors hover:bg-accent-primary/90"
+              onClick={handleCreateConversation}
+            >
+              <Plus className="h-4 w-4" />
+              新建会话
+            </button>
+          </div>
         </div>
         <div className="rounded-2xl border border-line-glass bg-surface-glass/80 backdrop-blur-sm p-2 flex-1 overflow-y-auto">
           {loadingConversations ? (
@@ -465,7 +689,21 @@ export default function AiChatPage() {
                   还没有消息，试着问问 AI 一个问题吧～
                 </div>
               ) : (
-                messages.map((msg) => (
+                messages.map((msg, index) => {
+                  const isWorkflowFollowup = msg.role === 'assistant' && isWorkflowFollowupMessage(msg.content)
+                  const followupQuestions = isWorkflowFollowup
+                    ? getWorkflowFollowupQuestions(msg.content)
+                    : []
+                  const followupSpecs = followupQuestions.map((question, questionIndex) =>
+                    buildFollowupQuestionSpec(question, questionIndex)
+                  )
+                  const showFollowupActions =
+                    isWorkflowFollowup &&
+                    workflowFollowupMode &&
+                    index === messages.length - 1 &&
+                    !msg.pending
+
+                  return (
                   <div
                     key={msg.id}
                     className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
@@ -494,66 +732,163 @@ export default function AiChatPage() {
                               ),
                             }}
                           >
-                            {msg.content || (msg.pending ? '思考中…' : '')}
+                            {isWorkflowFollowup
+                              ? getWorkflowFollowupDisplayContent(msg.content)
+                              : msg.content || (msg.pending ? '思考中…' : '')}
                           </ReactMarkdown>
                         </div>
                       ) : (
                         <span>{msg.content}</span>
                       )}
+
+                      {showFollowupActions && (
+                        <div className="mt-3 border-t border-line-glass/70 pt-3">
+                          <div className="mb-2 text-xs font-medium text-content-secondary">
+                            通过表单补充信息后直接继续生成：
+                          </div>
+                          <div className="space-y-3">
+                            {followupSpecs.map((spec) => {
+                              const draft = getFollowupAnswerDraft(msg.id, spec.id)
+
+                              return (
+                                <div
+                                  key={spec.id}
+                                  className="rounded-xl border border-line-glass/70 bg-surface-glass/60 p-3"
+                                >
+                                  <div className="text-xs font-medium text-content-primary">
+                                    {spec.title}
+                                  </div>
+                                  <div className="mt-1 text-[11px] leading-5 text-content-secondary">
+                                    {spec.question}
+                                  </div>
+                                  <div className="mt-2 flex flex-wrap gap-2">
+                                    {spec.options.map((option) => {
+                                      const selected = draft.selectedOptions.includes(option)
+                                      return (
+                                        <button
+                                          key={option}
+                                          type="button"
+                                          onClick={() => toggleFollowupOption(msg.id, spec, option)}
+                                          className={`inline-flex rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors ${
+                                            selected
+                                              ? 'border-accent-primary/30 bg-accent-primary/12 text-accent-primary'
+                                              : 'border-line-glass bg-surface-glass/70 text-content-secondary hover:border-accent-primary/20 hover:text-content-primary'
+                                          }`}
+                                        >
+                                          {option}
+                                        </button>
+                                      )
+                                    })}
+                                  </div>
+                                  <textarea
+                                    className="mt-3 w-full resize-none rounded-xl border border-line-glass bg-surface-glass px-3 py-2 text-xs text-content-primary placeholder:text-content-tertiary focus:outline-none focus:ring-2 focus:ring-accent-primary/40"
+                                    rows={2}
+                                    value={draft.customText}
+                                    onChange={(e) =>
+                                      handleFollowupCustomTextChange(msg.id, spec.id, e.currentTarget.value)
+                                    }
+                                    placeholder={spec.placeholder}
+                                    disabled={runningWorkflow || sending || !currentId}
+                                  />
+                                </div>
+                              )
+                            })}
+                          </div>
+                          <div className="flex flex-col gap-2 sm:flex-row">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                void handleSubmitFollowupForm(msg.id, followupSpecs)
+                              }}
+                              disabled={
+                                runningWorkflow ||
+                                sending ||
+                                !currentId ||
+                                !hasFollowupSelections(msg.id, followupSpecs)
+                              }
+                              className="inline-flex items-center justify-center rounded-xl bg-accent-primary px-3 py-2 text-xs font-medium text-white transition-colors hover:bg-accent-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                              按所选继续生成
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                void handleWorkflowFollowupUseDefaults(followupQuestions)
+                              }}
+                              disabled={runningWorkflow || sending || !currentId}
+                              className="inline-flex items-center justify-center rounded-xl border border-accent-primary/30 bg-accent-primary/8 px-3 py-2 text-xs font-medium text-accent-primary transition-colors hover:bg-accent-primary/12 disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                              全部按默认继续
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
-                ))
+                  )
+                })
               )}
               <div ref={bottomRef} />
             </div>
           )}
         </div>
 
-        <div className="mt-3 md:mt-4 rounded-3xl border border-line-glass bg-surface-glass/95 backdrop-blur-xl p-2 md:p-3 shadow-[0_18px_45px_rgba(0,0,0,0.25)]">
-          <div className="flex items-end gap-2 md:gap-3">
+        <div className="mt-3 md:mt-4 rounded-3xl border border-line-glass bg-surface-glass/95 backdrop-blur-xl p-3 md:p-4 shadow-[0_18px_45px_rgba(0,0,0,0.25)]">
+          <div className="flex flex-col gap-3">
             <textarea
-              className="flex-1 resize-none rounded-2xl border border-line-glass bg-surface-tertiary/40 px-3 py-2.5 text-sm text-content-primary placeholder:text-content-tertiary focus:outline-none focus:ring-2 focus:ring-accent-primary/50"
+              ref={inputRef}
+              className="w-full resize-none rounded-2xl border border-line-glass bg-surface-tertiary/40 px-3 py-3 text-sm text-content-primary placeholder:text-content-tertiary focus:outline-none focus:ring-2 focus:ring-accent-primary/50"
               rows={3}
               placeholder="输入你的问题，按 Enter 发送，Shift+Enter 换行…"
               value={input}
               onChange={(e) => setInput(e.target.value)}
+              onCompositionStart={() => {
+                isComposingRef.current = true
+              }}
+              onCompositionEnd={() => {
+                isComposingRef.current = false
+              }}
               onKeyDown={handleKeyDown}
               disabled={sending || runningWorkflow || !currentId}
             />
-            <button
-              type="button"
-              onClick={workflowFollowupMode ? handleWorkflowFollowupSend : handleSend}
-              disabled={sending || runningWorkflow || !input.trim() || !currentId}
-              className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-accent-primary text-white shadow-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-accent-primary/90 transition-colors"
-            >
-              {sending || runningWorkflow ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Send className="h-4 w-4" />
-              )}
-            </button>
-            <button
-              type="button"
-              onClick={handleGenerateBlog}
-              disabled={runningWorkflow || sending || !input.trim() || !currentId}
-              className="inline-flex h-9 items-center gap-1 rounded-full border border-accent-primary/50 px-3 text-xs text-accent-primary disabled:opacity-50 disabled:cursor-not-allowed hover:bg-accent-primary/10 transition-colors"
-            >
-              {runningWorkflow ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <FilePenLine className="h-4 w-4" />
-              )}
-              生成博客
-            </button>
+            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              <div className="text-xs text-content-tertiary">
+                {workflowFollowupMode
+                  ? '当前处于博客生成补充信息模式，发送后会继续走生成并入库流程。'
+                  : 'Enter 发送，Shift + Enter 换行。'}
+              </div>
+              <div className="flex gap-2 md:justify-end">
+                <button
+                  type="button"
+                  onClick={handleGenerateBlog}
+                  disabled={runningWorkflow || sending || !input.trim() || !currentId}
+                  className="inline-flex h-10 flex-1 items-center justify-center gap-2 rounded-2xl border border-accent-primary/35 bg-accent-primary/6 px-4 text-sm font-medium text-accent-primary transition-colors disabled:cursor-not-allowed disabled:opacity-50 hover:bg-accent-primary/12 md:flex-none"
+                >
+                  {runningWorkflow ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <FilePenLine className="h-4 w-4" />
+                  )}
+                  生成博客
+                </button>
+                <button
+                  type="button"
+                  onClick={workflowFollowupMode ? handleWorkflowFollowupSend : handleSend}
+                  disabled={sending || runningWorkflow || !input.trim() || !currentId}
+                  className="inline-flex h-10 flex-1 items-center justify-center gap-2 rounded-2xl bg-accent-primary px-4 text-sm font-medium text-white shadow-md transition-colors disabled:cursor-not-allowed disabled:opacity-50 hover:bg-accent-primary/90 md:flex-none"
+                >
+                  {sending || runningWorkflow ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Send className="h-4 w-4" />
+                  )}
+                  {workflowFollowupMode ? '继续生成' : '发送消息'}
+                </button>
+              </div>
+            </div>
           </div>
-          {workflowFollowupMode && (
-            <p className="mt-2 px-1 text-xs text-content-tertiary">
-              当前处于博客生成补充信息模式，直接发送会继续走生成并入库流程。
-            </p>
-          )}
         </div>
       </section>
     </main>
   )
 }
-

@@ -1,9 +1,12 @@
 'use client'
 
+import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 import { useState, useRef, useEffect } from 'react'
-import { Palette, Check } from 'lucide-react'
+import { Palette, Check, Bot } from 'lucide-react'
 import { useThemeStore, THEME_OPTIONS, type ThemeId } from '@/store/theme-store'
 import { useFloatingActions } from '@/components/providers/FloatingActionsProvider'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui'
 
 export function ThemeSwitcher() {
   const [isOpen, setIsOpen] = useState(false)
@@ -11,6 +14,8 @@ export function ThemeSwitcher() {
   const buttonRef = useRef<HTMLButtonElement>(null)
   const { themeId, setTheme } = useThemeStore()
   const { extraActions } = useFloatingActions()
+  const pathname = usePathname()
+  const isAiChatPage = pathname === '/ai-chat'
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -52,6 +57,25 @@ export function ThemeSwitcher() {
     <div className="fixed bottom-6 right-6 z-50 flex flex-col items-center gap-3">
       {/* Extra Buttons Slot */}
       {extraActions}
+
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Link
+            href="/ai-chat"
+            className={`
+              flex h-12 w-12 items-center justify-center rounded-full shadow-lg transition-all
+              ${isAiChatPage
+                ? 'bg-accent-primary text-white'
+                : 'bg-surface-primary text-content-secondary hover:bg-surface-hover border border-line-primary'
+              }
+            `}
+            aria-label="打开 AI 对话"
+          >
+            <Bot className="h-5 w-5" />
+          </Link>
+        </TooltipTrigger>
+        <TooltipContent side="left">AI 对话</TooltipContent>
+      </Tooltip>
 
       {/* Theme Panel */}
       {isOpen && (

@@ -37,6 +37,17 @@ export type BlogWorkflowResult =
       postUrl: string
     }
 
+function formatPublishedPostMessage(post: {
+  title: string
+  published: boolean
+}, postUrl: string): string {
+  if (post.published) {
+    return `文章已生成并发布。\n\n标题：${post.title}\n链接：[点击查看](${postUrl})`
+  }
+
+  return `文章已生成并保存为草稿。\n\n标题：${post.title}\n链接：[点击查看](${postUrl})`
+}
+
 export async function runBlogReactOrchestrator(input: BlogWorkflowInput): Promise<BlogWorkflowResult> {
   const conversationData = await loadConversationWithMessages(input.conversationId, input.userId)
   if (!conversationData) {
@@ -101,9 +112,7 @@ export async function runBlogReactOrchestrator(input: BlogWorkflowInput): Promis
         published: input.publishDirectly,
       })
       const postUrl = `${input.siteBaseUrl.replace(/\/+$/, '')}/posts/${post.slug || post.id}`
-      const assistantMessage = post.published
-        ? `文章已生成并发布，链接如下：${postUrl}`
-        : `文章已生成并保存为草稿，预览链接：${postUrl}`
+      const assistantMessage = formatPublishedPostMessage(post, postUrl)
       await appendConversationMessage(input.conversationId, 'assistant', assistantMessage)
 
       return {
