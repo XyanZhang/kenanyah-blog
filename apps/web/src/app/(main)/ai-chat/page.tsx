@@ -27,6 +27,17 @@ import {
 
 type UiMessage = ChatMessage & {
   pending?: boolean
+  queued?: boolean
+  interrupted?: boolean
+}
+
+type ChatQueueItem = {
+  id: string
+  conversationId: string
+  content: string
+  useKnowledgeBase: boolean
+  userMsgId: string
+  assistantMsgId: string
 }
 
 type FollowupField = 'topic' | 'audience' | 'tone' | 'goals' | 'general'
@@ -129,6 +140,13 @@ function getEmptyFollowupAnswerDraft(): FollowupAnswerDraft {
   }
 }
 
+function isAbortError(error: unknown): boolean {
+  return (
+    (error instanceof DOMException && error.name === 'AbortError') ||
+    (error instanceof Error && error.name === 'AbortError')
+  )
+}
+
 export default function AiChatPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -148,9 +166,13 @@ export default function AiChatPage() {
   const [editingTitle, setEditingTitle] = useState('')
   const [useKnowledgeBase, setUseKnowledgeBase] = useState(false)
   const [followupDrafts, setFollowupDrafts] = useState<Record<string, Record<string, FollowupAnswerDraft>>>({})
+  const [chatQueue, setChatQueue] = useState<ChatQueueItem[]>([])
   const bottomRef = useRef<HTMLDivElement | null>(null)
   const isComposingRef = useRef(false)
   const inputRef = useRef<HTMLTextAreaElement | null>(null)
+  const activeChatAbortRef = useRef<AbortController | null>(null)
+  const activeChatJobRef = useRef<ChatQueueItem | null>(null)
+  const previousConversationIdRef = useRef<string | null>(null)
 
   useEffect(() => {
     try {
@@ -232,7 +254,26 @@ export default function AiChatPage() {
   useEffect(() => {
     if (!bottomRef.current) return
     bottomRef.current.scrollIntoView({ behavior: 'smooth' })
-  }, [messages.length, sending])
+  }, [messages.length, sending, chatQueue.length])
+
+  useEffect(() => {
+    const previousConversationId = previousConversationIdRef.current
+    if (previousConversationId && previousConversationId !== currentId) {
+      setChatQueue([])
+      activeChatAbortRef.current?.abort()
+    }
+    previousConversationIdRef.current = currentId
+  }, [currentId])
+
+  useEffect(() => {
+    if (sending || runningWorkflow) return
+    const nextJob = chatQueue[0]
+    if (!nextJob) return
+    if (!currentId || nextJob.conversationId !== currentId) return
+
+    setChatQueue((prev) => prev.slice(1))
+    void executeChatJob(nextJob)
+  }, [chatQueue, currentId, runningWorkflow, sending])
 
   async function handleCreateConversation() {
     try {
@@ -245,40 +286,134 @@ export default function AiChatPage() {
     }
   }
 
-  async function handleSend() {
-    if (!currentId || !input.trim() || sending) return
-    const content = input.trim()
-    setInput('')
-    setSending(true)
-    setError(null)
+  function buildChatQueueItem(content: string, assistantContent = ''): ChatQueueItem {
+    if (!currentId) {
+      throw new Error('当前没有可用会话')
+    }
 
+    const conversationId = currentId
+    const timestamp = Date.now()
     const userMsg: UiMessage = {
-      id: `local-user-${Date.now()}`,
-      conversationId: currentId,
+      id: `local-user-${timestamp}`,
+      conversationId,
       role: 'user',
       content,
       createdAt: new Date().toISOString(),
       pending: true,
+      queued: Boolean(assistantContent),
     }
     const assistantMsg: UiMessage = {
-      id: `local-assistant-${Date.now()}`,
-      conversationId: currentId,
+      id: `local-assistant-${timestamp}`,
+      conversationId,
       role: 'assistant',
-      content: '',
+      content: assistantContent,
       createdAt: new Date().toISOString(),
       pending: true,
+      queued: Boolean(assistantContent),
     }
 
     setMessages((prev) => [...prev, userMsg, assistantMsg])
 
+    return {
+      id: `chat-job-${timestamp}`,
+      conversationId,
+      content,
+      useKnowledgeBase,
+      userMsgId: userMsg.id,
+      assistantMsgId: assistantMsg.id,
+    }
+  }
+
+  function markChatJobAsActive(job: ChatQueueItem) {
+    setMessages((prev) =>
+      prev.map((message) => {
+        if (message.id === job.userMsgId) {
+          return {
+            ...message,
+            pending: true,
+            queued: false,
+          }
+        }
+
+        if (message.id === job.assistantMsgId) {
+          return {
+            ...message,
+            content: '',
+            pending: true,
+            queued: false,
+            interrupted: false,
+          }
+        }
+
+        return message
+      })
+    )
+  }
+
+  function finishChatJob(job: ChatQueueItem) {
+    setMessages((prev) =>
+      prev.map((message) =>
+        message.id === job.userMsgId || message.id === job.assistantMsgId
+          ? { ...message, pending: false, queued: false }
+          : message
+      )
+    )
+  }
+
+  function markChatJobInterrupted(job: ChatQueueItem) {
+    setMessages((prev) =>
+      prev.map((message) => {
+        if (message.id === job.userMsgId) {
+          return {
+            ...message,
+            pending: false,
+            queued: false,
+          }
+        }
+
+        if (message.id === job.assistantMsgId) {
+          const interruptedContent = message.content.trim()
+            ? `${message.content.trim()}\n\n[本次回答已中断]`
+            : '本次回答已中断。'
+          return {
+            ...message,
+            content: interruptedContent,
+            pending: false,
+            queued: false,
+            interrupted: true,
+          }
+        }
+
+        return message
+      })
+    )
+  }
+
+  function removeChatJob(job: ChatQueueItem) {
+    setMessages((prev) =>
+      prev.filter((message) => message.id !== job.userMsgId && message.id !== job.assistantMsgId)
+    )
+  }
+
+  async function executeChatJob(job: ChatQueueItem) {
+    if (!currentId || job.conversationId !== currentId) return
+
+    markChatJobAsActive(job)
+    setSending(true)
+    setError(null)
+    activeChatJobRef.current = job
+
+    const controller = new AbortController()
+    activeChatAbortRef.current = controller
+
     try {
       await streamChatMessage(
-        currentId,
-        content,
+        job.conversationId,
+        job.content,
         (chunk) => {
           setMessages((prev) =>
             prev.map((m) =>
-              m.id === assistantMsg.id
+              m.id === job.assistantMsgId
                 ? { ...m, content: (m.content ?? '') + chunk }
                 : m
             )
@@ -287,22 +422,59 @@ export default function AiChatPage() {
         (err) => {
           setError(err)
         },
-        { useKnowledgeBase }
+        {
+          useKnowledgeBase: job.useKnowledgeBase,
+          signal: controller.signal,
+        }
       )
-      setMessages((prev) =>
-        prev.map((m) =>
-          m.id === userMsg.id || m.id === assistantMsg.id ? { ...m, pending: false } : m
-        )
-      )
+      finishChatJob(job)
       listConversations()
         .then((list) => setConversations(list))
         .catch(() => undefined)
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : String(err))
-      setMessages((prev) => prev.filter((m) => m.id !== userMsg.id && m.id !== assistantMsg.id))
+      if (isAbortError(err)) {
+        markChatJobInterrupted(job)
+        listConversations()
+          .then((list) => setConversations(list))
+          .catch(() => undefined)
+      } else {
+        setError(err instanceof Error ? err.message : String(err))
+        removeChatJob(job)
+      }
     } finally {
+      if (activeChatAbortRef.current === controller) {
+        activeChatAbortRef.current = null
+      }
+      if (activeChatJobRef.current?.id === job.id) {
+        activeChatJobRef.current = null
+      }
       setSending(false)
     }
+  }
+
+  async function handleSend() {
+    if (!currentId || !input.trim() || sending) return
+    const content = input.trim()
+    setInput('')
+    const job = buildChatQueueItem(content)
+    await executeChatJob(job)
+  }
+
+  function handleQueueSend() {
+    if (!currentId || !input.trim() || !sending) return
+    const content = input.trim()
+    setInput('')
+    const job = buildChatQueueItem(content, '已加入队列，等待当前回复结束…')
+    setChatQueue((prev) => [...prev, job])
+  }
+
+  function handleInterruptAndSend() {
+    if (!currentId || !input.trim() || !sending) return
+    const content = input.trim()
+    setInput('')
+    const job = buildChatQueueItem(content, '正在中断当前回答，并准备继续处理…')
+    setChatQueue((prev) => [job, ...prev])
+    activeChatAbortRef.current?.abort()
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
@@ -316,6 +488,8 @@ export default function AiChatPage() {
       e.preventDefault()
       if (workflowFollowupMode) {
         void handleWorkflowFollowupSend()
+      } else if (sending) {
+        handleQueueSend()
       } else {
         void handleSend()
       }
@@ -715,6 +889,16 @@ export default function AiChatPage() {
                           : 'bg-surface-tertiary/90 text-content-primary'
                       }`}
                     >
+                      {msg.queued && (
+                        <div className="mb-2 text-[11px] font-medium text-content-tertiary">
+                          排队中
+                        </div>
+                      )}
+                      {msg.interrupted && (
+                        <div className="mb-2 text-[11px] font-medium text-amber-600 dark:text-amber-300">
+                          已中断
+                        </div>
+                      )}
                       {msg.role === 'assistant' ? (
                         <div className="md-content max-w-none">
                           <ReactMarkdown
@@ -839,7 +1023,11 @@ export default function AiChatPage() {
               ref={inputRef}
               className="w-full resize-none rounded-2xl border border-line-glass bg-surface-tertiary/40 px-3 py-3 text-sm text-content-primary placeholder:text-content-tertiary focus:outline-none focus:ring-2 focus:ring-accent-primary/50"
               rows={3}
-              placeholder="输入你的问题，按 Enter 发送，Shift+Enter 换行…"
+              placeholder={
+                sending && !workflowFollowupMode
+                  ? '继续输入内容，按 Enter 加入队列，或点击中断并发送…'
+                  : '输入你的问题，按 Enter 发送，Shift+Enter 换行…'
+              }
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onCompositionStart={() => {
@@ -849,13 +1037,15 @@ export default function AiChatPage() {
                 isComposingRef.current = false
               }}
               onKeyDown={handleKeyDown}
-              disabled={sending || runningWorkflow || !currentId}
+              disabled={runningWorkflow || !currentId}
             />
             <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
               <div className="text-xs text-content-tertiary">
                 {workflowFollowupMode
                   ? '当前处于博客生成补充信息模式，发送后会继续走生成并入库流程。'
-                  : 'Enter 发送，Shift + Enter 换行。'}
+                  : sending
+                    ? `正在生成回答。你可以继续输入并排队发送${chatQueue.length > 0 ? `，当前队列 ${chatQueue.length} 条` : ''}。`
+                    : 'Enter 发送，Shift + Enter 换行。'}
               </div>
               <div className="flex gap-2 md:justify-end">
                 <button
@@ -871,18 +1061,36 @@ export default function AiChatPage() {
                   )}
                   生成博客
                 </button>
+                {sending && !workflowFollowupMode && (
+                  <button
+                    type="button"
+                    onClick={handleInterruptAndSend}
+                    disabled={runningWorkflow || !input.trim() || !currentId}
+                    className="inline-flex h-10 flex-1 items-center justify-center gap-2 rounded-2xl border border-amber-500/35 bg-amber-500/8 px-4 text-sm font-medium text-amber-700 transition-colors disabled:cursor-not-allowed disabled:opacity-50 hover:bg-amber-500/12 md:flex-none dark:text-amber-200"
+                  >
+                    中断并发送
+                  </button>
+                )}
                 <button
                   type="button"
-                  onClick={workflowFollowupMode ? handleWorkflowFollowupSend : handleSend}
-                  disabled={sending || runningWorkflow || !input.trim() || !currentId}
+                  onClick={
+                    workflowFollowupMode
+                      ? handleWorkflowFollowupSend
+                      : sending
+                        ? handleQueueSend
+                        : handleSend
+                  }
+                  disabled={runningWorkflow || !input.trim() || !currentId}
                   className="inline-flex h-10 flex-1 items-center justify-center gap-2 rounded-2xl bg-accent-primary px-4 text-sm font-medium text-white shadow-md transition-colors disabled:cursor-not-allowed disabled:opacity-50 hover:bg-accent-primary/90 md:flex-none"
                 >
-                  {sending || runningWorkflow ? (
+                  {runningWorkflow ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : sending ? (
+                    <Send className="h-4 w-4" />
                   ) : (
                     <Send className="h-4 w-4" />
                   )}
-                  {workflowFollowupMode ? '继续生成' : '发送消息'}
+                  {workflowFollowupMode ? '继续生成' : sending ? '加入队列' : '发送消息'}
                 </button>
               </div>
             </div>

@@ -113,7 +113,7 @@ export async function streamChatMessage(
   content: string,
   onChunk: (chunk: string) => void,
   onError?: (err: string) => void,
-  options?: { useKnowledgeBase?: boolean }
+  options?: { useKnowledgeBase?: boolean; signal?: AbortSignal }
 ): Promise<void> {
   const res = await fetch(
     `${API_BASE_URL}/chat/conversations/${encodeURIComponent(conversationId)}/messages/stream`,
@@ -121,14 +121,16 @@ export async function streamChatMessage(
       method: 'POST',
       credentials: 'include',
       headers: getAuthHeaders(),
+      signal: options?.signal,
       body: JSON.stringify({ content, useKnowledgeBase: options?.useKnowledgeBase === true }),
     }
   )
 
   if (!res.ok || !res.body) {
     const err = (await res.json().catch(() => ({}))) as { error?: string }
-    onError?.(err.error || '请求失败')
-    return
+    const message = err.error || '请求失败'
+    onError?.(message)
+    throw new Error(message)
   }
 
   const reader = res.body.getReader()
@@ -153,7 +155,7 @@ export async function streamChatMessage(
           const parsed = JSON.parse(trimmed) as { error?: string; content?: string; type?: string }
           if (parsed.error) {
             onError?.(parsed.error)
-            return
+            throw new Error(parsed.error)
           }
           if (parsed.type === 'start') continue
           if (typeof parsed.content === 'string') {
@@ -175,6 +177,7 @@ export async function streamChatMessage(
       const parsed = JSON.parse(trimmed) as { error?: string; content?: string; type?: string }
       if (parsed.error) {
         onError?.(parsed.error)
+        throw new Error(parsed.error)
       } else if (parsed.type !== 'start' && typeof parsed.content === 'string') {
         onChunk(parsed.content)
       } else {
@@ -203,4 +206,3 @@ export async function runBlogWorkflow(payload: {
   }
   return json.data
 }
-

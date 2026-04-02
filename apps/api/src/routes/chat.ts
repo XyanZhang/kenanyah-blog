@@ -177,6 +177,14 @@ chat.post('/conversations/:id/messages/stream', async (c) => {
       content,
     },
   })
+  await prisma.chatConversation.update({
+    where: { id },
+    data: {
+      messageCount: { increment: 1 },
+      lastMessageAt: new Date(),
+      title: conversation.title ?? content.slice(0, 50),
+    },
+  })
 
   const history = await prisma.chatMessage.findMany({
     where: { conversationId: id },
@@ -238,9 +246,8 @@ chat.post('/conversations/:id/messages/stream', async (c) => {
       await prisma.chatConversation.update({
         where: { id },
         data: {
-          messageCount: { increment: 2 },
+          messageCount: { increment: 1 },
           lastMessageAt: new Date(),
-          title: conversation.title ?? content.slice(0, 50),
         },
       })
       indexConversation(id).catch((err) =>
@@ -257,4 +264,3 @@ chat.post('/conversations/:id/messages/stream', async (c) => {
 })
 
 export default chat
-
