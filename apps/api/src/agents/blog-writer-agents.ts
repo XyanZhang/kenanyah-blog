@@ -19,7 +19,10 @@ function extractJsonObject(text: string): string | null {
   return text.slice(start, end + 1)
 }
 
-export async function runPlannerAgent(conversationText: string): Promise<PlannerResult> {
+export async function runPlannerAgent(
+  conversationText: string,
+  signal?: AbortSignal
+): Promise<PlannerResult> {
   const systemPrompt = [
     '你是博客写作工作流的规划 Agent。',
     '请严格输出 JSON，不要输出其它文本。',
@@ -30,7 +33,11 @@ export async function runPlannerAgent(conversationText: string): Promise<Planner
   ].join('\n')
 
   const userPrompt = `对话内容：\n${conversationText}`
-  const raw = await invokeChat(userPrompt, systemPrompt, { model: 'reasoning', temperature: 0.2 })
+  const raw = await invokeChat(userPrompt, systemPrompt, {
+    model: 'reasoning',
+    temperature: 0.2,
+    signal,
+  })
   const jsonText = extractJsonObject(raw)
   if (!jsonText) {
     return {
@@ -66,7 +73,11 @@ export type DraftResult = {
   content: string
 }
 
-export async function runWriterAgent(conversationText: string, planning: PlannerResult): Promise<DraftResult> {
+export async function runWriterAgent(
+  conversationText: string,
+  planning: PlannerResult,
+  signal?: AbortSignal
+): Promise<DraftResult> {
   const systemPrompt = [
     '你是博客写作 Agent。',
     '根据用户需求输出一篇可直接发布的 Markdown 中文文章。',
@@ -80,7 +91,11 @@ export async function runWriterAgent(conversationText: string, planning: Planner
     conversationText,
   })
 
-  const raw = await invokeChat(userPrompt, systemPrompt, { model: 'default', temperature: 0.6 })
+  const raw = await invokeChat(userPrompt, systemPrompt, {
+    model: 'default',
+    temperature: 0.6,
+    signal,
+  })
   const jsonText = extractJsonObject(raw)
   if (!jsonText) {
     throw new Error('writer agent 返回格式无效')
@@ -103,7 +118,7 @@ export async function runWriterAgent(conversationText: string, planning: Planner
   }
 }
 
-export async function runEditorAgent(draft: DraftResult): Promise<DraftResult> {
+export async function runEditorAgent(draft: DraftResult, signal?: AbortSignal): Promise<DraftResult> {
   const systemPrompt = [
     '你是博客编辑 Agent。',
     '任务：润色标题、摘要、正文，确保语气统一、段落清晰、可读性高。',
@@ -114,6 +129,7 @@ export async function runEditorAgent(draft: DraftResult): Promise<DraftResult> {
   const raw = await invokeChat(JSON.stringify(draft), systemPrompt, {
     model: 'default',
     temperature: 0.3,
+    signal,
   })
   const jsonText = extractJsonObject(raw)
   if (!jsonText) {

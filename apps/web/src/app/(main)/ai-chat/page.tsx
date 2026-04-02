@@ -15,10 +15,11 @@ import {
 } from 'lucide-react'
 import {
   listConversations,
+  cancelBlogWorkflow,
   createConversation,
   getConversation,
   streamChatMessage,
-  runBlogWorkflow,
+  streamBlogWorkflow,
   updateConversation,
   type BlogWorkflowResult,
   type ChatConversation,
@@ -36,6 +37,15 @@ type ChatQueueItem = {
   conversationId: string
   content: string
   useKnowledgeBase: boolean
+  userMsgId: string
+  assistantMsgId: string
+}
+
+type WorkflowQueueItem = {
+  id: string
+  conversationId: string
+  content: string
+  publishDirectly: boolean
   userMsgId: string
   assistantMsgId: string
 }
@@ -167,11 +177,14 @@ export default function AiChatPage() {
   const [useKnowledgeBase, setUseKnowledgeBase] = useState(false)
   const [followupDrafts, setFollowupDrafts] = useState<Record<string, Record<string, FollowupAnswerDraft>>>({})
   const [chatQueue, setChatQueue] = useState<ChatQueueItem[]>([])
+  const [workflowQueue, setWorkflowQueue] = useState<WorkflowQueueItem[]>([])
   const bottomRef = useRef<HTMLDivElement | null>(null)
   const isComposingRef = useRef(false)
   const inputRef = useRef<HTMLTextAreaElement | null>(null)
   const activeChatAbortRef = useRef<AbortController | null>(null)
   const activeChatJobRef = useRef<ChatQueueItem | null>(null)
+  const activeWorkflowAbortRef = useRef<AbortController | null>(null)
+  const activeWorkflowJobRef = useRef<WorkflowQueueItem | null>(null)
   const previousConversationIdRef = useRef<string | null>(null)
 
   useEffect(() => {
@@ -254,13 +267,19 @@ export default function AiChatPage() {
   useEffect(() => {
     if (!bottomRef.current) return
     bottomRef.current.scrollIntoView({ behavior: 'smooth' })
-  }, [messages.length, sending, chatQueue.length])
+  }, [messages.length, sending, runningWorkflow, chatQueue.length, workflowQueue.length])
 
   useEffect(() => {
     const previousConversationId = previousConversationIdRef.current
     if (previousConversationId && previousConversationId !== currentId) {
       setChatQueue([])
       activeChatAbortRef.current?.abort()
+      setWorkflowQueue([])
+      const workflowConversationId = activeWorkflowJobRef.current?.conversationId
+      activeWorkflowAbortRef.current?.abort()
+      if (workflowConversationId) {
+        void cancelBlogWorkflow({ conversationId: workflowConversationId }).catch(() => undefined)
+      }
     }
     previousConversationIdRef.current = currentId
   }, [currentId])
@@ -274,6 +293,23 @@ export default function AiChatPage() {
     setChatQueue((prev) => prev.slice(1))
     void executeChatJob(nextJob)
   }, [chatQueue, currentId, runningWorkflow, sending])
+
+  useEffect(() => {
+    if (sending || runningWorkflow) return
+    const nextJob = workflowQueue[0]
+    if (!nextJob) return
+    if (!currentId || nextJob.conversationId !== currentId) return
+
+    setWorkflowQueue((prev) => prev.slice(1))
+    void executeWorkflowJob(nextJob)
+  }, [currentId, runningWorkflow, sending, workflowQueue])
+
+  useEffect(() => {
+    return () => {
+      activeChatAbortRef.current?.abort()
+      cancelActiveWorkflowRequest()
+    }
+  }, [])
 
   async function handleCreateConversation() {
     try {
@@ -453,7 +489,16 @@ export default function AiChatPage() {
   }
 
   async function handleSend() {
-    if (!currentId || !input.trim() || sending) return
+    if (
+      !currentId ||
+      !input.trim() ||
+      sending ||
+      chatQueue.length > 0 ||
+      runningWorkflow ||
+      workflowQueue.length > 0
+    ) {
+      return
+    }
     const content = input.trim()
     setInput('')
     const job = buildChatQueueItem(content)
@@ -461,7 +506,15 @@ export default function AiChatPage() {
   }
 
   function handleQueueSend() {
-    if (!currentId || !input.trim() || !sending) return
+    if (
+      !currentId ||
+      !input.trim() ||
+      !sending ||
+      runningWorkflow ||
+      workflowQueue.length > 0
+    ) {
+      return
+    }
     const content = input.trim()
     setInput('')
     const job = buildChatQueueItem(content, '已加入队列，等待当前回复结束…')
@@ -469,12 +522,274 @@ export default function AiChatPage() {
   }
 
   function handleInterruptAndSend() {
-    if (!currentId || !input.trim() || !sending) return
+    if (
+      !currentId ||
+      !input.trim() ||
+      !sending ||
+      runningWorkflow ||
+      workflowQueue.length > 0
+    ) {
+      return
+    }
     const content = input.trim()
     setInput('')
     const job = buildChatQueueItem(content, '正在中断当前回答，并准备继续处理…')
     setChatQueue((prev) => [job, ...prev])
     activeChatAbortRef.current?.abort()
+  }
+
+  function buildWorkflowQueueItem(
+    content: string,
+    assistantContent: string,
+    options?: { queued?: boolean }
+  ): WorkflowQueueItem {
+    if (!currentId) {
+      throw new Error('当前没有可用会话')
+    }
+
+    const conversationId = currentId
+    const timestamp = Date.now()
+    const queued = options?.queued === true
+    const userMsg: UiMessage = {
+      id: `local-workflow-user-${timestamp}`,
+      conversationId,
+      role: 'user',
+      content,
+      createdAt: new Date().toISOString(),
+      pending: true,
+      queued,
+    }
+    const assistantMsg: UiMessage = {
+      id: `local-workflow-assistant-${timestamp}`,
+      conversationId,
+      role: 'assistant',
+      content: assistantContent,
+      createdAt: new Date().toISOString(),
+      pending: true,
+      queued,
+    }
+
+    setMessages((prev) => [...prev, userMsg, assistantMsg])
+
+    return {
+      id: `workflow-job-${timestamp}`,
+      conversationId,
+      content,
+      publishDirectly: true,
+      userMsgId: userMsg.id,
+      assistantMsgId: assistantMsg.id,
+    }
+  }
+
+  function markWorkflowJobAsActive(job: WorkflowQueueItem) {
+    setMessages((prev) =>
+      prev.map((message) => {
+        if (message.id === job.userMsgId) {
+          return {
+            ...message,
+            pending: true,
+            queued: false,
+          }
+        }
+
+        if (message.id === job.assistantMsgId) {
+          return {
+            ...message,
+            content: message.content || '正在开始博客生成…',
+            pending: true,
+            queued: false,
+            interrupted: false,
+          }
+        }
+
+        return message
+      })
+    )
+  }
+
+  function finishWorkflowJob(job: WorkflowQueueItem, assistantContent: string) {
+    setMessages((prev) =>
+      prev.map((message) => {
+        if (message.id === job.userMsgId) {
+          return {
+            ...message,
+            pending: false,
+            queued: false,
+          }
+        }
+
+        if (message.id === job.assistantMsgId) {
+          return {
+            ...message,
+            content: assistantContent,
+            pending: false,
+            queued: false,
+            interrupted: false,
+          }
+        }
+
+        return message
+      })
+    )
+  }
+
+  function markWorkflowJobInterrupted(job: WorkflowQueueItem) {
+    setMessages((prev) =>
+      prev.map((message) => {
+        if (message.id === job.userMsgId) {
+          return {
+            ...message,
+            pending: false,
+            queued: false,
+          }
+        }
+
+        if (message.id === job.assistantMsgId) {
+          const interruptedContent = message.content.trim()
+            ? `${message.content.trim()}\n\n[本次生成已中断]`
+            : '本次生成已中断。'
+          return {
+            ...message,
+            content: interruptedContent,
+            pending: false,
+            queued: false,
+            interrupted: true,
+          }
+        }
+
+        return message
+      })
+    )
+  }
+
+  function removeWorkflowJob(job: WorkflowQueueItem) {
+    setMessages((prev) =>
+      prev.filter((message) => message.id !== job.userMsgId && message.id !== job.assistantMsgId)
+    )
+  }
+
+  function cancelActiveWorkflowRequest() {
+    const workflowConversationId = activeWorkflowJobRef.current?.conversationId
+    activeWorkflowAbortRef.current?.abort()
+    if (workflowConversationId) {
+      void cancelBlogWorkflow({ conversationId: workflowConversationId }).catch(() => undefined)
+    }
+  }
+
+  async function executeWorkflowJob(job: WorkflowQueueItem) {
+    if (!currentId || job.conversationId !== currentId) return
+
+    markWorkflowJobAsActive(job)
+    setRunningWorkflow(true)
+    setWorkflowFollowupMode(false)
+    setError(null)
+    activeWorkflowJobRef.current = job
+
+    const controller = new AbortController()
+    activeWorkflowAbortRef.current = controller
+    const statusHistory: string[] = []
+    let finalResult: BlogWorkflowResult | null = null
+
+    try {
+      await streamBlogWorkflow(
+        {
+          conversationId: job.conversationId,
+          message: job.content,
+          publishDirectly: job.publishDirectly,
+        },
+        {
+          onEvent: (event) => {
+            if (event.type !== 'stage') {
+              return
+            }
+
+            statusHistory.push(event.content)
+            setMessages((prev) =>
+              prev.map((message) =>
+                message.id === job.assistantMsgId
+                  ? { ...message, content: statusHistory.join('\n\n') }
+                  : message
+              )
+            )
+          },
+          onResult: (result) => {
+            finalResult = result
+          },
+          onError: (err) => {
+            setError(err)
+          },
+        },
+        {
+          signal: controller.signal,
+        }
+      )
+
+      const result = finalResult as BlogWorkflowResult | null
+      if (!result) {
+        throw new Error('博客工作流未返回结果')
+      }
+
+      setWorkflowFollowupMode(result.status === 'need_more_info')
+      finishWorkflowJob(job, formatWorkflowAssistantMessage(result))
+      listConversations()
+        .then((list) => setConversations(list))
+        .catch(() => undefined)
+    } catch (err: unknown) {
+      if (isAbortError(err)) {
+        markWorkflowJobInterrupted(job)
+        listConversations()
+          .then((list) => setConversations(list))
+          .catch(() => undefined)
+      } else {
+        setError(err instanceof Error ? err.message : String(err))
+        removeWorkflowJob(job)
+      }
+    } finally {
+      if (activeWorkflowAbortRef.current === controller) {
+        activeWorkflowAbortRef.current = null
+      }
+      if (activeWorkflowJobRef.current?.id === job.id) {
+        activeWorkflowJobRef.current = null
+      }
+      setRunningWorkflow(false)
+    }
+  }
+
+  async function runWorkflowFromInput(
+    content: string,
+    assistantContent: string,
+    options?: { clearInput?: boolean }
+  ) {
+    if (
+      !currentId ||
+      !content.trim() ||
+      sending ||
+      chatQueue.length > 0 ||
+      runningWorkflow ||
+      workflowQueue.length > 0
+    ) {
+      return
+    }
+    if (options?.clearInput !== false) {
+      setInput('')
+    }
+    const job = buildWorkflowQueueItem(content.trim(), assistantContent)
+    await executeWorkflowJob(job)
+  }
+
+  function queueWorkflowFromInput(
+    content: string,
+    assistantContent: string,
+    options?: { clearInput?: boolean; prepend?: boolean }
+  ) {
+    if (!currentId || !content.trim() || !runningWorkflow) return
+    if (options?.clearInput !== false) {
+      setInput('')
+    }
+    const job = buildWorkflowQueueItem(content.trim(), assistantContent, {
+      queued: true,
+    })
+    setWorkflowQueue((prev) => (options?.prepend ? [job, ...prev] : [...prev, job]))
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
@@ -486,7 +801,9 @@ export default function AiChatPage() {
 
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
-      if (workflowFollowupMode) {
+      if (runningWorkflow) {
+        queueWorkflowFromInput(input, '已加入生成队列，等待当前任务结束…')
+      } else if (workflowFollowupMode) {
         void handleWorkflowFollowupSend()
       } else if (sending) {
         handleQueueSend()
@@ -497,117 +814,52 @@ export default function AiChatPage() {
   }
 
   async function handleGenerateBlog() {
-    if (!currentId || !input.trim() || sending || runningWorkflow) return
-    const content = input.trim()
-    setInput('')
-    setRunningWorkflow(true)
-    setError(null)
-
-    const userMsg: UiMessage = {
-      id: `local-workflow-user-${Date.now()}`,
-      conversationId: currentId,
-      role: 'user',
-      content,
-      createdAt: new Date().toISOString(),
-      pending: true,
+    if (workflowFollowupMode) {
+      await handleWorkflowFollowupSend()
+      return
     }
-    const assistantMsg: UiMessage = {
-      id: `local-workflow-assistant-${Date.now()}`,
-      conversationId: currentId,
-      role: 'assistant',
-      content: '正在规划并生成博客，请稍候…',
-      createdAt: new Date().toISOString(),
-      pending: true,
-    }
-    setMessages((prev) => [...prev, userMsg, assistantMsg])
 
-    try {
-      const result = await runBlogWorkflow({
-        conversationId: currentId,
-        message: content,
-        publishDirectly: true,
-      })
-      const assistantContent = formatWorkflowAssistantMessage(result)
-      setWorkflowFollowupMode(result.status === 'need_more_info')
-
-      setMessages((prev) =>
-        prev.map((m) =>
-          m.id === userMsg.id
-            ? { ...m, pending: false }
-            : m.id === assistantMsg.id
-              ? { ...m, pending: false, content: assistantContent }
-              : m
-        )
-      )
-      listConversations()
-        .then((list) => setConversations(list))
-        .catch(() => undefined)
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : String(err))
-      setMessages((prev) => prev.filter((m) => m.id !== userMsg.id && m.id !== assistantMsg.id))
-    } finally {
-      setRunningWorkflow(false)
-    }
+    await runWorkflowFromInput(input, '正在规划并生成博客，请稍候…')
   }
 
   async function submitWorkflowFollowup(content: string, options?: { clearInput?: boolean }) {
-    if (!currentId || !content.trim() || sending || runningWorkflow) return
     const trimmedContent = content.trim()
-    if (options?.clearInput !== false) {
-      setInput('')
+    if (!trimmedContent) {
+      return
     }
-    setRunningWorkflow(true)
-    setError(null)
 
-    const userMsg: UiMessage = {
-      id: `local-workflow-followup-user-${Date.now()}`,
-      conversationId: currentId,
-      role: 'user',
-      content: trimmedContent,
-      createdAt: new Date().toISOString(),
-      pending: true,
-    }
-    const assistantMsg: UiMessage = {
-      id: `local-workflow-followup-assistant-${Date.now()}`,
-      conversationId: currentId,
-      role: 'assistant',
-      content: '正在根据你补充的信息继续生成…',
-      createdAt: new Date().toISOString(),
-      pending: true,
-    }
-    setMessages((prev) => [...prev, userMsg, assistantMsg])
-
-    try {
-      const result = await runBlogWorkflow({
-        conversationId: currentId,
-        message: trimmedContent,
-        publishDirectly: true,
-      })
-      const assistantContent = formatWorkflowAssistantMessage(result)
-      setWorkflowFollowupMode(result.status === 'need_more_info')
-
-      setMessages((prev) =>
-        prev.map((m) =>
-          m.id === userMsg.id
-            ? { ...m, pending: false }
-            : m.id === assistantMsg.id
-              ? { ...m, pending: false, content: assistantContent }
-              : m
-        )
-      )
-      listConversations()
-        .then((list) => setConversations(list))
-        .catch(() => undefined)
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : String(err))
-      setMessages((prev) => prev.filter((m) => m.id !== userMsg.id && m.id !== assistantMsg.id))
-    } finally {
-      setRunningWorkflow(false)
-    }
+    await runWorkflowFromInput(trimmedContent, '正在根据你补充的信息继续生成…', options)
   }
 
   async function handleWorkflowFollowupSend() {
     await submitWorkflowFollowup(input)
+  }
+
+  function handleQueueGenerateBlog() {
+    if (workflowFollowupMode) {
+      queueWorkflowFromInput(input, '已加入继续生成队列，等待当前任务结束…')
+      return
+    }
+
+    queueWorkflowFromInput(input, '已加入生成队列，等待当前任务结束…')
+  }
+
+  function handleInterruptWorkflow() {
+    if (!runningWorkflow) return
+    cancelActiveWorkflowRequest()
+  }
+
+  function handleInterruptAndContinueWorkflow() {
+    if (!runningWorkflow) return
+
+    const trimmedContent = input.trim()
+    if (trimmedContent) {
+      queueWorkflowFromInput(trimmedContent, '正在中断当前生成，并准备继续处理…', {
+        prepend: true,
+      })
+    }
+
+    cancelActiveWorkflowRequest()
   }
 
   async function handleWorkflowFollowupUseDefaults(questions: string[]) {
@@ -698,6 +950,11 @@ export default function AiChatPage() {
     }
     return `文章已生成并保存为草稿。\n\n标题：${result.post.title}\n链接：[点击查看](${result.postUrl})`
   }
+
+  const hasPendingChatJobs = sending || chatQueue.length > 0
+  const hasPendingWorkflowJobs = runningWorkflow || workflowQueue.length > 0
+  const canUseWorkflowActions = Boolean(currentId) && !hasPendingChatJobs
+  const canUseChatActions = Boolean(currentId) && !hasPendingWorkflowJobs
 
   return (
     <main className="w-full max-w-6xl mx-auto px-4 py-6 md:py-8 flex flex-col md:flex-row gap-4 bg-linear-to-b from-surface-glass/40 via-surface-glass/10 to-surface-glass/40">
@@ -972,7 +1229,7 @@ export default function AiChatPage() {
                                       handleFollowupCustomTextChange(msg.id, spec.id, e.currentTarget.value)
                                     }
                                     placeholder={spec.placeholder}
-                                    disabled={runningWorkflow || sending || !currentId}
+                                    disabled={!canUseWorkflowActions || runningWorkflow}
                                   />
                                 </div>
                               )
@@ -985,9 +1242,8 @@ export default function AiChatPage() {
                                 void handleSubmitFollowupForm(msg.id, followupSpecs)
                               }}
                               disabled={
+                                !canUseWorkflowActions ||
                                 runningWorkflow ||
-                                sending ||
-                                !currentId ||
                                 !hasFollowupSelections(msg.id, followupSpecs)
                               }
                               className="inline-flex items-center justify-center rounded-xl bg-accent-primary px-3 py-2 text-xs font-medium text-white transition-colors hover:bg-accent-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
@@ -999,7 +1255,7 @@ export default function AiChatPage() {
                               onClick={() => {
                                 void handleWorkflowFollowupUseDefaults(followupQuestions)
                               }}
-                              disabled={runningWorkflow || sending || !currentId}
+                              disabled={!canUseWorkflowActions || runningWorkflow}
                               className="inline-flex items-center justify-center rounded-xl border border-accent-primary/30 bg-accent-primary/8 px-3 py-2 text-xs font-medium text-accent-primary transition-colors hover:bg-accent-primary/12 disabled:cursor-not-allowed disabled:opacity-50"
                             >
                               全部按默认继续
@@ -1024,9 +1280,13 @@ export default function AiChatPage() {
               className="w-full resize-none rounded-2xl border border-line-glass bg-surface-tertiary/40 px-3 py-3 text-sm text-content-primary placeholder:text-content-tertiary focus:outline-none focus:ring-2 focus:ring-accent-primary/50"
               rows={3}
               placeholder={
-                sending && !workflowFollowupMode
-                  ? '继续输入内容，按 Enter 加入队列，或点击中断并发送…'
-                  : '输入你的问题，按 Enter 发送，Shift+Enter 换行…'
+                runningWorkflow
+                  ? '继续输入博客要求，按 Enter 加入生成队列，或点击中断当前任务…'
+                  : workflowFollowupMode
+                    ? '补充生成要求，按 Enter 继续生成，Shift+Enter 换行…'
+                    : sending
+                      ? '继续输入内容，按 Enter 加入队列，或点击中断并发送…'
+                      : '输入你的问题，按 Enter 发送，Shift+Enter 换行…'
               }
               value={input}
               onChange={(e) => setInput(e.target.value)}
@@ -1037,11 +1297,13 @@ export default function AiChatPage() {
                 isComposingRef.current = false
               }}
               onKeyDown={handleKeyDown}
-              disabled={runningWorkflow || !currentId}
+              disabled={!currentId}
             />
             <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
               <div className="text-xs text-content-tertiary">
-                {workflowFollowupMode
+                {runningWorkflow
+                  ? `正在执行博客工作流。你可以继续输入并加入生成队列${workflowQueue.length > 0 ? `，当前生成队列 ${workflowQueue.length} 条` : '。'}`
+                  : workflowFollowupMode
                   ? '当前处于博客生成补充信息模式，发送后会继续走生成并入库流程。'
                   : sending
                     ? `正在生成回答。你可以继续输入并排队发送${chatQueue.length > 0 ? `，当前队列 ${chatQueue.length} 条` : ''}。`
@@ -1050,22 +1312,28 @@ export default function AiChatPage() {
               <div className="flex gap-2 md:justify-end">
                 <button
                   type="button"
-                  onClick={handleGenerateBlog}
-                  disabled={runningWorkflow || sending || !input.trim() || !currentId}
+                  onClick={runningWorkflow ? handleQueueGenerateBlog : handleGenerateBlog}
+                  disabled={!input.trim() || !canUseWorkflowActions || (!runningWorkflow && workflowQueue.length > 0)}
                   className="inline-flex h-10 flex-1 items-center justify-center gap-2 rounded-2xl border border-accent-primary/35 bg-accent-primary/6 px-4 text-sm font-medium text-accent-primary transition-colors disabled:cursor-not-allowed disabled:opacity-50 hover:bg-accent-primary/12 md:flex-none"
                 >
-                  {runningWorkflow ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <FilePenLine className="h-4 w-4" />
-                  )}
-                  生成博客
+                  <FilePenLine className="h-4 w-4" />
+                  {runningWorkflow ? '加入生成队列' : workflowFollowupMode ? '继续生成' : '生成博客'}
                 </button>
+                {runningWorkflow && (
+                  <button
+                    type="button"
+                    onClick={input.trim() ? handleInterruptAndContinueWorkflow : handleInterruptWorkflow}
+                    disabled={!currentId}
+                    className="inline-flex h-10 flex-1 items-center justify-center gap-2 rounded-2xl border border-amber-500/35 bg-amber-500/8 px-4 text-sm font-medium text-amber-700 transition-colors disabled:cursor-not-allowed disabled:opacity-50 hover:bg-amber-500/12 md:flex-none dark:text-amber-200"
+                  >
+                    {input.trim() ? '中断并继续生成' : '中断生成'}
+                  </button>
+                )}
                 {sending && !workflowFollowupMode && (
                   <button
                     type="button"
                     onClick={handleInterruptAndSend}
-                    disabled={runningWorkflow || !input.trim() || !currentId}
+                    disabled={!input.trim() || !canUseChatActions}
                     className="inline-flex h-10 flex-1 items-center justify-center gap-2 rounded-2xl border border-amber-500/35 bg-amber-500/8 px-4 text-sm font-medium text-amber-700 transition-colors disabled:cursor-not-allowed disabled:opacity-50 hover:bg-amber-500/12 md:flex-none dark:text-amber-200"
                   >
                     中断并发送
@@ -1080,12 +1348,10 @@ export default function AiChatPage() {
                         ? handleQueueSend
                         : handleSend
                   }
-                  disabled={runningWorkflow || !input.trim() || !currentId}
+                  disabled={!input.trim() || !canUseChatActions || (!sending && chatQueue.length > 0)}
                   className="inline-flex h-10 flex-1 items-center justify-center gap-2 rounded-2xl bg-accent-primary px-4 text-sm font-medium text-white shadow-md transition-colors disabled:cursor-not-allowed disabled:opacity-50 hover:bg-accent-primary/90 md:flex-none"
                 >
-                  {runningWorkflow ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : sending ? (
+                  {sending ? (
                     <Send className="h-4 w-4" />
                   ) : (
                     <Send className="h-4 w-4" />

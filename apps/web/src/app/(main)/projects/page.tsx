@@ -8,26 +8,6 @@ export const metadata: Metadata = {
 
 const projects = [
   {
-    name: 'Blog System',
-    description: '基于 Next.js 15 的现代化博客系统',
-    tags: ['Next.js', 'React', 'TypeScript'],
-  },
-  {
-    name: 'CLI Tool',
-    description: '高效的命令行工具集',
-    tags: ['Node.js', 'TypeScript'],
-  },
-  {
-    name: 'Component Library',
-    description: 'React UI 组件库',
-    tags: ['React', 'Storybook', 'CSS'],
-  },
-  {
-    name: 'API Gateway',
-    description: '微服务 API 网关',
-    tags: ['Hono', 'TypeScript', 'Docker'],
-  },
-  {
     name: 'PDF 解读',
     description: '上传 PDF，解析与向量化构建阅读 Agent，并生成可下载的 Markdown 文档。',
     tags: ['PDF', 'RAG', 'pgvector'],

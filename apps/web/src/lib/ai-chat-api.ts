@@ -47,6 +47,14 @@ export type BlogWorkflowResult =
       postUrl: string
     }
 
+export type BlogWorkflowStage = 'plan' | 'ask_followup' | 'write' | 'edit' | 'save'
+
+export type BlogWorkflowStreamEvent =
+  | { type: 'start' }
+  | { type: 'stage'; stage: BlogWorkflowStage; content: string }
+  | { type: 'result'; result: BlogWorkflowResult }
+  | { type: 'cancelled' }
+
 type ApiResponse<T> = {
   success: boolean
   data?: T
@@ -205,4 +213,94 @@ export async function runBlogWorkflow(payload: {
     throw new Error(json.error || '博客工作流执行失败')
   }
   return json.data
+}
+
+export async function streamBlogWorkflow(
+  payload: {
+    conversationId: string
+    message: string
+    publishDirectly?: boolean
+  },
+  handlers: {
+    onEvent?: (event: BlogWorkflowStreamEvent) => void
+    onResult?: (result: BlogWorkflowResult) => void
+    onError?: (err: string) => void
+  },
+  options?: { signal?: AbortSignal }
+): Promise<void> {
+  const res = await fetch(`${API_BASE_URL}/blog-workflow/run/stream`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: getAuthHeaders(),
+    signal: options?.signal,
+    body: JSON.stringify(payload),
+  })
+
+  if (!res.ok || !res.body) {
+    const err = (await res.json().catch(() => ({}))) as { error?: string }
+    const message = err.error || '博客工作流执行失败'
+    handlers.onError?.(message)
+    throw new Error(message)
+  }
+
+  const reader = res.body.getReader()
+  const decoder = new TextDecoder()
+  let buffer = ''
+
+  const handleLine = (line: string) => {
+    if (!line.startsWith('data: ')) {
+      return
+    }
+
+    const data = line.slice(6).trim()
+    if (!data || data === '[DONE]') {
+      return
+    }
+
+    let parsed: (BlogWorkflowStreamEvent & { error?: string }) | null = null
+    try {
+      parsed = JSON.parse(data) as BlogWorkflowStreamEvent & { error?: string }
+    } catch {
+      return
+    }
+
+    if (parsed.error) {
+      handlers.onError?.(parsed.error)
+      throw new Error(parsed.error)
+    }
+
+    handlers.onEvent?.(parsed)
+    if (parsed.type === 'result') {
+      handlers.onResult?.(parsed.result)
+    }
+  }
+
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) break
+    buffer += decoder.decode(value, { stream: true })
+    const lines = buffer.split('\n')
+    buffer = lines.pop() ?? ''
+    for (const line of lines) {
+      handleLine(line)
+    }
+  }
+
+  if (buffer) {
+    handleLine(buffer)
+  }
+}
+
+export async function cancelBlogWorkflow(payload: { conversationId: string }): Promise<boolean> {
+  const res = await fetch(`${API_BASE_URL}/blog-workflow/cancel`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(payload),
+  })
+  const json = (await res.json()) as ApiResponse<{ cancelled: boolean }>
+  if (!json.success || !json.data) {
+    throw new Error(json.error || '取消博客工作流失败')
+  }
+  return json.data.cancelled
 }

@@ -10,6 +10,7 @@ import {
 } from './llm-providers'
 
 export type LlmCallOptions = LlmCallOptionsInput
+export type LlmExecutionOptions = LlmCallOptions & { signal?: AbortSignal }
 export type { LlmModelPurpose, LlmProviderKind }
 
 export {
@@ -69,7 +70,7 @@ function chatConfigErrorHint(options?: LlmCallOptions): string {
 export async function* streamChat(
   userPrompt: string,
   systemPrompt?: string,
-  options?: LlmCallOptions
+  options?: LlmExecutionOptions
 ): AsyncGenerator<string, void, undefined> {
   const model = getChatModel(options)
   if (!model) {
@@ -79,7 +80,7 @@ export async function* streamChat(
     ...(systemPrompt ? [new SystemMessage(systemPrompt)] : []),
     new HumanMessage(userPrompt),
   ]
-  const stream = await model.stream(messages)
+  const stream = await model.stream(messages, options?.signal ? { signal: options.signal } : undefined)
   for await (const chunk of stream) {
     const text = normalizeMessageContent(chunk.content)
     if (text) yield text
@@ -89,7 +90,7 @@ export async function* streamChat(
 export async function invokeChat(
   userPrompt: string,
   systemPrompt?: string,
-  options?: LlmCallOptions
+  options?: LlmExecutionOptions
 ): Promise<string> {
   const model = getChatModel(options)
   if (!model) {
@@ -99,6 +100,6 @@ export async function invokeChat(
     ...(systemPrompt ? [new SystemMessage(systemPrompt)] : []),
     new HumanMessage(userPrompt),
   ]
-  const res = await model.invoke(messages)
+  const res = await model.invoke(messages, options?.signal ? { signal: options.signal } : undefined)
   return normalizeMessageContent(res.content)
 }
