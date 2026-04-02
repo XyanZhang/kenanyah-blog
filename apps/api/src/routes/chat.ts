@@ -1,10 +1,12 @@
 import { Hono } from 'hono'
 import { streamSSE } from 'hono/streaming'
+import { env } from '../env'
 import { prisma } from '../lib/db'
 import { authMiddleware } from '../middleware/auth'
 import { rateLimit } from '../middleware/rate-limit'
-import { streamChat } from '../lib/llm'
-import { indexConversation, searchSemanticAll } from '../lib/semantic-search'
+import { isAbortError } from '../lib/abort'
+import { indexConversation } from '../lib/semantic-search'
+import { runChatMultiAgentOrchestrator } from '../orchestrators/chat-multi-agent-orchestrator'
 
 type ChatVariables = {
   user: { userId: string; role: string }
@@ -188,77 +190,81 @@ chat.post('/conversations/:id/messages/stream', async (c) => {
 
   const history = await prisma.chatMessage.findMany({
     where: { conversationId: id },
-    orderBy: { createdAt: 'asc' },
+    orderBy: { createdAt: 'desc' },
+    take: 24,
+    select: {
+      role: true,
+      content: true,
+    },
   })
-
-  const MAX_MESSAGES = 20
-  const recent = history.slice(-MAX_MESSAGES)
-  const historyText = recent
-    .map((m) => (m.role === 'user' ? `用户：${m.content}` : `助手：${m.content}`))
-    .join('\n')
-
-  let kbContext = ''
-  if (useKnowledgeBase) {
-    try {
-      const hits = await searchSemanticAll(content, 8)
-      if (hits.length > 0) {
-        const lines = hits.map((h: any, idx: number) => {
-          const source =
-            h.type === 'post'
-              ? `post:${h.slug ?? h.postId ?? ''}`
-              : h.type === 'conversation'
-                ? `conversation:${h.conversationId ?? ''}`
-                : `pdf:${(h as any).documentId ?? ''}#${(h as any).chunkIndex ?? ''}`
-          return `【${idx + 1}】【${source}】【score=${h.score.toFixed(3)}】${h.title}\n${h.snippet}`
-        })
-        kbContext = [
-          '以下是本地知识库检索结果（可能包含博客文章、历史对话、PDF 知识库），请优先基于这些内容回答。',
-          '若检索内容不足以回答，请明确说明并再进行推理/补充建议；不要编造不存在于检索结果中的“原文”。',
-          '',
-          lines.join('\n\n'),
-        ].join('\n')
-      }
-    } catch {
-      // 忽略检索失败，继续走普通对话
-    }
-  }
-
-  const userPrompt = kbContext
-    ? `${kbContext}\n\n---\n\n对话历史：\n${historyText}\n\n用户最新问题：${content}`
-    : `${historyText}\n\n用户最新问题：${content}`
+  const recentHistory = history.reverse()
+  const historyForOrchestrator =
+    recentHistory.length > 0 &&
+    recentHistory[recentHistory.length - 1]?.role === 'user' &&
+    recentHistory[recentHistory.length - 1]?.content === content
+      ? recentHistory.slice(0, -1)
+      : recentHistory
 
   let fullAssistant = ''
+  const requestSignal = c.req.raw.signal
 
   return streamSSE(c, async (stream) => {
     try {
       await stream.writeSSE({ data: JSON.stringify({ type: 'start' }) })
-      for await (const chunk of streamChat(userPrompt)) {
-        fullAssistant += chunk
-        await stream.writeSSE({ data: JSON.stringify({ content: chunk }) })
+
+      for await (const event of runChatMultiAgentOrchestrator({
+        conversationId: id,
+        userId: user.userId,
+        userRole: user.role,
+        siteBaseUrl: env.CORS_ORIGIN.split(',')[0]?.trim() || 'http://localhost:3000',
+        messages: historyForOrchestrator.map((message) => ({
+          role: message.role,
+          content: message.content,
+        })),
+        latestUserMessage: content,
+        useKnowledgeBase,
+        signal: requestSignal,
+      })) {
+        if (event.type === 'content') {
+          fullAssistant += event.content
+        }
+        await stream.writeSSE({ data: JSON.stringify(event) })
       }
-      await prisma.chatMessage.create({
-        data: {
-          conversationId: id,
-          role: 'assistant',
-          content: fullAssistant,
-        },
-      })
-      await prisma.chatConversation.update({
-        where: { id },
-        data: {
-          messageCount: { increment: 1 },
-          lastMessageAt: new Date(),
-        },
-      })
-      indexConversation(id).catch((err) =>
-        console.error('[semantic-search] index conversation failed:', err)
-      )
+
+      if (fullAssistant.trim()) {
+        await prisma.chatMessage.create({
+          data: {
+            conversationId: id,
+            role: 'assistant',
+            content: fullAssistant,
+          },
+        })
+        await prisma.chatConversation.update({
+          where: { id },
+          data: {
+            messageCount: { increment: 1 },
+            lastMessageAt: new Date(),
+          },
+        })
+        indexConversation(id).catch((err) =>
+          console.error('[semantic-search] index conversation failed:', err)
+        )
+      }
+
       await stream.writeSSE({ data: '[DONE]' })
     } catch (err) {
+      if (isAbortError(err) || requestSignal.aborted) {
+        return
+      }
+
       const message = err instanceof Error ? err.message : 'AI 服务暂时不可用'
       await stream.writeSSE({ data: JSON.stringify({ error: message }) })
     } finally {
-      stream.close()
+      try {
+        stream.close()
+      } catch {
+        // ignore double close after disconnect
+      }
     }
   })
 })

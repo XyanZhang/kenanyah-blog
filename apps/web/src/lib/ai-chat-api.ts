@@ -31,6 +31,50 @@ export interface ChatConversationDetail {
   messages: ChatMessage[]
 }
 
+export type ChatAgentStage = 'intent' | 'plan' | 'tool' | 'workflow' | 'respond'
+
+export type ChatStreamEvent =
+  | { type: 'start' }
+  | { type: 'stage'; stage: ChatAgentStage; label: string }
+  | {
+      type: 'tool_call'
+      tool:
+        | 'knowledge_base_search'
+        | 'publish_post'
+        | 'update_post'
+        | 'delete_post'
+        | 'get_post_detail'
+        | 'list_drafts'
+        | 'create_thought'
+        | 'save_bookmark_from_url'
+        | 'list_bookmarks'
+        | 'search_thoughts'
+        | 'answer_thoughts'
+      label: string
+      reason: string
+      query?: string
+      limit?: number
+    }
+  | {
+      type: 'tool_result'
+      tool:
+        | 'knowledge_base_search'
+        | 'publish_post'
+        | 'update_post'
+        | 'delete_post'
+        | 'get_post_detail'
+        | 'list_drafts'
+        | 'create_thought'
+        | 'save_bookmark_from_url'
+        | 'list_bookmarks'
+        | 'search_thoughts'
+        | 'answer_thoughts'
+      summary: string
+      hitCount?: number
+    }
+  | { type: 'followup'; questions: string[] }
+  | { type: 'content'; content: string }
+
 export type BlogWorkflowResult =
   | {
       status: 'need_more_info'
@@ -121,7 +165,11 @@ export async function streamChatMessage(
   content: string,
   onChunk: (chunk: string) => void,
   onError?: (err: string) => void,
-  options?: { useKnowledgeBase?: boolean; signal?: AbortSignal }
+  options?: {
+    useKnowledgeBase?: boolean
+    signal?: AbortSignal
+    onEvent?: (event: ChatStreamEvent) => void
+  }
 ): Promise<void> {
   const res = await fetch(
     `${API_BASE_URL}/chat/conversations/${encodeURIComponent(conversationId)}/messages/stream`,
@@ -159,18 +207,22 @@ export async function streamChatMessage(
         if (trimmed === '[DONE]') {
           return
         }
+        let parsed: (ChatStreamEvent & { error?: string }) | null = null
         try {
-          const parsed = JSON.parse(trimmed) as { error?: string; content?: string; type?: string }
-          if (parsed.error) {
-            onError?.(parsed.error)
-            throw new Error(parsed.error)
-          }
-          if (parsed.type === 'start') continue
-          if (typeof parsed.content === 'string') {
-            onChunk(parsed.content)
-          }
+          parsed = JSON.parse(trimmed) as ChatStreamEvent & { error?: string }
         } catch {
           onChunk(data)
+          continue
+        }
+
+        if (parsed.error) {
+          onError?.(parsed.error)
+          throw new Error(parsed.error)
+        }
+
+        options?.onEvent?.(parsed)
+        if (parsed.type === 'content' && typeof parsed.content === 'string') {
+          onChunk(parsed.content)
         }
       }
     }
@@ -181,18 +233,22 @@ export async function streamChatMessage(
     const trimmed = data.trim()
     if (!trimmed) return
     if (trimmed === '[DONE]') return
+    let parsed: (ChatStreamEvent & { error?: string }) | null = null
     try {
-      const parsed = JSON.parse(trimmed) as { error?: string; content?: string; type?: string }
-      if (parsed.error) {
-        onError?.(parsed.error)
-        throw new Error(parsed.error)
-      } else if (parsed.type !== 'start' && typeof parsed.content === 'string') {
-        onChunk(parsed.content)
-      } else {
-        onChunk(data)
-      }
+      parsed = JSON.parse(trimmed) as ChatStreamEvent & { error?: string }
     } catch {
       onChunk(data)
+      return
+    }
+
+    if (parsed.error) {
+      onError?.(parsed.error)
+      throw new Error(parsed.error)
+    }
+
+    options?.onEvent?.(parsed)
+    if (parsed.type === 'content' && typeof parsed.content === 'string') {
+      onChunk(parsed.content)
     }
   }
 }

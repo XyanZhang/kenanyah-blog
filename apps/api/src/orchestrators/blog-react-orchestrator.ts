@@ -11,6 +11,7 @@ import {
   loadConversationWithMessages,
 } from '../tools/session-tools'
 import { createAndMaybePublishPost } from '../tools/post-tools'
+import { buildWorkflowFollowupOperationCardMessage } from '../lib/operation-card'
 
 type BlogWorkflowInput = {
   conversationId: string
@@ -18,6 +19,8 @@ type BlogWorkflowInput = {
   latestUserMessage: string
   publishDirectly: boolean
   siteBaseUrl: string
+  persistLatestUserMessage?: boolean
+  persistAssistantMessage?: boolean
   signal?: AbortSignal
   onEvent?: (event: BlogWorkflowStreamEvent) => Promise<void> | void
 }
@@ -59,6 +62,21 @@ function formatPublishedPostMessage(post: {
   return `文章已生成并保存为草稿。\n\n标题：${post.title}\n链接：[点击查看](${postUrl})`
 }
 
+export function formatBlogWorkflowFollowupMessage(
+  followupQuestions: string[],
+  options?: { phase?: 'start' | 'continue' }
+): string {
+  return buildWorkflowFollowupOperationCardMessage(followupQuestions, options)
+}
+
+export function formatBlogWorkflowResultMessage(result: BlogWorkflowResult): string {
+  if (result.status === 'need_more_info') {
+    return formatBlogWorkflowFollowupMessage(result.followupQuestions, { phase: 'continue' })
+  }
+
+  return formatPublishedPostMessage(result.post, result.postUrl)
+}
+
 async function emitWorkflowStage(
   input: BlogWorkflowInput,
   stage: BlogWorkflowStage,
@@ -78,12 +96,20 @@ export async function runBlogReactOrchestrator(input: BlogWorkflowInput): Promis
     throw new Error('会话不存在或无权限访问')
   }
 
+  const shouldPersistLatestUserMessage = input.persistLatestUserMessage !== false
+  const shouldPersistAssistantMessage = input.persistAssistantMessage !== false
+
   throwIfAborted(input.signal)
-  await appendConversationMessage(input.conversationId, 'user', input.latestUserMessage)
-  const withLatestMessages = [
-    ...conversationData.messages.map((m) => ({ role: m.role, content: m.content })),
-    { role: 'user', content: input.latestUserMessage },
-  ]
+  if (shouldPersistLatestUserMessage) {
+    await appendConversationMessage(input.conversationId, 'user', input.latestUserMessage)
+  }
+
+  const withLatestMessages = shouldPersistLatestUserMessage
+    ? [
+        ...conversationData.messages.map((m) => ({ role: m.role, content: m.content })),
+        { role: 'user', content: input.latestUserMessage },
+      ]
+    : conversationData.messages.map((m) => ({ role: m.role, content: m.content }))
   const conversationText = formatConversationForPrompt(withLatestMessages, 24)
 
   let action: WorkflowAction = 'plan'
@@ -110,10 +136,13 @@ export async function runBlogReactOrchestrator(input: BlogWorkflowInput): Promis
       const followupQuestions =
         planResult?.followupQuestions?.filter(Boolean).slice(0, 3) ?? ['你希望文章聚焦什么主题？']
 
-      const message = `【BLOG_WORKFLOW_FOLLOWUP】\n在开始生成前，我还需要补充一些信息：\n${followupQuestions
-        .map((q, idx) => `${idx + 1}. ${q}`)
-        .join('\n')}`
-      await appendConversationMessage(input.conversationId, 'assistant', message)
+      if (shouldPersistAssistantMessage) {
+        await appendConversationMessage(
+          input.conversationId,
+          'assistant',
+          formatBlogWorkflowFollowupMessage(followupQuestions, { phase: 'start' })
+        )
+      }
 
       return {
         status: 'need_more_info',
@@ -155,7 +184,9 @@ export async function runBlogReactOrchestrator(input: BlogWorkflowInput): Promis
       })
       const postUrl = `${input.siteBaseUrl.replace(/\/+$/, '')}/posts/${post.slug || post.id}`
       const assistantMessage = formatPublishedPostMessage(post, postUrl)
-      await appendConversationMessage(input.conversationId, 'assistant', assistantMessage)
+      if (shouldPersistAssistantMessage) {
+        await appendConversationMessage(input.conversationId, 'assistant', assistantMessage)
+      }
 
       return {
         status: post.published ? 'published' : 'draft_saved',

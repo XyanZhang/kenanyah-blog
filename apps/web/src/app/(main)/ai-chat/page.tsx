@@ -24,7 +24,15 @@ import {
   type BlogWorkflowResult,
   type ChatConversation,
   type ChatMessage,
+  type ChatStreamEvent,
 } from '@/lib/ai-chat-api'
+import {
+  buildWorkflowFollowupOperationCardMessage,
+  isWorkflowOperationCardContent,
+  parseOperationCardContent,
+  type FollowupOperationCard,
+  type OperationCardAction,
+} from '@/lib/operation-cards'
 
 type UiMessage = ChatMessage & {
   pending?: boolean
@@ -68,19 +76,7 @@ type FollowupAnswerDraft = {
 }
 
 function isWorkflowFollowupMessage(content: string): boolean {
-  return content.includes('【BLOG_WORKFLOW_FOLLOWUP】')
-}
-
-function getWorkflowFollowupDisplayContent(content: string): string {
-  return content.replace('【BLOG_WORKFLOW_FOLLOWUP】', '').trim()
-}
-
-function getWorkflowFollowupQuestions(content: string): string[] {
-  return getWorkflowFollowupDisplayContent(content)
-    .split('\n')
-    .map((line) => line.trim())
-    .map((line) => line.replace(/^\d+\.\s*/, ''))
-    .filter((line) => Boolean(line) && !line.startsWith('在开始生成前') && !line.startsWith('在继续生成前'))
+  return isWorkflowOperationCardContent(content)
 }
 
 function buildFollowupQuestionSpec(question: string, index: number): FollowupQuestionSpec {
@@ -157,6 +153,42 @@ function isAbortError(error: unknown): boolean {
   )
 }
 
+function getChatEventStatusLabel(event: ChatStreamEvent): string | null {
+  if (event.type === 'stage') {
+    return event.label
+  }
+
+  if (event.type === 'tool_call') {
+    return event.label
+  }
+
+  if (event.type === 'tool_result') {
+    return event.summary
+  }
+
+  if (event.type === 'followup') {
+    return '正在整理操作卡片…'
+  }
+
+  return null
+}
+
+function getOperationActionButtonClass(style?: OperationCardAction['style']): string {
+  if (style === 'danger') {
+    return 'border-red-500/25 bg-red-500/10 text-red-600 hover:bg-red-500/15 dark:text-red-300'
+  }
+
+  if (style === 'primary') {
+    return 'border-accent-primary/30 bg-accent-primary text-white hover:bg-accent-primary/90'
+  }
+
+  if (style === 'ghost') {
+    return 'border-line-glass bg-surface-glass/70 text-content-secondary hover:border-accent-primary/20 hover:text-content-primary'
+  }
+
+  return 'border-accent-primary/25 bg-accent-primary/8 text-accent-primary hover:bg-accent-primary/12'
+}
+
 export default function AiChatPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -176,6 +208,7 @@ export default function AiChatPage() {
   const [editingTitle, setEditingTitle] = useState('')
   const [useKnowledgeBase, setUseKnowledgeBase] = useState(false)
   const [followupDrafts, setFollowupDrafts] = useState<Record<string, Record<string, FollowupAnswerDraft>>>({})
+  const [operationCardReplyDrafts, setOperationCardReplyDrafts] = useState<Record<string, string>>({})
   const [chatQueue, setChatQueue] = useState<ChatQueueItem[]>([])
   const [workflowQueue, setWorkflowQueue] = useState<WorkflowQueueItem[]>([])
   const bottomRef = useRef<HTMLDivElement | null>(null)
@@ -441,16 +474,25 @@ export default function AiChatPage() {
 
     const controller = new AbortController()
     activeChatAbortRef.current = controller
+    const stageHistory: string[] = []
+    let receivedContent = false
+    let finalAssistantContent = ''
 
     try {
       await streamChatMessage(
         job.conversationId,
         job.content,
         (chunk) => {
+          const isFirstChunk = !receivedContent
+          receivedContent = true
+          finalAssistantContent = isFirstChunk ? chunk : finalAssistantContent + chunk
           setMessages((prev) =>
             prev.map((m) =>
               m.id === job.assistantMsgId
-                ? { ...m, content: (m.content ?? '') + chunk }
+                ? {
+                    ...m,
+                    content: isFirstChunk ? chunk : (m.content ?? '') + chunk,
+                  }
                 : m
             )
           )
@@ -461,9 +503,25 @@ export default function AiChatPage() {
         {
           useKnowledgeBase: job.useKnowledgeBase,
           signal: controller.signal,
+          onEvent: (event) => {
+            const statusLabel = getChatEventStatusLabel(event)
+            if (!statusLabel || receivedContent) {
+              return
+            }
+
+            stageHistory.push(statusLabel)
+            setMessages((prev) =>
+              prev.map((message) =>
+                message.id === job.assistantMsgId
+                  ? { ...message, content: stageHistory.join('\n') }
+                  : message
+              )
+            )
+          },
         }
       )
       finishChatJob(job)
+      setWorkflowFollowupMode(isWorkflowFollowupMessage(finalAssistantContent))
       listConversations()
         .then((list) => setConversations(list))
         .catch(() => undefined)
@@ -869,6 +927,62 @@ export default function AiChatPage() {
     await submitWorkflowFollowup(defaultReply, { clearInput: false })
   }
 
+  function getOperationCardReplyDraft(messageId: string): string {
+    return operationCardReplyDrafts[messageId] ?? ''
+  }
+
+  function setOperationCardReplyDraft(messageId: string, value: string) {
+    setOperationCardReplyDrafts((prev) => ({
+      ...prev,
+      [messageId]: value,
+    }))
+  }
+
+  async function sendChatOperationMessage(content: string) {
+    if (
+      !currentId ||
+      !content.trim() ||
+      sending ||
+      chatQueue.length > 0 ||
+      runningWorkflow ||
+      workflowQueue.length > 0
+    ) {
+      return
+    }
+
+    const job = buildChatQueueItem(content.trim())
+    await executeChatJob(job)
+  }
+
+  async function handleOperationCardAction(action: OperationCardAction) {
+    if (action.type === 'open_url') {
+      window.open(action.url, '_blank', 'noopener,noreferrer')
+      return
+    }
+
+    if (action.mode === 'workflow') {
+      await submitWorkflowFollowup(action.message, { clearInput: false })
+      return
+    }
+
+    await sendChatOperationMessage(action.message)
+  }
+
+  async function handleSubmitOperationCardReply(messageId: string, card: FollowupOperationCard) {
+    const content = getOperationCardReplyDraft(messageId).trim()
+    if (!content) {
+      return
+    }
+
+    if (card.submitMode === 'workflow') {
+      await submitWorkflowFollowup(content, { clearInput: false })
+    } else {
+      await sendChatOperationMessage(content)
+    }
+
+    setOperationCardReplyDraft(messageId, '')
+  }
+
   function getFollowupAnswerDraft(messageId: string, questionId: string): FollowupAnswerDraft {
     return followupDrafts[messageId]?.[questionId] ?? getEmptyFollowupAnswerDraft()
   }
@@ -941,9 +1055,9 @@ export default function AiChatPage() {
 
   function formatWorkflowAssistantMessage(result: BlogWorkflowResult): string {
     if (result.status === 'need_more_info') {
-      return `【BLOG_WORKFLOW_FOLLOWUP】\n在继续生成前，请你补充以下信息：\n\n${result.followupQuestions
-        .map((q, idx) => `${idx + 1}. ${q}`)
-        .join('\n')}`
+      return buildWorkflowFollowupOperationCardMessage(result.followupQuestions, {
+        phase: 'continue',
+      })
     }
     if (result.status === 'published') {
       return `文章已生成并发布。\n\n标题：${result.post.title}\n链接：[点击查看](${result.postUrl})`
@@ -1121,150 +1235,331 @@ export default function AiChatPage() {
                 </div>
               ) : (
                 messages.map((msg, index) => {
-                  const isWorkflowFollowup = msg.role === 'assistant' && isWorkflowFollowupMessage(msg.content)
-                  const followupQuestions = isWorkflowFollowup
-                    ? getWorkflowFollowupQuestions(msg.content)
-                    : []
+                  const operationCard =
+                    msg.role === 'assistant' ? parseOperationCardContent(msg.content || '') : null
+                  const isWorkflowFollowup =
+                    operationCard?.kind === 'followup' && operationCard.submitMode === 'workflow'
+                  const followupQuestions = isWorkflowFollowup ? operationCard.questions : []
                   const followupSpecs = followupQuestions.map((question, questionIndex) =>
                     buildFollowupQuestionSpec(question, questionIndex)
                   )
-                  const showFollowupActions =
+                  const isLatestResolvedAssistantMessage =
+                    msg.role === 'assistant' && index === messages.length - 1 && !msg.pending
+                  const showWorkflowFollowupActions =
                     isWorkflowFollowup &&
                     workflowFollowupMode &&
-                    index === messages.length - 1 &&
-                    !msg.pending
+                    isLatestResolvedAssistantMessage
+                  const showChatFollowupActions =
+                    operationCard?.kind === 'followup' &&
+                    operationCard.submitMode === 'chat' &&
+                    isLatestResolvedAssistantMessage
+                  const showConfirmActions =
+                    operationCard?.kind === 'confirm' && isLatestResolvedAssistantMessage
+                  const defaultReplyMessage =
+                    operationCard?.kind === 'followup' ? operationCard.defaultReplyMessage : undefined
 
                   return (
-                  <div
-                    key={msg.id}
-                    className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                  >
                     <div
-                      className={`relative max-w-[80%] rounded-2xl px-3 py-2 text-sm shadow-sm ${
-                        msg.role === 'user'
-                          ? 'bg-accent-primary text-white'
-                          : 'bg-surface-tertiary/90 text-content-primary'
-                      }`}
+                      key={msg.id}
+                      className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
                     >
-                      {msg.queued && (
-                        <div className="mb-2 text-[11px] font-medium text-content-tertiary">
-                          排队中
-                        </div>
-                      )}
-                      {msg.interrupted && (
-                        <div className="mb-2 text-[11px] font-medium text-amber-600 dark:text-amber-300">
-                          已中断
-                        </div>
-                      )}
-                      {msg.role === 'assistant' ? (
-                        <div className="md-content max-w-none">
-                          <ReactMarkdown
-                            remarkPlugins={[remarkGfm]}
-                            components={{
-                              table: ({ children, ...props }) => (
-                                <div className="md-table-wrapper">
-                                  <table {...props}>{children}</table>
-                                </div>
-                              ),
-                              a: ({ children, ...props }) => (
-                                <a {...props} target="_blank" rel="noopener noreferrer">
-                                  {children}
-                                </a>
-                              ),
-                            }}
-                          >
-                            {isWorkflowFollowup
-                              ? getWorkflowFollowupDisplayContent(msg.content)
-                              : msg.content || (msg.pending ? '思考中…' : '')}
-                          </ReactMarkdown>
-                        </div>
-                      ) : (
-                        <span>{msg.content}</span>
-                      )}
-
-                      {showFollowupActions && (
-                        <div className="mt-3 border-t border-line-glass/70 pt-3">
-                          <div className="mb-2 text-xs font-medium text-content-secondary">
-                            通过表单补充信息后直接继续生成：
+                      <div
+                        className={`relative max-w-full rounded-2xl px-3 py-2 text-sm shadow-sm ${
+                          msg.role === 'user'
+                            ? 'bg-accent-primary text-white'
+                            : 'bg-surface-tertiary/90 text-content-primary'
+                        }`}
+                      >
+                        {msg.queued && (
+                          <div className="mb-2 text-[11px] font-medium text-content-tertiary">
+                            排队中
                           </div>
-                          <div className="space-y-3">
-                            {followupSpecs.map((spec) => {
-                              const draft = getFollowupAnswerDraft(msg.id, spec.id)
+                        )}
+                        {msg.interrupted && (
+                          <div className="mb-2 text-[11px] font-medium text-amber-600 dark:text-amber-300">
+                            已中断
+                          </div>
+                        )}
+                        {msg.role === 'assistant' ? (
+                          operationCard ? (
+                            <div
+                              className={`rounded-2xl border p-3 ${
+                                operationCard.kind === 'confirm' && operationCard.emphasis === 'danger'
+                                  ? 'border-red-500/20 bg-red-500/6'
+                                  : 'border-line-glass/70 bg-surface-glass/60'
+                              }`}
+                            >
+                              <div className="text-[11px] font-semibold tracking-[0.18em] text-content-tertiary">
+                                {operationCard.kind === 'confirm' ? '操作确认卡片' : '操作卡片'}
+                              </div>
+                              <div className="mt-2 text-sm font-semibold text-content-primary">
+                                {operationCard.title}
+                              </div>
+                              {operationCard.description && (
+                                <div className="mt-1 text-xs leading-5 text-content-secondary">
+                                  {operationCard.description}
+                                </div>
+                              )}
 
-                              return (
-                                <div
-                                  key={spec.id}
-                                  className="rounded-xl border border-line-glass/70 bg-surface-glass/60 p-3"
-                                >
-                                  <div className="text-xs font-medium text-content-primary">
-                                    {spec.title}
+                              {operationCard.kind === 'followup' && operationCard.questions.length > 0 && (
+                                <div className="mt-3 space-y-2">
+                                  {operationCard.questions.map((question, questionIndex) => (
+                                    <div
+                                      key={`${msg.id}-question-${questionIndex}`}
+                                      className="rounded-xl border border-line-glass/70 bg-surface-glass/55 px-3 py-2"
+                                    >
+                                      <div className="text-[11px] font-medium text-content-tertiary">
+                                        问题 {questionIndex + 1}
+                                      </div>
+                                      <div className="mt-1 text-xs leading-5 text-content-primary">
+                                        {question}
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+
+                              {operationCard.kind === 'confirm' && (
+                                <>
+                                  <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                                    {operationCard.details.map((detail) => (
+                                      <div
+                                        key={`${msg.id}-${detail.label}`}
+                                        className="rounded-xl border border-line-glass/70 bg-surface-glass/55 px-3 py-2"
+                                      >
+                                        <div className="text-[11px] font-medium text-content-tertiary">
+                                          {detail.label}
+                                        </div>
+                                        <div className="mt-1 break-all text-xs leading-5 text-content-primary">
+                                          {detail.value}
+                                        </div>
+                                      </div>
+                                    ))}
                                   </div>
-                                  <div className="mt-1 text-[11px] leading-5 text-content-secondary">
-                                    {spec.question}
-                                  </div>
-                                  <div className="mt-2 flex flex-wrap gap-2">
-                                    {spec.options.map((option) => {
-                                      const selected = draft.selectedOptions.includes(option)
-                                      return (
+                                  <div className="mt-3 flex flex-wrap gap-2">
+                                    {operationCard.actions
+                                      .filter((action) => action.type === 'open_url')
+                                      .map((action) => (
                                         <button
-                                          key={option}
+                                          key={`${msg.id}-${action.label}`}
                                           type="button"
-                                          onClick={() => toggleFollowupOption(msg.id, spec, option)}
-                                          className={`inline-flex rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors ${
-                                            selected
-                                              ? 'border-accent-primary/30 bg-accent-primary/12 text-accent-primary'
-                                              : 'border-line-glass bg-surface-glass/70 text-content-secondary hover:border-accent-primary/20 hover:text-content-primary'
-                                          }`}
+                                          onClick={() => {
+                                            void handleOperationCardAction(action)
+                                          }}
+                                          className={`inline-flex items-center justify-center rounded-xl border px-3 py-2 text-xs font-medium transition-colors ${getOperationActionButtonClass(
+                                            action.style
+                                          )}`}
                                         >
-                                          {option}
+                                          {action.label}
                                         </button>
+                                      ))}
+                                  </div>
+                                </>
+                              )}
+
+                              {showWorkflowFollowupActions && operationCard.kind === 'followup' && (
+                                <div className="mt-4 border-t border-line-glass/70 pt-3">
+                                  <div className="mb-2 text-xs font-medium text-content-secondary">
+                                    通过操作卡补充信息后直接继续生成：
+                                  </div>
+                                  <div className="space-y-3">
+                                    {followupSpecs.map((spec) => {
+                                      const draft = getFollowupAnswerDraft(msg.id, spec.id)
+
+                                      return (
+                                        <div
+                                          key={spec.id}
+                                          className="rounded-xl border border-line-glass/70 bg-surface-glass/60 p-3"
+                                        >
+                                          <div className="text-xs font-medium text-content-primary">
+                                            {spec.title}
+                                          </div>
+                                          <div className="mt-1 text-[11px] leading-5 text-content-secondary">
+                                            {spec.question}
+                                          </div>
+                                          <div className="mt-2 flex flex-wrap gap-2">
+                                            {spec.options.map((option) => {
+                                              const selected = draft.selectedOptions.includes(option)
+                                              return (
+                                                <button
+                                                  key={option}
+                                                  type="button"
+                                                  onClick={() => toggleFollowupOption(msg.id, spec, option)}
+                                                  className={`inline-flex rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors ${
+                                                    selected
+                                                      ? 'border-accent-primary/30 bg-accent-primary/12 text-accent-primary'
+                                                      : 'border-line-glass bg-surface-glass/70 text-content-secondary hover:border-accent-primary/20 hover:text-content-primary'
+                                                  }`}
+                                                >
+                                                  {option}
+                                                </button>
+                                              )
+                                            })}
+                                          </div>
+                                          <textarea
+                                            className="mt-3 w-full resize-none rounded-xl border border-line-glass bg-surface-glass px-3 py-2 text-xs text-content-primary placeholder:text-content-tertiary focus:outline-none focus:ring-2 focus:ring-accent-primary/40"
+                                            rows={2}
+                                            value={draft.customText}
+                                            onChange={(e) =>
+                                              handleFollowupCustomTextChange(
+                                                msg.id,
+                                                spec.id,
+                                                e.currentTarget.value
+                                              )
+                                            }
+                                            placeholder={spec.placeholder}
+                                            disabled={!canUseWorkflowActions || runningWorkflow}
+                                          />
+                                        </div>
                                       )
                                     })}
                                   </div>
-                                  <textarea
-                                    className="mt-3 w-full resize-none rounded-xl border border-line-glass bg-surface-glass px-3 py-2 text-xs text-content-primary placeholder:text-content-tertiary focus:outline-none focus:ring-2 focus:ring-accent-primary/40"
-                                    rows={2}
-                                    value={draft.customText}
-                                    onChange={(e) =>
-                                      handleFollowupCustomTextChange(msg.id, spec.id, e.currentTarget.value)
-                                    }
-                                    placeholder={spec.placeholder}
-                                    disabled={!canUseWorkflowActions || runningWorkflow}
-                                  />
+                                  <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        void handleSubmitFollowupForm(msg.id, followupSpecs)
+                                      }}
+                                      disabled={
+                                        !canUseWorkflowActions ||
+                                        runningWorkflow ||
+                                        !hasFollowupSelections(msg.id, followupSpecs)
+                                      }
+                                      className="inline-flex items-center justify-center rounded-xl bg-accent-primary px-3 py-2 text-xs font-medium text-white transition-colors hover:bg-accent-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+                                    >
+                                      {operationCard.submitLabel || '按所选继续生成'}
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        void handleWorkflowFollowupUseDefaults(followupQuestions)
+                                      }}
+                                      disabled={!canUseWorkflowActions || runningWorkflow}
+                                      className="inline-flex items-center justify-center rounded-xl border border-accent-primary/30 bg-accent-primary/8 px-3 py-2 text-xs font-medium text-accent-primary transition-colors hover:bg-accent-primary/12 disabled:cursor-not-allowed disabled:opacity-50"
+                                    >
+                                      {operationCard.defaultReplyLabel || '全部按默认继续'}
+                                    </button>
+                                  </div>
                                 </div>
-                              )
-                            })}
-                          </div>
-                          <div className="flex flex-col gap-2 sm:flex-row">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                void handleSubmitFollowupForm(msg.id, followupSpecs)
-                              }}
-                              disabled={
-                                !canUseWorkflowActions ||
-                                runningWorkflow ||
-                                !hasFollowupSelections(msg.id, followupSpecs)
-                              }
-                              className="inline-flex items-center justify-center rounded-xl bg-accent-primary px-3 py-2 text-xs font-medium text-white transition-colors hover:bg-accent-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
-                            >
-                              按所选继续生成
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                void handleWorkflowFollowupUseDefaults(followupQuestions)
-                              }}
-                              disabled={!canUseWorkflowActions || runningWorkflow}
-                              className="inline-flex items-center justify-center rounded-xl border border-accent-primary/30 bg-accent-primary/8 px-3 py-2 text-xs font-medium text-accent-primary transition-colors hover:bg-accent-primary/12 disabled:cursor-not-allowed disabled:opacity-50"
-                            >
-                              全部按默认继续
-                            </button>
-                          </div>
-                        </div>
-                      )}
+                              )}
+
+                              {showChatFollowupActions && operationCard.kind === 'followup' && (
+                                <div className="mt-4 border-t border-line-glass/70 pt-3">
+                                  {operationCard.quickReplies && operationCard.quickReplies.length > 0 && (
+                                    <div className="mb-3 flex flex-wrap gap-2">
+                                      {operationCard.quickReplies.map((reply) => (
+                                        <button
+                                          key={`${msg.id}-${reply}`}
+                                          type="button"
+                                          onClick={() => {
+                                            setOperationCardReplyDraft(msg.id, reply)
+                                          }}
+                                          disabled={!canUseChatActions || sending}
+                                          className="inline-flex rounded-full border border-line-glass bg-surface-glass/70 px-2.5 py-1 text-[11px] font-medium text-content-secondary transition-colors hover:border-accent-primary/20 hover:text-content-primary disabled:cursor-not-allowed disabled:opacity-50"
+                                        >
+                                          {reply}
+                                        </button>
+                                      ))}
+                                    </div>
+                                  )}
+                                  <textarea
+                                    className="w-full resize-none rounded-xl border border-line-glass bg-surface-glass px-3 py-2 text-xs text-content-primary placeholder:text-content-tertiary focus:outline-none focus:ring-2 focus:ring-accent-primary/40"
+                                    rows={3}
+                                    value={getOperationCardReplyDraft(msg.id)}
+                                    onChange={(e) =>
+                                      setOperationCardReplyDraft(msg.id, e.currentTarget.value)
+                                    }
+                                    placeholder={
+                                      operationCard.inputPlaceholder || '直接填写补充信息后发送'
+                                    }
+                                    disabled={!canUseChatActions || sending}
+                                  />
+                                  <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        void handleSubmitOperationCardReply(msg.id, operationCard)
+                                      }}
+                                      disabled={
+                                        !canUseChatActions ||
+                                        sending ||
+                                        !getOperationCardReplyDraft(msg.id).trim()
+                                      }
+                                      className="inline-flex items-center justify-center rounded-xl bg-accent-primary px-3 py-2 text-xs font-medium text-white transition-colors hover:bg-accent-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+                                    >
+                                      {operationCard.submitLabel || '发送补充信息'}
+                                    </button>
+                                    {defaultReplyMessage && (
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          void handleOperationCardAction({
+                                            type: 'send_message',
+                                            label:
+                                              operationCard.defaultReplyLabel || '按默认继续',
+                                            message: defaultReplyMessage,
+                                            mode: operationCard.submitMode,
+                                            style: 'secondary',
+                                          })
+                                        }}
+                                        disabled={!canUseChatActions || sending}
+                                        className="inline-flex items-center justify-center rounded-xl border border-accent-primary/30 bg-accent-primary/8 px-3 py-2 text-xs font-medium text-accent-primary transition-colors hover:bg-accent-primary/12 disabled:cursor-not-allowed disabled:opacity-50"
+                                      >
+                                        {operationCard.defaultReplyLabel || '按默认继续'}
+                                      </button>
+                                    )}
+                                  </div>
+                                </div>
+                              )}
+
+                              {showConfirmActions && operationCard.kind === 'confirm' && (
+                                <div className="mt-4 flex flex-wrap gap-2 border-t border-line-glass/70 pt-3">
+                                  {operationCard.actions
+                                    .filter((action) => action.type === 'send_message')
+                                    .map((action) => (
+                                      <button
+                                        key={`${msg.id}-${action.label}`}
+                                        type="button"
+                                        onClick={() => {
+                                          void handleOperationCardAction(action)
+                                        }}
+                                        disabled={!canUseChatActions || sending}
+                                        className={`inline-flex items-center justify-center rounded-xl border px-3 py-2 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${getOperationActionButtonClass(
+                                          action.style
+                                        )}`}
+                                      >
+                                        {action.label}
+                                      </button>
+                                    ))}
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            <div className="md-content max-w-none">
+                              <ReactMarkdown
+                                remarkPlugins={[remarkGfm]}
+                                components={{
+                                  table: ({ children, ...props }) => (
+                                    <div className="md-table-wrapper">
+                                      <table {...props}>{children}</table>
+                                    </div>
+                                  ),
+                                  a: ({ children, ...props }) => (
+                                    <a {...props} target="_blank" rel="noopener noreferrer">
+                                      {children}
+                                    </a>
+                                  ),
+                                }}
+                              >
+                                {msg.content || (msg.pending ? '思考中…' : '')}
+                              </ReactMarkdown>
+                            </div>
+                          )
+                        ) : (
+                          <span>{msg.content}</span>
+                        )}
+                      </div>
                     </div>
-                  </div>
                   )
                 })
               )}
