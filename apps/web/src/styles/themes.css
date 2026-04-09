@@ -66,6 +66,67 @@
   --frosted-tint: rgba(255, 255, 255, 0.05);
 }
 
+/* === Summer Breeze: 夏日晴海 - 清爽海盐蓝 === */
+[data-theme='summer-breeze'] {
+  --theme-bg-base: #f5fafc;
+  --theme-bg-orb-1: #bad8e7;
+  --theme-bg-orb-2: #abc8dd;
+  --theme-bg-orb-3: #d8eef6;
+  --theme-bg-orb-4: #b7d9d7;
+  --theme-bg-orb-5: #eaf7fb;
+  --theme-bg-orb-6: #bfd7e7;
+  --theme-bg-orb-7: #c4e2db;
+  --theme-bg-orb-8: #a9bfdc;
+
+  --theme-accent-primary: #5f9fbe;
+  --theme-accent-secondary: #91c0d3;
+  --theme-accent-tertiary: #9acfc7;
+  --theme-accent-primary-light: #e8f3f8;
+  --theme-accent-secondary-light: #edf7fb;
+  --theme-accent-tertiary-light: #edf8f5;
+  --theme-accent-primary-dark: #4485a3;
+  --theme-accent-primary-muted: #86b4c6;
+  --theme-accent-primary-subtle: #f8fcfe;
+
+  --theme-surface-primary: #ffffff;
+  --theme-surface-secondary: #f7fafc;
+  --theme-surface-tertiary: #eef4f7;
+  --theme-surface-hover: #e8f0f4;
+  --theme-surface-glass: rgba(255, 255, 255, 0.18);
+  --theme-surface-selected: #e5eef3;
+
+  --theme-text-primary: #112436;
+  --theme-text-secondary: #23455a;
+  --theme-text-tertiary: #3a6277;
+  --theme-text-muted: #64859a;
+  --theme-text-dim: #96afbd;
+  --theme-text-disabled: #c7d8e2;
+  --theme-text-inverse: #ffffff;
+
+  --theme-border-primary: #d9e7ee;
+  --theme-border-secondary: #c7dae4;
+  --theme-border-hover: #a7c7d6;
+  --theme-border-focus: #5f9fbe;
+  --theme-border-glass: rgba(229, 239, 245, 0.72);
+
+  --theme-ui-primary: #5f9fbe;
+  --theme-ui-primary-hover: #4485a3;
+  --theme-ui-primary-ring: #99c4d7;
+  --theme-ui-destructive: #d94f68;
+  --theme-ui-destructive-hover: #bf3b54;
+  --theme-ui-destructive-light: #fff1f3;
+  --theme-ui-success: #def8f2;
+  --theme-ui-success-text: #138a7b;
+  --theme-ui-switch-off: #d9e7ee;
+
+  --theme-shadow-color: rgba(18, 47, 66, 0.06);
+  --theme-shadow-accent: rgba(95, 159, 190, 0.15);
+
+  --frosted-blur: 58px;
+  --frosted-saturate: 1.18;
+  --frosted-tint: rgba(255, 255, 255, 0.06);
+}
+
 /* === Warm Natural: 暖色自然风 - 低饱和柔和版 === */
 [data-theme='warm-natural'] {
   --theme-bg-base: #faf9f5;

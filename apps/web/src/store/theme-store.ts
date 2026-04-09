@@ -5,6 +5,7 @@ import { persist } from 'zustand/middleware'
 
 export type ThemeId =
   | 'default'
+  | 'summer-breeze'
   | 'warm-natural'
   | 'classic-minimal'
   | 'vintage-study'
@@ -24,6 +25,12 @@ export const THEME_OPTIONS: readonly ThemeOption[] = [
     name: '科技渐变',
     description: '紫蓝青渐变，柔和低饱和',
     previewColors: ['#7c6b9e', '#5a7a9e', '#5a8a8f'],
+  },
+  {
+    id: 'summer-breeze',
+    name: '夏日晴海',
+    description: '低饱和雾蓝与浅海盐青，更轻更柔和',
+    previewColors: ['#5f9fbe', '#91c0d3', '#9acfc7'],
   },
   {
     id: 'warm-natural',
