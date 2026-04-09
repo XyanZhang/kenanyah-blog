@@ -33,6 +33,7 @@ import {
   type FollowupOperationCard,
   type OperationCardAction,
 } from '@/lib/operation-cards'
+import { VoiceRecorder } from '@/components/voice-recorder'
 
 type UiMessage = ChatMessage & {
   pending?: boolean
@@ -1605,6 +1606,14 @@ export default function AiChatPage() {
                     : 'Enter 发送，Shift + Enter 换行。'}
               </div>
               <div className="flex gap-2 md:justify-end">
+                {/* 语音录音组件 */}
+                <VoiceRecorder
+                  onTranscriptionComplete={(text) => {
+                    setInput((prev) => prev + text)
+                  }}
+                  disabled={!currentId || sending || runningWorkflow}
+                  maxDuration={60}
+                />
                 <button
                   type="button"
                   onClick={runningWorkflow ? handleQueueGenerateBlog : handleGenerateBlog}

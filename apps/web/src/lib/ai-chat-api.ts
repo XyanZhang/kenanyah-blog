@@ -360,3 +360,63 @@ export async function cancelBlogWorkflow(payload: { conversationId: string }): P
   }
   return json.data.cancelled
 }
+
+/** 语音文件上传结果 */
+export interface VoiceUploadResult {
+  fileId: string
+  url: string
+  size: number
+  mime: string
+}
+
+/** 语音转文本结果 */
+export interface TranscriptionResult {
+  text: string
+  fileId: string
+}
+
+/**
+ * 上传语音文件
+ * @param blob 音频 Blob 对象
+ * @returns 上传结果：{ fileId, url, size, mime }
+ */
+export async function uploadVoiceFile(blob: Blob): Promise<VoiceUploadResult> {
+  const formData = new FormData()
+  formData.append('file', blob, 'recording.webm')
+
+  const res = await fetch(`${API_BASE_URL}/voice/upload`, {
+    method: 'POST',
+    credentials: 'include',
+    body: formData,
+  })
+
+  const json = (await res.json()) as ApiResponse<VoiceUploadResult>
+  if (!json.success || !json.data) {
+    throw new Error(json.error || '语音上传失败')
+  }
+  return json.data
+}
+
+/**
+ * 语音转文本
+ * @param fileId 文件 ID
+ * @param modelName 可选：指定 Whisper 模型
+ * @returns 转写结果：{ text, fileId }
+ */
+export async function transcribeVoice(
+  fileId: string,
+  modelName?: string
+): Promise<TranscriptionResult> {
+  const res = await fetch(`${API_BASE_URL}/voice/transcribe`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ fileId, modelName }),
+  })
+
+  const json = (await res.json()) as ApiResponse<TranscriptionResult>
+  if (!json.success || !json.data) {
+    throw new Error(json.error || '语音识别失败')
+  }
+  return json.data
+}
