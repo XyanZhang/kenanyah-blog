@@ -7,6 +7,7 @@ import { createRequire } from 'node:module'
 import path from 'node:path'
 import { nodewhisper } from 'nodejs-whisper'
 import { logger } from './logger'
+import { normalizeWhisperTranscript } from './whisper-transcript'
 
 const require = createRequire(import.meta.url)
 
@@ -189,10 +190,10 @@ export async function transcribeAudio(
     // nodewhisper 返回的是字符串数组，取第一个元素（纯文本结果）
     // 如果返回的是数组，取第一个；如果直接是字符串，直接返回
     if (Array.isArray(result)) {
-      return result[0] || ''
+      return normalizeWhisperTranscript(result[0] || '')
     }
 
-    return result || ''
+    return normalizeWhisperTranscript(result || '')
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : String(error)
     logger.error(`[Whisper] 识别失败: ${errorMsg}`)

@@ -1,65 +1,187 @@
 'use client'
 
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { Mic, Square, RotateCcw } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { Loader2, Mic, Trash2 } from 'lucide-react'
 import { uploadVoiceFile, transcribeVoice } from '@/lib/ai-chat-api'
+import { cn } from '@/lib/utils'
 
 interface VoiceRecorderProps {
   onTranscriptionComplete: (text: string) => void
   disabled?: boolean
   maxDuration?: number // 最大录音时长（秒），默认 60
+  className?: string
 }
 
-type RecordingStatus = 'idle' | 'recording' | 'preview' | 'uploading' | 'transcribing'
+type RecordingStatus = 'idle' | 'starting' | 'recording' | 'uploading' | 'transcribing'
+type StopAction = 'send' | 'cancel'
+
+const MIN_RECORDING_MS = 350
+const CANCEL_SLOP_PX = 20
 
 export function VoiceRecorder({
   onTranscriptionComplete,
   disabled = false,
   maxDuration = 60,
+  className,
 }: VoiceRecorderProps) {
   const [status, setStatus] = useState<RecordingStatus>('idle')
   const [duration, setDuration] = useState(0)
-  const [audioBlob, setAudioBlob] = useState<Blob | null>( null)
-  const [audioUrl, setAudioUrl] = useState<string | null>(null)
+  const [cancelIntent, setCancelIntent] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  const statusRef = useRef<RecordingStatus>('idle')
+  const durationRef = useRef(0)
+  const cancelIntentRef = useRef(false)
+  const mountedRef = useRef(true)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const chunksRef = useRef<Blob[]>([])
-  const timerRef = useRef<NodeJS.Timeout | null>(null)
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
+  const pressTargetRef = useRef<HTMLButtonElement | null>(null)
+  const activePointerIdRef = useRef<number | null>(null)
+  const pressStartedAtRef = useRef<number | null>(null)
+  const stopActionRef = useRef<StopAction | null>(null)
 
-  // 清理函数
-  const cleanup = useCallback(() => {
+  useEffect(() => {
+    statusRef.current = status
+  }, [status])
+
+  const updateDuration = useCallback((next: number) => {
+    durationRef.current = next
+    setDuration(next)
+  }, [])
+
+  const updateCancelIntent = useCallback((next: boolean) => {
+    cancelIntentRef.current = next
+    setCancelIntent(next)
+  }, [])
+
+  const clearTimer = useCallback(() => {
     if (timerRef.current) {
       clearInterval(timerRef.current)
       timerRef.current = null
     }
+  }, [])
+
+  const stopStream = useCallback(() => {
     if (streamRef.current) {
       streamRef.current.getTracks().forEach((track) => track.stop())
       streamRef.current = null
     }
-    if (audioUrl) {
-      URL.revokeObjectURL(audioUrl)
-    }
-  }, [audioUrl])
+  }, [])
 
-  // 组件卸载时清理
+  const clearPressState = useCallback(() => {
+    activePointerIdRef.current = null
+    pressStartedAtRef.current = null
+    stopActionRef.current = null
+    updateCancelIntent(false)
+  }, [updateCancelIntent])
+
   useEffect(() => {
-    return cleanup
-  }, [cleanup])
+    mountedRef.current = true
+    return () => {
+      mountedRef.current = false
+      clearTimer()
+      if (
+        mediaRecorderRef.current &&
+        mediaRecorderRef.current.state !== 'inactive'
+      ) {
+        mediaRecorderRef.current.onstop = null
+        try {
+          mediaRecorderRef.current.stop()
+        } catch {
+          // ignore
+        }
+      }
+      mediaRecorderRef.current = null
+      stopStream()
+    }
+  }, [clearTimer, stopStream])
 
-  // 开始录音
-  const startRecording = async () => {
+  const stopRecording = useCallback(
+    (action: StopAction) => {
+      stopActionRef.current = action
+      clearTimer()
+
+      const recorder = mediaRecorderRef.current
+      if (!recorder) {
+        if (statusRef.current !== 'starting') {
+          stopStream()
+          clearPressState()
+          updateDuration(0)
+          setStatus('idle')
+        }
+        return
+      }
+
+      if (recorder.state !== 'inactive') {
+        try {
+          recorder.stop()
+        } catch {
+          stopStream()
+          mediaRecorderRef.current = null
+          clearPressState()
+          updateDuration(0)
+          setStatus('idle')
+        }
+      }
+    },
+    [clearPressState, clearTimer, stopStream, updateDuration]
+  )
+
+  const transcribeAudio = useCallback(
+    async (audioBlob: Blob) => {
+      try {
+        setStatus('uploading')
+        const uploadResult = await uploadVoiceFile(audioBlob)
+        if (!mountedRef.current) return
+
+        setStatus('transcribing')
+        const transcriptionResult = await transcribeVoice(uploadResult.fileId)
+        if (!mountedRef.current) return
+
+        const text = transcriptionResult.text.trim()
+        if (text) {
+          onTranscriptionComplete(text)
+        } else {
+          setError('没有识别到清晰语音，请再试一次')
+        }
+      } catch (err) {
+        if (!mountedRef.current) return
+        const message = err instanceof Error ? err.message : '语音识别失败'
+        setError(message)
+      }
+
+      if (!mountedRef.current) return
+      updateDuration(0)
+      setStatus('idle')
+    },
+    [onTranscriptionComplete, updateDuration]
+  )
+
+  const startRecording = useCallback(async () => {
     try {
       setError(null)
+      setStatus('starting')
+      updateDuration(0)
+      updateCancelIntent(false)
       chunksRef.current = []
 
-      // 请求麦克风权限
+      if (
+        typeof window === 'undefined' ||
+        !navigator.mediaDevices?.getUserMedia ||
+        typeof MediaRecorder === 'undefined'
+      ) {
+        throw new Error('当前浏览器不支持语音录制')
+      }
+
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      if (!mountedRef.current) {
+        stream.getTracks().forEach((track) => track.stop())
+        return
+      }
       streamRef.current = stream
 
-      // 检测支持的 MIME 类型
       const mimeTypes = [
         'audio/webm;codecs=opus',
         'audio/webm',
@@ -75,10 +197,22 @@ export function VoiceRecorder({
       }
 
       if (!supportedMimeType) {
+        stopStream()
         throw new Error('浏览器不支持音频录制')
       }
 
-      // 创建 MediaRecorder
+      if (stopActionRef.current) {
+        const action = stopActionRef.current
+        stopStream()
+        clearPressState()
+        updateDuration(0)
+        setStatus('idle')
+        if (action === 'send') {
+          setError('按住时间太短，请重新录音')
+        }
+        return
+      }
+
       const mediaRecorder = new MediaRecorder(stream, {
         mimeType: supportedMimeType,
       })
@@ -92,176 +226,322 @@ export function VoiceRecorder({
 
       mediaRecorder.onstop = () => {
         const blob = new Blob(chunksRef.current, { type: supportedMimeType })
-        setAudioBlob(blob)
-        const url = URL.createObjectURL(blob)
-        setAudioUrl(url)
-        setStatus('preview')
+        const action = stopActionRef.current ?? 'send'
+
+        clearTimer()
+        stopStream()
+        mediaRecorderRef.current = null
+        clearPressState()
+
+        if (!mountedRef.current) {
+          return
+        }
+
+        if (action === 'cancel' || blob.size === 0) {
+          updateDuration(0)
+          setStatus('idle')
+          return
+        }
+
+        void transcribeAudio(blob)
       }
 
-      mediaRecorder.start(1000) // 每秒收集一次数据
+      mediaRecorder.start(250)
       setStatus('recording')
-      setDuration(0)
-
-      // 开始计时
+      updateDuration(0)
       timerRef.current = setInterval(() => {
-        setDuration((prev) => {
-          if (prev >= maxDuration) {
-            stopRecording()
-            return prev
-          }
-          return prev + 1
-        })
+        const next = durationRef.current + 1
+        updateDuration(next)
+
+        if (next >= maxDuration) {
+          stopRecording('send')
+        }
       }, 1000)
     } catch (err) {
+      stopStream()
+      mediaRecorderRef.current = null
+      clearPressState()
+      clearTimer()
+      updateDuration(0)
       const message = err instanceof Error ? err.message : '无法启动录音'
       setError(message)
       setStatus('idle')
     }
-  }
+  }, [
+    clearPressState,
+    clearTimer,
+    maxDuration,
+    stopRecording,
+    stopStream,
+    transcribeAudio,
+    updateCancelIntent,
+    updateDuration,
+  ])
 
-  // 停止录音
-  const stopRecording = () => {
-    if (mediaRecorderRef.current && status === 'recording') {
-      mediaRecorderRef.current.stop()
-      if (timerRef.current) {
-        clearInterval(timerRef.current)
-        timerRef.current = null
+  const finishPress = useCallback(
+    (action: StopAction) => {
+      const pressStartedAt = pressStartedAtRef.current
+      const elapsed = pressStartedAt ? Date.now() - pressStartedAt : 0
+      const nextAction =
+        action === 'send' && elapsed < MIN_RECORDING_MS ? 'cancel' : action
+
+      if (action === 'send' && nextAction === 'cancel') {
+        setError('按住时间太短，请重新录音')
       }
+
+      stopRecording(nextAction)
+    },
+    [stopRecording]
+  )
+
+  const shouldCancelAtPosition = useCallback((clientX: number, clientY: number) => {
+    const rect = pressTargetRef.current?.getBoundingClientRect()
+    if (!rect) return false
+
+    return (
+      clientY < rect.top - CANCEL_SLOP_PX ||
+      clientX < rect.left - CANCEL_SLOP_PX ||
+      clientX > rect.right + CANCEL_SLOP_PX ||
+      clientY > rect.bottom + CANCEL_SLOP_PX
+    )
+  }, [])
+
+  const beginPress = useCallback(() => {
+    if (disabled || statusRef.current !== 'idle') {
+      return
     }
-  }
 
-  // 重新录制
-  const resetRecording = () => {
-    cleanup()
-    setAudioBlob(null)
-    setAudioUrl(null)
-    setDuration(0)
-    setStatus('idle')
-    setError(null)
-  }
+    pressStartedAtRef.current = Date.now()
+    stopActionRef.current = null
+    void startRecording()
+  }, [disabled, startRecording])
 
-  // 上传并识别
-  const uploadAndTranscribe = async () => {
-    if (!audioBlob) return
+  const handlePointerDown = (event: React.PointerEvent<HTMLButtonElement>) => {
+    if (disabled || statusRef.current !== 'idle') {
+      return
+    }
+
+    activePointerIdRef.current = event.pointerId
+    pressTargetRef.current = event.currentTarget
+    event.currentTarget.focus()
 
     try {
-      setStatus('uploading')
-      setError(null)
+      event.currentTarget.setPointerCapture(event.pointerId)
+    } catch {
+      // ignore
+    }
 
-      // 上传音频文件
-      const uploadResult = await uploadVoiceFile(audioBlob)
+    beginPress()
+  }
 
-      setStatus('transcribing')
+  const handlePointerMove = (event: React.PointerEvent<HTMLButtonElement>) => {
+    if (
+      activePointerIdRef.current !== event.pointerId ||
+      (statusRef.current !== 'starting' && statusRef.current !== 'recording')
+    ) {
+      return
+    }
 
-      // 语音转文本
-      const transcriptionResult = await transcribeVoice(uploadResult.fileId)
+    updateCancelIntent(
+      shouldCancelAtPosition(event.clientX, event.clientY)
+    )
+  }
 
-      // 完成识别，调用回调
-      onTranscriptionComplete(transcriptionResult.text)
+  const handlePointerUp = (event: React.PointerEvent<HTMLButtonElement>) => {
+    if (activePointerIdRef.current !== event.pointerId) {
+      return
+    }
 
-      // 重置状态
-      resetRecording()
-    } catch (err) {
-      const message = err instanceof Error ? err.message : '语音识别失败'
-      setError(message)
-      setStatus('preview')
+    try {
+      event.currentTarget.releasePointerCapture(event.pointerId)
+    } catch {
+      // ignore
+    }
+
+    finishPress(cancelIntentRef.current ? 'cancel' : 'send')
+  }
+
+  const handlePointerCancel = () => {
+    if (statusRef.current === 'starting' || statusRef.current === 'recording') {
+      finishPress('cancel')
     }
   }
 
-  // 格式化时长显示
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>) => {
+    if (event.repeat) {
+      return
+    }
+
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault()
+      beginPress()
+      return
+    }
+
+    if (
+      event.key === 'Escape' &&
+      (statusRef.current === 'starting' || statusRef.current === 'recording')
+    ) {
+      event.preventDefault()
+      finishPress('cancel')
+    }
+  }
+
+  const handleKeyUp = (event: React.KeyboardEvent<HTMLButtonElement>) => {
+    if (event.key !== 'Enter' && event.key !== ' ') {
+      return
+    }
+
+    event.preventDefault()
+
+    if (statusRef.current === 'starting' || statusRef.current === 'recording') {
+      finishPress(cancelIntentRef.current ? 'cancel' : 'send')
+    }
+  }
+
   const formatDuration = (seconds: number) => {
     const mins = Math.floor(seconds / 60)
     const secs = seconds % 60
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
   }
 
+  const processing = status === 'uploading' || status === 'transcribing'
+  const busy = status === 'starting' || processing
+  const showHud = status !== 'idle'
+
+  const buttonLabel =
+    status === 'starting'
+      ? '准备录音...'
+      : status === 'recording'
+        ? cancelIntent
+          ? '松开取消'
+          : '松开发送'
+        : status === 'uploading'
+          ? '上传语音...'
+          : status === 'transcribing'
+            ? '识别中...'
+            : '按住说话'
+
+  const hintText =
+    status === 'starting'
+      ? '正在请求麦克风权限'
+      : status === 'recording'
+        ? cancelIntent
+          ? '松开将取消本次录音'
+          : '松开发送，上滑取消'
+        : status === 'uploading' || status === 'transcribing'
+          ? '识别结果会自动回填到输入框'
+          : disabled
+            ? '当前状态下不可使用语音输入'
+            : '按住录音，松开发送'
+
+  const hudTitle =
+    status === 'recording'
+      ? cancelIntent
+        ? '松开取消'
+        : '正在录音'
+      : status === 'uploading'
+        ? '上传音频'
+        : status === 'transcribing'
+          ? '识别语音'
+          : '准备录音'
+
+  const hudSubtitle =
+    status === 'recording'
+      ? cancelIntent
+        ? '移回按钮区域可继续录音'
+        : `${formatDuration(duration)} · 向上滑动可取消`
+      : status === 'uploading'
+        ? '正在发送语音文件'
+        : status === 'transcribing'
+          ? '识别完成后会写入输入框'
+          : '首次使用可能会弹出权限提示'
+
   return (
-    <div className="flex flex-col items-center gap-3">
-      {/* 录音按钮 */}
-      {status === 'idle' && (
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={startRecording}
-          disabled={disabled}
-          className="h-10 w-10 rounded-full"
-          title="开始录音"
+    <div className={cn('relative flex w-full flex-col gap-2', className)}>
+      <div
+        aria-live="polite"
+        className={cn(
+          'pointer-events-none absolute bottom-full left-1/2 z-10 mb-3 w-full max-w-[18rem] -translate-x-1/2 transition-all duration-200',
+          showHud ? 'translate-y-0 opacity-100' : 'translate-y-3 opacity-0'
+        )}
+      >
+        <div
+          className={cn(
+            'rounded-[28px] border px-4 py-3 shadow-[0_18px_40px_rgba(0,0,0,0.18)] backdrop-blur-xl',
+            cancelIntent
+              ? 'border-red-500/25 bg-red-500/12'
+              : 'border-line-glass bg-surface-glass/95'
+          )}
         >
-          <Mic className="h-5 w-5" />
-        </Button>
-      )}
-
-      {/* 录音中 */}
-      {status === 'recording' && (
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-2 px-3 py-2 bg-red-500/10 rounded-lg">
-            <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
-            <span className="text-sm font-medium text-red-600">
-              {formatDuration(duration)}
-            </span>
-          </div>
-          <Button
-            variant="destructive"
-            size="icon"
-            onClick={stopRecording}
-            className="h-10 w-10 rounded-full"
-            title="停止录音"
-          >
-            <Square className="h-5 w-5" />
-          </Button>
-        </div>
-      )}
-
-      {/* 预览 */}
-      {status === 'preview' && audioUrl && (
-        <div className="flex flex-col gap-2 w-full max-w-md">
           <div className="flex items-center gap-3">
-            <audio src={audioUrl} controls className="w-full h-10" />
-            <span className="text-sm text-muted-foreground">
-              {formatDuration(duration)}
-            </span>
-          </div>
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={resetRecording}
-              className="flex items-center gap-1"
+            <div
+              className={cn(
+                'flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl',
+                cancelIntent
+                  ? 'bg-red-500/18 text-red-500'
+                  : 'bg-accent-primary/10 text-accent-primary'
+              )}
             >
-              <RotateCcw className="h-4 w-4" />
-              重新录制
-            </Button>
-            <Button
-              size="sm"
-              onClick={uploadAndTranscribe}
-              className="flex items-center gap-1"
-            >
-              发送识别
-            </Button>
+              {cancelIntent ? (
+                <Trash2 className="h-5 w-5" />
+              ) : busy ? (
+                <Loader2 className="h-5 w-5 animate-spin" />
+              ) : (
+                <Mic className="h-5 w-5" />
+              )}
+            </div>
+            <div className="min-w-0">
+              <div className="text-sm font-semibold text-content-primary">
+                {hudTitle}
+              </div>
+              <div className="text-xs text-content-secondary">{hudSubtitle}</div>
+            </div>
           </div>
         </div>
-      )}
+      </div>
 
-      {/* 上传中 */}
-      {status === 'uploading' && (
-        <div className="flex items-center gap-2 px-3 py-2 bg-blue-500/10 rounded-lg">
-          <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-          <span className="text-sm font-medium text-blue-600">上传音频...</span>
-        </div>
-      )}
+      <button
+        ref={pressTargetRef}
+        type="button"
+        disabled={disabled || processing}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerCancel}
+        onKeyDown={handleKeyDown}
+        onKeyUp={handleKeyUp}
+        onContextMenu={(event) => event.preventDefault()}
+        className={cn(
+          'h-14 w-full select-none rounded-[20px] border text-[15px] font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary/35 touch-none',
+          disabled || processing
+            ? 'cursor-not-allowed border-line-glass bg-surface-tertiary/45 text-content-tertiary'
+            : status === 'recording'
+              ? cancelIntent
+                ? 'cursor-pointer border-red-500/30 bg-red-500/10 text-red-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.2)]'
+                : 'cursor-pointer border-accent-primary/15 bg-white/85 text-content-primary shadow-[inset_0_1px_0_rgba(255,255,255,0.82),0_12px_28px_rgba(0,0,0,0.08)] dark:bg-surface-secondary/90'
+              : 'cursor-pointer border-line-glass bg-surface-tertiary/65 text-content-secondary hover:bg-surface-tertiary/80'
+        )}
+        aria-label={buttonLabel}
+      >
+        {buttonLabel}
+      </button>
 
-      {/* 识别中 */}
-      {status === 'transcribing' && (
-        <div className="flex items-center gap-2 px-3 py-2 bg-green-500/10 rounded-lg">
-          <div className="w-4 h-4 border-2 border-green-500 border-t-transparent rounded-full animate-spin" />
-          <span className="text-sm font-medium text-green-600">语音识别中...</span>
-        </div>
-      )}
+      <div className="flex items-center justify-between px-1 text-[11px] text-content-tertiary">
+        <span>{hintText}</span>
+        <span
+          className={cn(
+            'tabular-nums',
+            status === 'recording' ? 'text-accent-primary' : 'text-content-tertiary'
+          )}
+        >
+          {status === 'recording'
+            ? formatDuration(duration)
+            : `最长 ${formatDuration(maxDuration)}`}
+        </span>
+      </div>
 
-      {/* 错误提示 */}
-      {error && (
-        <div className="text-sm text-destructive text-center">{error}</div>
-      )}
+      {error && <div className="px-1 text-xs text-red-500">{error}</div>}
     </div>
   )
 }

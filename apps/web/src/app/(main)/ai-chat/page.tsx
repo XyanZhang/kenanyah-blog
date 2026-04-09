@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
@@ -12,6 +12,8 @@ import {
   FilePenLine,
   Database,
   Plus,
+  Keyboard,
+  Mic,
 } from 'lucide-react'
 import {
   listConversations,
@@ -59,6 +61,7 @@ type WorkflowQueueItem = {
   assistantMsgId: string
 }
 
+type ChatInputMode = 'text' | 'voice'
 type FollowupField = 'topic' | 'audience' | 'tone' | 'goals' | 'general'
 
 type FollowupQuestionSpec = {
@@ -199,6 +202,7 @@ export default function AiChatPage() {
   const [currentId, setCurrentId] = useState<string | null>(null)
   const [messages, setMessages] = useState<UiMessage[]>([])
   const [input, setInput] = useState('')
+  const [inputMode, setInputMode] = useState<ChatInputMode>('text')
   const [loadingConversations, setLoadingConversations] = useState(true)
   const [loadingMessages, setLoadingMessages] = useState(false)
   const [sending, setSending] = useState(false)
@@ -220,6 +224,43 @@ export default function AiChatPage() {
   const activeWorkflowAbortRef = useRef<AbortController | null>(null)
   const activeWorkflowJobRef = useRef<WorkflowQueueItem | null>(null)
   const previousConversationIdRef = useRef<string | null>(null)
+
+  const focusTextInput = useCallback(() => {
+    if (typeof window === 'undefined') {
+      return
+    }
+
+    window.requestAnimationFrame(() => {
+      inputRef.current?.focus()
+    })
+  }, [])
+
+  const switchToTextInput = useCallback(() => {
+    setInputMode('text')
+    focusTextInput()
+  }, [focusTextInput])
+
+  const handleVoiceTranscriptionComplete = useCallback(
+    (text: string) => {
+      const normalizedText = text.trim()
+      if (!normalizedText) {
+        return
+      }
+
+      setInput((prev) => {
+        if (!prev.trim()) {
+          return normalizedText
+        }
+
+        const trimmed = prev.trimEnd()
+        const separator = trimmed.endsWith('\n') ? '' : '\n'
+        return `${trimmed}${separator}${normalizedText}`
+      })
+
+      switchToTextInput()
+    },
+    [switchToTextInput]
+  )
 
   useEffect(() => {
     try {
@@ -1070,6 +1111,25 @@ export default function AiChatPage() {
   const hasPendingWorkflowJobs = runningWorkflow || workflowQueue.length > 0
   const canUseWorkflowActions = Boolean(currentId) && !hasPendingChatJobs
   const canUseChatActions = Boolean(currentId) && !hasPendingWorkflowJobs
+  const voiceInputDisabled = !currentId || sending || runningWorkflow
+  const voiceToggleDisabled = inputMode === 'voice' ? false : voiceInputDisabled
+
+  const inputStatusText =
+    inputMode === 'voice'
+      ? voiceInputDisabled
+        ? runningWorkflow
+          ? '博客工作流执行中，语音输入暂不可用。'
+          : sending
+            ? '当前正在生成回答，语音输入暂不可用。'
+            : '当前状态下不可使用语音输入。'
+        : '按住说话，松开发送，上滑取消，识别结果会自动回填到输入框。'
+      : runningWorkflow
+        ? `正在执行博客工作流。你可以继续输入并加入生成队列${workflowQueue.length > 0 ? `，当前生成队列 ${workflowQueue.length} 条` : '。'}`
+        : workflowFollowupMode
+          ? '当前处于博客生成补充信息模式，发送后会继续走生成并入库流程。'
+          : sending
+            ? `正在生成回答。你可以继续输入并排队发送${chatQueue.length > 0 ? `，当前队列 ${chatQueue.length} 条` : ''}。`
+            : 'Enter 发送，Shift + Enter 换行。'
 
   return (
     <main className="w-full max-w-6xl mx-auto px-4 py-6 md:py-8 flex flex-col md:flex-row gap-4 bg-linear-to-b from-surface-glass/40 via-surface-glass/10 to-surface-glass/40">
@@ -1571,49 +1631,71 @@ export default function AiChatPage() {
 
         <div className="mt-3 md:mt-4 rounded-3xl border border-line-glass bg-surface-glass/95 backdrop-blur-xl p-3 md:p-4 shadow-[0_18px_45px_rgba(0,0,0,0.25)]">
           <div className="flex flex-col gap-3">
-            <textarea
-              ref={inputRef}
-              className="w-full resize-none rounded-2xl border border-line-glass bg-surface-tertiary/40 px-3 py-3 text-sm text-content-primary placeholder:text-content-tertiary focus:outline-none focus:ring-2 focus:ring-accent-primary/50"
-              rows={3}
-              placeholder={
-                runningWorkflow
-                  ? '继续输入博客要求，按 Enter 加入生成队列，或点击中断当前任务…'
-                  : workflowFollowupMode
-                    ? '补充生成要求，按 Enter 继续生成，Shift+Enter 换行…'
-                    : sending
-                      ? '继续输入内容，按 Enter 加入队列，或点击中断并发送…'
-                      : '输入你的问题，按 Enter 发送，Shift+Enter 换行…'
-              }
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onCompositionStart={() => {
-                isComposingRef.current = true
-              }}
-              onCompositionEnd={() => {
-                isComposingRef.current = false
-              }}
-              onKeyDown={handleKeyDown}
-              disabled={!currentId}
-            />
-            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-              <div className="text-xs text-content-tertiary">
-                {runningWorkflow
-                  ? `正在执行博客工作流。你可以继续输入并加入生成队列${workflowQueue.length > 0 ? `，当前生成队列 ${workflowQueue.length} 条` : '。'}`
-                  : workflowFollowupMode
-                  ? '当前处于博客生成补充信息模式，发送后会继续走生成并入库流程。'
-                  : sending
-                    ? `正在生成回答。你可以继续输入并排队发送${chatQueue.length > 0 ? `，当前队列 ${chatQueue.length} 条` : ''}。`
-                    : 'Enter 发送，Shift + Enter 换行。'}
+            <div className="flex items-end gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  if (inputMode === 'voice') {
+                    switchToTextInput()
+                    return
+                  }
+
+                  if (voiceToggleDisabled) {
+                    return
+                  }
+
+                  setInputMode('voice')
+                }}
+                disabled={voiceToggleDisabled}
+                className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-line-glass bg-surface-tertiary/55 text-content-secondary transition-colors hover:bg-surface-tertiary/75 hover:text-content-primary disabled:cursor-not-allowed disabled:opacity-50"
+                title={inputMode === 'voice' ? '切换到键盘输入' : '切换到语音输入'}
+                aria-label={inputMode === 'voice' ? '切换到键盘输入' : '切换到语音输入'}
+              >
+                {inputMode === 'voice' ? (
+                  <Keyboard className="h-5 w-5" />
+                ) : (
+                  <Mic className="h-5 w-5" />
+                )}
+              </button>
+
+              <div className="min-w-0 flex-1">
+                {inputMode === 'voice' ? (
+                  <VoiceRecorder
+                    onTranscriptionComplete={handleVoiceTranscriptionComplete}
+                    disabled={voiceInputDisabled}
+                    maxDuration={60}
+                  />
+                ) : (
+                  <textarea
+                    ref={inputRef}
+                    className="w-full resize-none rounded-2xl border border-line-glass bg-surface-tertiary/40 px-3 py-3 text-sm text-content-primary placeholder:text-content-tertiary focus:outline-none focus:ring-2 focus:ring-accent-primary/50"
+                    rows={3}
+                    placeholder={
+                      runningWorkflow
+                        ? '继续输入博客要求，按 Enter 加入生成队列，或点击中断当前任务…'
+                        : workflowFollowupMode
+                          ? '补充生成要求，按 Enter 继续生成，Shift+Enter 换行…'
+                          : sending
+                            ? '继续输入内容，按 Enter 加入队列，或点击中断并发送…'
+                            : '输入你的问题，按 Enter 发送，Shift+Enter 换行…'
+                    }
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    onCompositionStart={() => {
+                      isComposingRef.current = true
+                    }}
+                    onCompositionEnd={() => {
+                      isComposingRef.current = false
+                    }}
+                    onKeyDown={handleKeyDown}
+                    disabled={!currentId}
+                  />
+                )}
               </div>
+            </div>
+            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              <div className="text-xs text-content-tertiary">{inputStatusText}</div>
               <div className="flex gap-2 md:justify-end">
-                {/* 语音录音组件 */}
-                <VoiceRecorder
-                  onTranscriptionComplete={(text) => {
-                    setInput((prev) => prev + text)
-                  }}
-                  disabled={!currentId || sending || runningWorkflow}
-                  maxDuration={60}
-                />
                 <button
                   type="button"
                   onClick={runningWorkflow ? handleQueueGenerateBlog : handleGenerateBlog}
