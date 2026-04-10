@@ -1,4 +1,6 @@
 import type { Metadata } from 'next'
+import type { CSSProperties } from 'react'
+import { Cormorant_Garamond, Manrope } from 'next/font/google'
 import { PictureStack, type PictureStackItem } from '@/components/pictures'
 import { getApiFetchUrl } from '@/lib/api-client'
 
@@ -13,6 +15,20 @@ type PicturesApiResponse = {
   success?: boolean
   data?: PictureStackItem[]
 }
+
+const cormorant = Cormorant_Garamond({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700'],
+  variable: '--font-pictures-serif',
+  display: 'swap',
+})
+
+const manrope = Manrope({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700'],
+  variable: '--font-pictures-sans',
+  display: 'swap',
+})
 
 async function loadPictureItems(): Promise<PictureStackItem[]> {
   const url = `${getApiFetchUrl('/pictures')}?subdir=seed`
@@ -31,11 +47,20 @@ export default async function PicturesPage() {
   const items = await loadPictureItems()
 
   return (
-    <main className="h-[calc(100vh-6.25rem)] w-full flex flex-col">
-      <div className="flex-1 flex flex-col min-h-0 w-full">
-        <div className="flex-1 min-h-0 min-w-0">
-          <PictureStack items={items} className="h-full" />
-        </div>
+    <main
+      className={`${cormorant.variable} ${manrope.variable} min-h-screen w-full`}
+      style={
+        {
+          '--pictures-font-serif': 'var(--font-pictures-serif)',
+          '--pictures-font-sans': 'var(--font-pictures-sans)',
+        } as CSSProperties
+      }
+    >
+      <div
+        className="w-full"
+        style={{ fontFamily: 'var(--pictures-font-sans), ui-sans-serif, system-ui, sans-serif' }}
+      >
+        <PictureStack items={items} />
       </div>
     </main>
   )

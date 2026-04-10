@@ -1,9 +1,9 @@
 'use client'
 
-import { memo, useMemo, useState, useCallback, useRef, useEffect } from 'react'
+import type { CSSProperties } from 'react'
+import { useMemo, useState } from 'react'
 import Image from 'next/image'
 import { motion } from 'framer-motion'
-import { useDrag } from '@/hooks/useDrag'
 import { cn } from '@/lib/utils'
 import { buildPicturesImageUrl, isPicturesSource } from '@/lib/image-service'
 import Lightbox from 'yet-another-react-lightbox'
@@ -21,77 +21,14 @@ interface PictureStackProps {
   className?: string
 }
 
-const PAD = 32
-/** Polaroid 桌面：白边相纸比例，略高以留出底部白边 */
-const CARD_WIDTH = 200
-const CARD_HEIGHT = 250
-const ZERO_OFFSET = { x: 0, y: 0 }
-
-/** Polaroid 桌面布局：模拟相片随意散落桌面的感觉，允许重叠与随机倾斜 */
-function getStackStyle(
-  index: number,
-  id: string,
-  containerWidth: number,
-  containerHeight: number,
-  totalCount: number
-) {
-  const idSeed = id.split('').reduce((s, c) => s + c.charCodeAt(0), 0)
-  const s1 = (idSeed * 17 + index * 31) % 997
-
-  const availW = Math.max(0, containerWidth - 2 * PAD - CARD_WIDTH)
-  const availH = Math.max(0, containerHeight - 2 * PAD - CARD_HEIGHT)
-
-  if (totalCount <= 1) {
-    return {
-      left: Math.max(PAD, (containerWidth - CARD_WIDTH) / 2),
-      top: Math.max(PAD, (containerHeight - CARD_HEIGHT) / 2),
-      rotate: 0,
-    }
-  }
-
-  // 松散网格 + 大范围抖动，刻意制造重叠，营造随手散落感
-  const aspect = availW / Math.max(1, availH)
-  const cols = Math.max(1, Math.round(Math.sqrt(totalCount * aspect)))
-  const rows = Math.max(1, Math.ceil(totalCount / cols))
-
-  const cellW = availW / cols
-  const cellH = availH / rows
-
-  const col = index % cols
-  const row = Math.floor(index / cols)
-
-  // 抖动范围约 70% 格子，使相邻相片明显重叠
-  const jitterRangeX = cellW * 0.7
-  const jitterRangeY = cellH * 0.7
-  const jitterX = ((idSeed * 47 + index * 73) % 201 - 100) / 100 * jitterRangeX
-  const jitterY = ((idSeed * 61 + index * 89) % 201 - 100) / 100 * jitterRangeY
-
-  const left = PAD + col * cellW + (cellW - CARD_WIDTH) / 2 + jitterX
-  const top = PAD + row * cellH + (cellH - CARD_HEIGHT) / 2 + jitterY
-
-  const maxLeft = Math.max(0, containerWidth - CARD_WIDTH - PAD)
-  const maxTop = Math.max(0, containerHeight - CARD_HEIGHT - PAD)
-
-  // Polaroid 倾斜角更柔和，-12° ~ 12°
-  const rotate = -12 + (s1 % 25)
-
-  return {
-    left: Math.max(PAD, Math.min(maxLeft, left)),
-    top: Math.max(PAD, Math.min(maxTop, top)),
-    rotate,
-  }
-}
-
-/** 每张卡片入场动画错开时间（秒） */
-const STAGGER_DELAY = 0.1
-const ENTRANCE_DURATION = 0.4
+const aspectPattern = ['4 / 5', '5 / 7', '1 / 1', '4 / 3', '3 / 4', '5 / 6']
 
 function resolvePictureListSrc(src: string): string {
   if (!isPicturesSource(src)) return src
   return buildPicturesImageUrl(src, {
-    width: 440,
-    height: 360,
-    quality: 70,
+    width: 1200,
+    height: 1600,
+    quality: 78,
     fit: 'cover',
     format: 'webp',
   })
@@ -102,212 +39,38 @@ function resolvePictureDetailSrc(src: string): string {
   return buildPicturesImageUrl(src)
 }
 
-const PictureCardFace = memo(function PictureCardFace({
-  item,
-  index,
-}: {
-  item: PictureStackItem
-  index: number
-}) {
-  return (
-    <motion.div
-      className="w-full h-full flex flex-col bg-white rounded-sm overflow-hidden transition-shadow duration-200"
-      style={{
-        boxShadow: '0 4px 20px rgba(0,0,0,0.1), 0 1px 3px rgba(0,0,0,0.08)',
-      }}
-      initial={{ opacity: 0, scale: 0.92 }}
-      animate={{ opacity: 1, scale: 1 }}
-      whileHover={{
-        boxShadow: '0 12px 40px rgba(0,0,0,0.15), 0 4px 12px rgba(0,0,0,0.1)',
-        transition: { duration: 0.2 },
-      }}
-      transition={{
-        duration: ENTRANCE_DURATION,
-        delay: index * STAGGER_DELAY,
-        ease: [0.32, 0.72, 0, 1],
-      }}
-    >
-      <div className="flex-1 min-h-0 p-2.5 pb-1">
-        <div className="relative w-full h-full min-h-[160px]">
-          <Image
-            src={resolvePictureListSrc(item.src)}
-            alt=""
-            fill
-            sizes={`${CARD_WIDTH}px`}
-            className="pointer-events-none object-cover"
-            unoptimized={item.src.startsWith('http')}
-          />
-        </div>
-      </div>
-      <div className="h-10 flex items-center justify-center text-xs text-neutral-400 font-mono">
-        {item.date}
-      </div>
-    </motion.div>
-  )
-})
+function formatDateLabel(date: string): string {
+  if (!date) return 'Undated'
 
-const DraggableCard = memo(function DraggableCard({
-  item,
-  index,
-  totalCount,
-  offset,
-  onOffsetChange,
-  onSelect,
-  zIndex,
-  containerWidth,
-  containerHeight,
-}: {
-  item: PictureStackItem
-  index: number
-  totalCount: number
-  offset: { x: number; y: number }
-  onOffsetChange: (id: string, nextOffset: { x: number; y: number }) => void
-  onSelect?: (item: PictureStackItem) => void
-  zIndex: number
-  containerWidth: number
-  containerHeight: number
-}) {
-  const cardRef = useRef<HTMLDivElement>(null)
-  const { left, top, rotate } = useMemo(
-    () => getStackStyle(index, item.id, containerWidth, containerHeight, totalCount),
-    [index, item.id, containerWidth, containerHeight, totalCount]
-  )
+  const normalized = date.replace(/\./g, '-').replace(/\//g, '-')
+  const parsed = new Date(normalized)
+  if (Number.isNaN(parsed.getTime())) return date
 
-  const minTx = PAD - left
-  const maxTx = containerWidth - PAD - CARD_WIDTH - left
-  const minTy = PAD - top
-  const maxTy = containerHeight - PAD - CARD_HEIGHT - top
+  return new Intl.DateTimeFormat('zh-CN', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  }).format(parsed)
+}
 
-  const clampOffset = useCallback(
-    (nextOffset: { x: number; y: number }) => {
-      const clampedX = Math.max(minTx, Math.min(maxTx, nextOffset.x))
-      const clampedY = Math.max(minTy, Math.min(maxTy, nextOffset.y))
-      return { x: clampedX, y: clampedY }
-    },
-    [minTx, maxTx, minTy, maxTy]
-  )
-
-  const [visualOffset, setVisualOffset] = useState(() => clampOffset(offset))
-  const visualOffsetRef = useRef(visualOffset)
-
-  const setCardTransform = useCallback(
-    (nextOffset: { x: number; y: number }) => {
-      if (!cardRef.current) return
-      cardRef.current.style.transform = `translate3d(${nextOffset.x}px, ${nextOffset.y}px, 0) rotate(${rotate}deg)`
-    },
-    [rotate]
-  )
-
-  const { isDragging, dragHandlers } = useDrag({
-    syncDragDelta: false,
-    onDragMove: (delta) => {
-      const nextOffset = clampOffset({
-        x: visualOffsetRef.current.x + delta.x,
-        y: visualOffsetRef.current.y + delta.y,
-      })
-      setCardTransform(nextOffset)
-    },
-    onDragEnd: (delta) => {
-      const nextOffset = clampOffset({
-        x: visualOffsetRef.current.x + delta.x,
-        y: visualOffsetRef.current.y + delta.y,
-      })
-
-      visualOffsetRef.current = nextOffset
-      setVisualOffset((prev) =>
-        prev.x === nextOffset.x && prev.y === nextOffset.y ? prev : nextOffset
-      )
-      onOffsetChange(item.id, nextOffset)
-    },
-    onTap: () => {
-      onSelect?.(item)
-    },
-  })
-
-  useEffect(() => {
-    if (isDragging) return
-
-    const nextOffset = clampOffset(offset)
-    visualOffsetRef.current = nextOffset
-    setVisualOffset((prev) => (prev.x === nextOffset.x && prev.y === nextOffset.y ? prev : nextOffset))
-  }, [clampOffset, isDragging, offset])
-
-  const clampedVisualOffset = clampOffset(visualOffset)
-  visualOffsetRef.current = clampedVisualOffset
-
-  return (
-    <div
-      ref={cardRef}
-      className="absolute cursor-grab active:cursor-grabbing select-none touch-none"
-      style={{
-        left: `${left}px`,
-        top: `${top}px`,
-        width: CARD_WIDTH,
-        height: CARD_HEIGHT,
-        zIndex,
-        transform: `translate3d(${clampedVisualOffset.x}px, ${clampedVisualOffset.y}px, 0) rotate(${rotate}deg)`,
-        transition: 'box-shadow 0.2s ease',
-        willChange: isDragging ? 'transform' : undefined,
-        backfaceVisibility: 'hidden',
-      }}
-      {...dragHandlers}
-    >
-      <PictureCardFace item={item} index={index} />
-    </div>
-  )
-})
+function extractYear(date: string): string {
+  const match = date.match(/\d{4}/)
+  return match?.[0] ?? 'Archive'
+}
 
 export function PictureStack({ items, className }: PictureStackProps) {
-  const containerRef = useRef<HTMLDivElement>(null)
-  /** 未测量前为 null，避免用 fallback 尺寸导致首次布局闪烁 */
-  const [size, setSize] = useState<{ width: number; height: number } | null>(null)
   const [previewIndex, setPreviewIndex] = useState<number>(-1)
-
-  useEffect(() => {
-    const el = containerRef.current
-    if (!el) return
-    const ro = new ResizeObserver((entries) => {
-      const { width, height } = entries[0]?.contentRect ?? { width: 0, height: 0 }
-      if (width > 0 && height > 0) {
-        setSize({ width, height })
-      }
-    })
-    ro.observe(el)
-    return () => ro.disconnect()
-  }, [])
-
-  // 照片墙单屏展示：禁止页面滚动，不显示滚动条
-  useEffect(() => {
-    const prevHtmlOverflow = document.documentElement.style.overflow
-    const prevBodyOverflow = document.body.style.overflow
-    document.documentElement.style.overflow = 'hidden'
-    document.body.style.overflow = 'hidden'
-    return () => {
-      document.documentElement.style.overflow = prevHtmlOverflow
-      document.body.style.overflow = prevBodyOverflow
-    }
-  }, [])
 
   const sorted = useMemo(
     () => [...items].sort((a, b) => (b.date > a.date ? 1 : b.date < a.date ? -1 : 0)),
     [items]
   )
 
-  const [offsets, setOffsets] = useState<Record<string, { x: number; y: number }>>({})
-
-  const handleOffsetChange = useCallback((id: string, nextOffset: { x: number; y: number }) => {
-    setOffsets((prev) => {
-      const current = prev[id]
-      if (current?.x === nextOffset.x && current?.y === nextOffset.y) {
-        return prev
-      }
-
-      return {
-        ...prev,
-        [id]: nextOffset,
-      }
-    })
-  }, [])
+  const featuredItem = sorted[0]
+  const galleryItems = sorted.slice(1)
+  const archiveYears = Array.from(new Set(sorted.map((item) => extractYear(item.date))))
+  const latestYear = archiveYears[0] ?? 'Archive'
+  const earliestYear = archiveYears[archiveYears.length - 1] ?? latestYear
 
   const slides = useMemo(
     () =>
@@ -317,33 +80,271 @@ export function PictureStack({ items, className }: PictureStackProps) {
     [sorted]
   )
 
-  const handleSelect = useCallback(
-    (item: PictureStackItem) => {
-      const idx = sorted.findIndex((it) => it.id === item.id)
-      if (idx >= 0) setPreviewIndex(idx)
-    },
-    [sorted]
-  )
+  const openPreview = (item: PictureStackItem) => {
+    const index = sorted.findIndex((candidate) => candidate.id === item.id)
+    if (index >= 0) setPreviewIndex(index)
+  }
 
   return (
     <>
-      <div ref={containerRef} className={cn('relative h-full min-h-0 w-full overflow-hidden', className)}>
-        {size &&
-          sorted.map((item, index) => (
-            <DraggableCard
-              key={item.id}
-              item={item}
-              index={index}
-              totalCount={sorted.length}
-              offset={offsets[item.id] ?? ZERO_OFFSET}
-              onOffsetChange={handleOffsetChange}
-              onSelect={handleSelect}
-              zIndex={sorted.length - 1 - index}
-              containerWidth={size.width}
-              containerHeight={size.height}
-            />
-          ))}
-      </div>
+      <section
+        className={cn('relative overflow-hidden', className)}
+        style={
+          {
+            '--pictures-bg-soft':
+              'color-mix(in srgb, var(--theme-surface-primary) 72%, transparent)',
+            '--pictures-bg-muted':
+              'color-mix(in srgb, var(--theme-surface-secondary) 82%, transparent)',
+            '--pictures-panel':
+              'color-mix(in srgb, var(--theme-surface-primary) 76%, var(--theme-accent-primary-light) 24%)',
+            '--pictures-panel-soft':
+              'color-mix(in srgb, var(--theme-surface-secondary) 78%, var(--theme-accent-primary-subtle) 22%)',
+            '--pictures-ink-strong':
+              'color-mix(in srgb, var(--theme-text-primary) 96%, var(--theme-accent-primary-dark) 4%)',
+            '--pictures-ink':
+              'color-mix(in srgb, var(--theme-text-primary) 82%, var(--theme-text-secondary) 18%)',
+            '--pictures-muted':
+              'color-mix(in srgb, var(--theme-text-muted) 82%, var(--theme-text-secondary) 18%)',
+            '--pictures-line':
+              'color-mix(in srgb, var(--theme-border-primary) 72%, var(--theme-accent-primary) 28%)',
+            '--pictures-line-strong':
+              'color-mix(in srgb, var(--theme-border-secondary) 58%, var(--theme-accent-primary) 42%)',
+            '--pictures-accent':
+              'color-mix(in srgb, var(--theme-accent-primary) 68%, var(--theme-accent-secondary) 32%)',
+            '--pictures-shadow': 'var(--theme-shadow-color)',
+            '--pictures-shadow-accent': 'var(--theme-shadow-accent)',
+            '--pictures-lightbox':
+              'color-mix(in srgb, var(--theme-text-primary) 88%, #000 12%)',
+          } as CSSProperties
+        }
+      >
+        <div className="relative mx-auto flex w-full max-w-7xl flex-col gap-12 px-5 pb-20 pt-16 sm:px-8 lg:px-12 lg:pb-28 lg:pt-24">
+          <motion.header
+            className="grid gap-8 border-b pb-10 lg:grid-cols-[minmax(0,1.6fr)_minmax(280px,0.8fr)] lg:items-end"
+            style={{ borderColor: 'var(--pictures-line)' }}
+            initial={{ opacity: 0, y: 18 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+          >
+            <div className="max-w-4xl">
+              <p className="mb-4 text-[0.7rem] uppercase tracking-[0.38em] text-[var(--pictures-muted)]">
+                Curated Picture Archive
+              </p>
+              <h1
+                className="max-w-5xl text-[clamp(3.2rem,10vw,7.4rem)] leading-[0.88] tracking-[-0.06em] text-[var(--pictures-ink-strong)]"
+                style={{ fontFamily: 'var(--pictures-font-serif), Georgia, serif' }}
+              >
+                Pictures
+              </h1>
+              <p className="mt-6 max-w-2xl text-sm leading-7 text-[var(--pictures-ink)] sm:text-base">
+                让图片像被安静地陈列，而不是堆在一个组件里。留白、纸感与编目文字，才更适合这批图像的气质。
+              </p>
+            </div>
+
+            <div className="grid gap-4 text-[var(--pictures-ink)] sm:grid-cols-3 lg:grid-cols-1">
+              <div className="border-t pt-3" style={{ borderColor: 'var(--pictures-line-strong)' }}>
+                <p className="text-[0.68rem] uppercase tracking-[0.3em] text-[var(--pictures-muted)]">
+                  Frames
+                </p>
+                <p className="mt-2 text-2xl tracking-[-0.04em] text-[var(--pictures-ink-strong)]">{sorted.length}</p>
+              </div>
+              <div className="border-t pt-3" style={{ borderColor: 'var(--pictures-line-strong)' }}>
+                <p className="text-[0.68rem] uppercase tracking-[0.3em] text-[var(--pictures-muted)]">
+                  Span
+                </p>
+                <p className="mt-2 text-2xl tracking-[-0.04em] text-[var(--pictures-ink-strong)]">
+                  {earliestYear}
+                  {earliestYear !== latestYear ? ` - ${latestYear}` : ''}
+                </p>
+              </div>
+              <div className="border-t pt-3" style={{ borderColor: 'var(--pictures-line-strong)' }}>
+                <p className="text-[0.68rem] uppercase tracking-[0.3em] text-[var(--pictures-muted)]">
+                  Mode
+                </p>
+                <p className="mt-2 text-2xl tracking-[-0.04em] text-[var(--pictures-ink-strong)]">Editorial</p>
+              </div>
+            </div>
+          </motion.header>
+
+          {featuredItem ? (
+            <motion.section
+              className="grid gap-5 lg:grid-cols-[minmax(0,1.4fr)_minmax(280px,0.72fr)] lg:items-start"
+              initial={{ opacity: 0, y: 24 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.7, delay: 0.08, ease: [0.22, 1, 0.36, 1] }}
+            >
+              <button
+                type="button"
+                onClick={() => openPreview(featuredItem)}
+                className="group relative block overflow-hidden rounded-[2rem] border text-left transition-transform duration-500 ease-out hover:-translate-y-1 focus-visible:outline-none focus-visible:ring-2"
+                style={{
+                  borderColor: 'var(--pictures-line)',
+                  backgroundColor: 'var(--pictures-bg-soft)',
+                  boxShadow: '0 26px 80px var(--pictures-shadow-accent)',
+                  ['--tw-ring-color' as string]: 'color-mix(in srgb, var(--pictures-accent) 34%, transparent)',
+                }}
+              >
+                <div className="relative aspect-[16/11] w-full overflow-hidden rounded-[1.75rem]">
+                  <Image
+                    src={resolvePictureListSrc(featuredItem.src)}
+                    alt=""
+                    fill
+                    priority
+                    sizes="(max-width: 1024px) 100vw, 66vw"
+                    className="object-cover transition-transform duration-700 ease-out group-hover:scale-[1.035]"
+                    unoptimized={featuredItem.src.startsWith('http')}
+                  />
+                </div>
+                <div
+                  className="pointer-events-none absolute inset-x-0 bottom-0 px-6 pb-6 pt-16 text-[var(--theme-text-inverse)]"
+                  style={{
+                    background:
+                      'linear-gradient(to top, color-mix(in srgb, var(--theme-text-primary) 68%, transparent), color-mix(in srgb, var(--theme-text-primary) 24%, transparent), transparent)',
+                  }}
+                >
+                  <p
+                    className="text-[0.68rem] uppercase tracking-[0.34em]"
+                    style={{
+                      color: 'color-mix(in srgb, var(--theme-text-inverse) 68%, transparent)',
+                    }}
+                  >
+                    Featured Frame
+                  </p>
+                  <p
+                    className="mt-2 text-3xl leading-none tracking-[-0.05em] sm:text-4xl"
+                    style={{ fontFamily: 'var(--pictures-font-serif), Georgia, serif' }}
+                  >
+                    Quiet Material
+                  </p>
+                </div>
+              </button>
+
+              <div
+                className="flex h-full flex-col justify-between gap-6 rounded-[2rem] border p-6 sm:p-8"
+                style={{
+                  borderColor: 'var(--pictures-line)',
+                  backgroundColor: 'var(--pictures-panel)',
+                  boxShadow: '0 18px 60px var(--pictures-shadow)',
+                }}
+              >
+                <div>
+                  <p className="text-[0.7rem] uppercase tracking-[0.34em] text-[var(--pictures-muted)]">
+                    Curator&apos;s Note
+                  </p>
+                  <p
+                    className="mt-4 text-3xl leading-[1.05] tracking-[-0.05em] text-[var(--pictures-ink-strong)] sm:text-4xl"
+                    style={{ fontFamily: 'var(--pictures-font-serif), Georgia, serif' }}
+                  >
+                    用更平静的节奏，放大图像本身的质地。
+                  </p>
+                  <p className="mt-5 max-w-md text-sm leading-7 text-[var(--pictures-ink)]">
+                    这页不再强调可拖拽的趣味，而是强调编排、呼吸感与观看顺序。每张图都有更从容的落点，整体更像一个小型线上展陈。
+                  </p>
+                </div>
+
+                <div
+                  className="grid gap-4 border-t pt-5 text-sm text-[var(--pictures-ink)]"
+                  style={{ borderColor: 'var(--pictures-line)' }}
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="uppercase tracking-[0.24em] text-[0.68rem] text-[var(--pictures-muted)]">
+                      Date
+                    </span>
+                    <span>{formatDateLabel(featuredItem.date)}</span>
+                  </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="uppercase tracking-[0.24em] text-[0.68rem] text-[var(--pictures-muted)]">
+                      Sequence
+                    </span>
+                    <span>Frame 01</span>
+                  </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="uppercase tracking-[0.24em] text-[0.68rem] text-[var(--pictures-muted)]">
+                      Access
+                    </span>
+                    <span>Tap to open</span>
+                  </div>
+                </div>
+              </div>
+            </motion.section>
+          ) : null}
+
+          <section
+            className="grid gap-6 border-t pt-8 lg:grid-cols-[220px_minmax(0,1fr)] lg:gap-10"
+            style={{ borderColor: 'var(--pictures-line)' }}
+          >
+            <div className="lg:sticky lg:top-28 lg:self-start">
+              <p className="text-[0.68rem] uppercase tracking-[0.34em] text-[var(--pictures-muted)]">
+                Archive Index
+              </p>
+              <p
+                className="mt-3 text-2xl tracking-[-0.04em] text-[var(--pictures-ink-strong)]"
+                style={{ fontFamily: 'var(--pictures-font-serif), Georgia, serif' }}
+              >
+                Selected works
+              </p>
+              <p className="mt-4 max-w-[18rem] text-sm leading-7 text-[var(--pictures-ink)]">
+                图片以不对称的节奏被排列。没有厚重卡片边框，只有更轻的编目感和更大的观看空间。
+              </p>
+            </div>
+
+            <div className="columns-1 gap-5 sm:columns-2 xl:columns-3">
+              {galleryItems.map((item, index) => (
+                <motion.button
+                  key={item.id}
+                  type="button"
+                  onClick={() => openPreview(item)}
+                  className="group mb-5 block w-full break-inside-avoid overflow-hidden rounded-[1.6rem] border p-2 text-left transition-transform duration-500 ease-out hover:-translate-y-1 focus-visible:outline-none focus-visible:ring-2"
+                  style={{
+                    borderColor: 'var(--pictures-line)',
+                    backgroundColor: 'var(--pictures-panel-soft)',
+                    boxShadow: '0 16px 45px var(--pictures-shadow)',
+                    ['--tw-ring-color' as string]: 'color-mix(in srgb, var(--pictures-accent) 28%, transparent)',
+                  }}
+                  initial={{ opacity: 0, y: 18 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{
+                    duration: 0.52,
+                    delay: Math.min(index * 0.05, 0.35),
+                    ease: [0.22, 1, 0.36, 1],
+                  }}
+                >
+                  <figure className="overflow-hidden rounded-[1.2rem]" style={{ backgroundColor: 'var(--pictures-bg-muted)' }}>
+                    <div
+                      className="relative w-full overflow-hidden"
+                      style={{ aspectRatio: aspectPattern[index % aspectPattern.length] }}
+                    >
+                      <Image
+                        src={resolvePictureListSrc(item.src)}
+                        alt=""
+                        fill
+                        sizes="(max-width: 640px) 100vw, (max-width: 1280px) 50vw, 33vw"
+                        className="object-cover transition-transform duration-700 ease-out group-hover:scale-[1.04]"
+                        unoptimized={item.src.startsWith('http')}
+                      />
+                    </div>
+                    <figcaption className="flex items-end justify-between gap-4 px-4 pb-4 pt-3 text-[var(--pictures-ink)]">
+                      <div>
+                        <p className="text-[0.68rem] uppercase tracking-[0.28em] text-[var(--pictures-muted)]">
+                          No.{String(index + 2).padStart(2, '0')}
+                        </p>
+                        <p
+                          className="mt-1 text-xl leading-none tracking-[-0.04em] text-[var(--pictures-ink-strong)]"
+                          style={{ fontFamily: 'var(--pictures-font-serif), Georgia, serif' }}
+                        >
+                          Study
+                        </p>
+                      </div>
+                      <p className="text-xs text-[var(--pictures-muted)]">{formatDateLabel(item.date)}</p>
+                    </figcaption>
+                  </figure>
+                </motion.button>
+              ))}
+            </div>
+          </section>
+        </div>
+      </section>
+
       <Lightbox
         open={previewIndex >= 0}
         close={() => setPreviewIndex(-1)}
@@ -351,6 +352,11 @@ export function PictureStack({ items, className }: PictureStackProps) {
         index={previewIndex >= 0 ? previewIndex : 0}
         plugins={[Zoom]}
         controller={{ closeOnBackdropClick: true }}
+        styles={{
+          container: {
+            backgroundColor: 'var(--pictures-lightbox)',
+          },
+        }}
       />
     </>
   )
