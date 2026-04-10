@@ -36,6 +36,14 @@ const cardComponents = {
   [CardType.COUNTDOWN]: lazy(() => import('./cards/CountdownCard').then(m => ({ default: m.CountdownCard }))),
 }
 
+const CARD_HOVER_SCALE = 1.045
+const CARD_HOVER_TRANSITION = {
+  type: 'spring' as const,
+  stiffness: 540,
+  damping: 24,
+  mass: 0.55,
+}
+
 function CardPlaceholder() {
   return (
     <div className="flex h-full w-full items-center justify-center">
@@ -146,6 +154,7 @@ export function DashboardCard({ card, animationIndex }: DashboardCardProps) {
         zIndex: isDragging || isResizing ? 1000 : card.position.z,
         borderRadius: hideCardContainer ? 0 : borderRadius,
         padding: hideCardContainer ? 0 : padding,
+        willChange: !isEditMode && !isDragging && !isResizing ? 'transform' : undefined,
       }}
       initial={{ scale: 0, opacity: 0, x: position.x, y: position.y }}
       animate={{
@@ -173,7 +182,14 @@ export function DashboardCard({ card, animationIndex }: DashboardCardProps) {
       onAnimationComplete={() => {
         if (!hasAnimated) setHasAnimated(true)
       }}
-      whileHover={!isEditMode ? { scale: 1.02 } : undefined}
+      whileHover={
+        !isEditMode
+          ? {
+              scale: CARD_HOVER_SCALE,
+              transition: CARD_HOVER_TRANSITION,
+            }
+          : undefined
+      }
       className={`
         card group relative
         ${hideCardContainer ? '' : 'squircle bg-surface-glass border border-line-glass backdrop-blur-lg [box-shadow:0_20px_40px_-10px_rgba(0,0,0,0.1),inset_0_1px_0_rgba(255,255,255,0.7)]'}
