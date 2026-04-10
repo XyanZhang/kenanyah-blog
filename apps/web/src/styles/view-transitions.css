@@ -1,25 +1,61 @@
 /* View Transition API Animations */
 
-/* Main navigation container transition */
-::view-transition-old(main-nav),
-::view-transition-new(main-nav) {
-  animation-duration: 400ms;
-  animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+:root {
+  --vt-duration-medium: 300ms;
+  --vt-ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Navigation icon transitions - smooth position morphing */
+/* Shared timing for navigation/content transitions so they match the rest of the home UI rhythm. */
+::view-transition-group(main-nav),
+::view-transition-group(nav-avatar),
+::view-transition-group(nav-name),
+::view-transition-group(nav-icon-home),
+::view-transition-group(nav-icon-blog),
+::view-transition-group(nav-icon-search),
+::view-transition-group(nav-icon-about),
+::view-transition-group(nav-icon-pictures),
+::view-transition-group(nav-icon-projects),
+::view-transition-group(nav-icon-works),
+::view-transition-group(nav-icon-thoughts),
+::view-transition-group(nav-icon-bookmarks),
+::view-transition-group(nav-label-home),
+::view-transition-group(nav-label-blog),
+::view-transition-group(nav-label-search),
+::view-transition-group(nav-label-about),
+::view-transition-group(nav-label-pictures),
+::view-transition-group(nav-label-projects),
+::view-transition-group(nav-label-works),
+::view-transition-group(nav-label-thoughts),
+::view-transition-group(nav-label-bookmarks),
+::view-transition-group(page-content),
+::view-transition-old(main-nav),
+::view-transition-new(main-nav),
+::view-transition-old(nav-avatar),
+::view-transition-new(nav-avatar),
+::view-transition-old(nav-name),
+::view-transition-new(nav-name),
 ::view-transition-old(nav-icon-home),
 ::view-transition-new(nav-icon-home),
 ::view-transition-old(nav-icon-blog),
 ::view-transition-new(nav-icon-blog),
+::view-transition-old(nav-icon-search),
+::view-transition-new(nav-icon-search),
 ::view-transition-old(nav-icon-about),
 ::view-transition-new(nav-icon-about),
 ::view-transition-old(nav-icon-pictures),
 ::view-transition-new(nav-icon-pictures),
 ::view-transition-old(nav-icon-projects),
-::view-transition-new(nav-icon-projects) {
-  animation-duration: 350ms;
-  animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+::view-transition-new(nav-icon-projects),
+::view-transition-old(nav-icon-works),
+::view-transition-new(nav-icon-works),
+::view-transition-old(nav-icon-thoughts),
+::view-transition-new(nav-icon-thoughts),
+::view-transition-old(nav-icon-bookmarks),
+::view-transition-new(nav-icon-bookmarks),
+::view-transition-old(page-content),
+::view-transition-new(page-content) {
+  animation-duration: var(--vt-duration-medium);
+  animation-timing-function: var(--vt-ease-standard);
 }
 
 /* Navigation label transitions - fade effect */
@@ -47,18 +83,26 @@
 
 ::view-transition-old(nav-label-home),
 ::view-transition-old(nav-label-blog),
+::view-transition-old(nav-label-search),
 ::view-transition-old(nav-label-about),
 ::view-transition-old(nav-label-pictures),
-::view-transition-old(nav-label-projects) {
-  animation: label-fade-out 200ms ease-out both;
+::view-transition-old(nav-label-projects),
+::view-transition-old(nav-label-works),
+::view-transition-old(nav-label-thoughts),
+::view-transition-old(nav-label-bookmarks) {
+  animation: label-fade-out var(--vt-duration-medium) var(--vt-ease-standard) both;
 }
 
 ::view-transition-new(nav-label-home),
 ::view-transition-new(nav-label-blog),
+::view-transition-new(nav-label-search),
 ::view-transition-new(nav-label-about),
 ::view-transition-new(nav-label-pictures),
-::view-transition-new(nav-label-projects) {
-  animation: label-fade-in 200ms ease-out 150ms both;
+::view-transition-new(nav-label-projects),
+::view-transition-new(nav-label-works),
+::view-transition-new(nav-label-thoughts),
+::view-transition-new(nav-label-bookmarks) {
+  animation: label-fade-in var(--vt-duration-medium) var(--vt-ease-standard) both;
 }
 
 /* Page content transition */
@@ -85,11 +129,11 @@
 }
 
 ::view-transition-old(page-content) {
-  animation: slide-to-left 250ms ease-out both;
+  animation: slide-to-left var(--vt-duration-medium) var(--vt-ease-standard) both;
 }
 
 ::view-transition-new(page-content) {
-  animation: slide-from-right 250ms ease-out both;
+  animation: slide-from-right var(--vt-duration-medium) var(--vt-ease-standard) both;
 }
 
 /* Accessibility: Reduce motion for users who prefer it */

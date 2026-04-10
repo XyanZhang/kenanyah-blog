@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useRef, useCallback, useEffect, useLayoutEffect } from 'react'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
+import type { Route } from 'next'
 import Image from 'next/image'
 import { cn } from '@/lib/utils'
 import { useDashboard } from '@/hooks/useDashboard'
@@ -32,6 +33,7 @@ function useProfileAvatarFromLayout(): string {
 
 export function Nav() {
   const pathname = usePathname()
+  const router = useRouter()
   const { isEditMode } = useDashboard()
   const { config, updatePosition, updateSize, setResizing } = useNavStore()
   const avatarSrc = useProfileAvatarFromLayout()
@@ -54,6 +56,11 @@ export function Nav() {
   const [hasMeasuredSize, setHasMeasuredSize] = useState(false)
   const [layoutJustChanged, setLayoutJustChanged] = useState(false)
   const rafIdRef = useRef<number | null>(null)
+  const pendingViewTransitionRef = useRef<{
+    href: string
+    resolve: () => void
+    timeoutId: ReturnType<typeof setTimeout>
+  } | null>(null)
   
   // Store current indicator position to avoid unnecessary updates
   const indicatorPositionRef = useRef<{
@@ -273,7 +280,7 @@ export function Nav() {
       frames.forEach((id) => id != null && cancelAnimationFrame(id))
     }
   }, [pathname, updateIndicatorToActive])
-  
+
   // Cleanup on unmount
   useEffect(() => {
     return () => {
@@ -288,7 +295,53 @@ export function Nav() {
     updateIndicatorToActive()
   }, [updateIndicatorToActive])
 
-  const showViewTransition = false
+  const handleInternalNavigate = useCallback(
+    (href: string, event: { preventDefault: () => void }) => {
+      if (
+        isEditMode ||
+        href === pathname ||
+        typeof document.startViewTransition !== 'function'
+      ) {
+        return
+      }
+
+      event.preventDefault()
+
+      const existingTransition = pendingViewTransitionRef.current
+      if (existingTransition) {
+        clearTimeout(existingTransition.timeoutId)
+        existingTransition.resolve()
+        pendingViewTransitionRef.current = null
+      }
+
+      const readyPromise = new Promise<void>((resolve) => {
+        const timeoutId = setTimeout(() => {
+          if (pendingViewTransitionRef.current?.href === href) {
+            pendingViewTransitionRef.current.resolve()
+            pendingViewTransitionRef.current = null
+          }
+        }, 1500)
+
+        pendingViewTransitionRef.current = { href, resolve, timeoutId }
+      })
+
+      const transition = document.startViewTransition(async () => {
+        router.push(href as Route)
+        await readyPromise
+      })
+
+      void transition.finished.finally(() => {
+        const currentPending = pendingViewTransitionRef.current
+        if (currentPending?.href === href) {
+          clearTimeout(currentPending.timeoutId)
+          pendingViewTransitionRef.current = null
+        }
+      })
+    },
+    [isEditMode, pathname, router]
+  )
+
+  const showViewTransition = !isEditMode
 
   // 首页：画布坐标系，左上角为原点；非首页：横向顶部
   const position = isHomepage ? config.verticalPosition : config.horizontalPosition
@@ -307,6 +360,26 @@ export function Nav() {
   const isReady =
     (!isHomepage || hasRealViewport) &&
     (config.customSize ? true : hasMeasuredSize || !isHomepage)
+
+  useEffect(() => {
+    const pending = pendingViewTransitionRef.current
+    if (!pending || pending.href !== pathname || !isReady || layoutJustChanged) {
+      return
+    }
+
+    const frameId = requestAnimationFrame(() => {
+      const currentPending = pendingViewTransitionRef.current
+      if (!currentPending || currentPending.href !== pathname) {
+        return
+      }
+
+      clearTimeout(currentPending.timeoutId)
+      currentPending.resolve()
+      pendingViewTransitionRef.current = null
+    })
+
+    return () => cancelAnimationFrame(frameId)
+  }, [isReady, layoutJustChanged, pathname])
 
   return (
     <nav
@@ -424,6 +497,7 @@ export function Nav() {
             isAnyHovered={hoverIndex !== null}
             isCompact={!isHomepage}
             onMouseEnter={(el) => handleMouseEnter(index, el)}
+            onNavigate={handleInternalNavigate}
           />
         ))}
       </div>
