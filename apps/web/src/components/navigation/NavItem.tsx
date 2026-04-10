@@ -28,7 +28,6 @@ interface NavItemProps {
   isAnyHovered: boolean
   isCompact?: boolean
   onMouseEnter: (element: HTMLElement) => void
-  onNavigate?: (href: string, event: { preventDefault: () => void }) => void
 }
 
 export function NavItem({
@@ -38,7 +37,6 @@ export function NavItem({
   isAnyHovered,
   isCompact = false,
   onMouseEnter,
-  onNavigate,
 }: NavItemProps) {
   const IconComponent = iconMap[item.icon]
   const shouldHighlight = isAnyHovered ? isHovered : isActive
@@ -120,7 +118,6 @@ export function NavItem({
           : 'text-content-tertiary'
       )}
       onMouseEnter={(e) => handleMouseEnter(e.currentTarget)}
-      onNavigate={(event) => onNavigate?.(item.href, event)}
     >
       {content}
     </Link>
