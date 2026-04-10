@@ -22,7 +22,8 @@ export function Slider({
   className,
   disabled = false,
 }: SliderProps) {
-  const percentage = ((value - min) / (max - min)) * 100
+  const range = max - min
+  const percentage = range <= 0 ? 0 : ((value - min) / range) * 100
 
   return (
     <div className={cn('relative flex w-full touch-none select-none items-center', className)}>
