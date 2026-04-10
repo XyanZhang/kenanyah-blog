@@ -2,7 +2,11 @@
 
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { getDefaultNavItemsConfig, type NavItemConfig } from '@/components/navigation/nav-items'
+import {
+  getDefaultNavItemsConfig,
+  mergeNavItemsWithDefaults,
+  type NavItemConfig,
+} from '@/components/navigation/nav-items'
 
 export interface NavConfig {
   horizontalPosition: { x: number; y: number }
@@ -83,7 +87,7 @@ export const useNavStore = create<NavState>()(
         set((state) => {
           const merged = { ...DEFAULT_CONFIG, ...state.config, ...config } as NavConfig
           if (config.items?.length) {
-            merged.items = config.items
+            merged.items = mergeNavItemsWithDefaults(config.items)
           } else if (config.visibleItems?.length && (!state.config.items?.length || state.config.items.every((i) => i.visible === undefined))) {
             const defaultItems = getDefaultNavItemsConfig()
             merged.items = defaultItems.map((item) => ({
@@ -92,6 +96,8 @@ export const useNavStore = create<NavState>()(
             }))
           } else if (!merged.items?.length) {
             merged.items = getDefaultNavItemsConfig()
+          } else {
+            merged.items = mergeNavItemsWithDefaults(merged.items)
           }
           return { config: merged }
         })
@@ -145,7 +151,7 @@ export const useNavStore = create<NavState>()(
             visible: persisted.config!.visibleItems!.includes(item.id),
           }))
         }
-        if (!items?.length) items = getDefaultNavItemsConfig()
+        items = mergeNavItemsWithDefaults(items)
         return {
           ...current,
           ...persisted,
@@ -179,6 +185,15 @@ export const useNavStore = create<NavState>()(
                 ...item,
                 visible: old.config!.visibleItems!.includes(item.id),
               })),
+            },
+          }
+        }
+        if (old?.config && 'items' in old.config && Array.isArray(old.config.items)) {
+          return {
+            ...old,
+            config: {
+              ...old.config,
+              items: mergeNavItemsWithDefaults(old.config.items),
             },
           }
         }

@@ -35,6 +35,27 @@ export function getDefaultNavItemsConfig(): NavItemConfig[] {
   return DEFAULT_NAV_ITEMS.map((item) => ({ ...item }))
 }
 
+export function mergeNavItemsWithDefaults(items?: NavItemConfig[]): NavItemConfig[] {
+  const defaults = getDefaultNavItemsConfig()
+  if (!items?.length) {
+    return defaults
+  }
+
+  const itemMap = new Map(items.map((item) => [item.id, item]))
+  const merged = items.map((item) => {
+    const defaultItem = defaults.find((candidate) => candidate.id === item.id)
+    return defaultItem ? { ...defaultItem, ...item } : item
+  })
+
+  defaults.forEach((defaultItem) => {
+    if (!itemMap.has(defaultItem.id)) {
+      merged.push(defaultItem)
+    }
+  })
+
+  return merged
+}
+
 /** 兼容旧代码：仅含 id/label/href/icon 的列表 */
 export const navItems: NavItem[] = DEFAULT_NAV_ITEMS.map(
   ({ id, label, href, icon }) =>
