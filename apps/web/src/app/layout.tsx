@@ -7,7 +7,6 @@ import { FloatingActionsProvider } from '@/components/providers/FloatingActionsP
 import { ThemeSwitcher } from '@/components/theme/ThemeSwitcher'
 import { RootAlignmentGuides } from '@/components/layout/RootAlignmentGuides'
 import { ToastProvider } from '@/components/providers/ToastProvider'
-import { SmokeEffect } from '@/components/background/SmokeEffect'
 import { GlobalSearch } from '@/components/search/GlobalSearch'
 import { MusicPlayerProvider } from '@/components/music/MusicPlayerProvider'
 import { MusicPlayerGlobal } from '@/components/music/MusicPlayerGlobal'
@@ -72,7 +71,6 @@ export default function RootLayout({
       <body>
         <ThemeProvider>
           <FloatingActionsProvider>
-            <SmokeEffect />
             <div className="frosted-overlay" />
             <Nav />
             <GlobalSearch />
