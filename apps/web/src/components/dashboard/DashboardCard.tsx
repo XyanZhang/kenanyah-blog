@@ -37,11 +37,36 @@ const cardComponents = {
 }
 
 const CARD_HOVER_SCALE = 1.045
+const CARD_POSITION_SPRING = {
+  type: 'spring' as const,
+  stiffness: 300,
+  damping: 28,
+  mass: 0.88,
+}
+
+const CARD_INTERACTION_TRANSITION = {
+  duration: 0,
+}
+
+const CARD_SIZE_SPRING = {
+  type: 'spring' as const,
+  stiffness: 320,
+  damping: 30,
+  mass: 0.9,
+}
+
+const CARD_ENTRANCE_SPRING = {
+  type: 'spring' as const,
+  stiffness: 260,
+  damping: 24,
+  mass: 0.95,
+}
+
 const CARD_HOVER_TRANSITION = {
   type: 'spring' as const,
-  stiffness: 540,
-  damping: 24,
-  mass: 0.55,
+  stiffness: 430,
+  damping: 26,
+  mass: 0.72,
 }
 
 function CardPlaceholder() {
@@ -142,40 +167,55 @@ export function DashboardCard({ card, animationIndex }: DashboardCardProps) {
   )
 
   // Animation delay based on priority
-  const animationDelay = animationIndex * 0.15
+  const animationDelay = animationIndex * 0.08
 
   return (
     <motion.div
       ref={combinedRef}
       style={{
         position: 'absolute',
-        width: isAutoSize ? 'fit-content' : currentDimensions.width,
-        height: isAutoSize ? 'fit-content' : currentDimensions.height,
+        width: isAutoSize ? 'fit-content' : undefined,
+        height: isAutoSize ? 'fit-content' : undefined,
         zIndex: isDragging || isResizing ? 1000 : card.position.z,
         borderRadius: hideCardContainer ? 0 : borderRadius,
         padding: hideCardContainer ? 0 : padding,
-        willChange: !isEditMode && !isDragging && !isResizing ? 'transform' : undefined,
+        willChange: !isEditMode && !isDragging && !isResizing ? 'transform, width, height, opacity' : undefined,
       }}
-      initial={{ scale: 0, opacity: 0, x: position.x, y: position.y }}
+      initial={{
+        scale: 0.94,
+        opacity: 0,
+        x: position.x,
+        y: position.y + 18,
+        ...(isAutoSize
+          ? {}
+          : {
+              width: currentDimensions.width,
+              height: currentDimensions.height,
+            }),
+      }}
       animate={{
         x: position.x,
         y: position.y,
         scale: 1,
-        opacity: isDragging ? 0.8 : 1,
+        opacity: isDragging ? 0.88 : 1,
+        ...(isAutoSize
+          ? {}
+          : {
+              width: currentDimensions.width,
+              height: currentDimensions.height,
+            }),
       }}
       transition={{
-        x: { type: 'spring', stiffness: isDragging || isResizing ? 500 : 260, damping: isDragging || isResizing ? 30 : 20 },
-        y: { type: 'spring', stiffness: isDragging || isResizing ? 500 : 260, damping: isDragging || isResizing ? 30 : 20 },
+        x: isDragging || isResizing ? CARD_INTERACTION_TRANSITION : CARD_POSITION_SPRING,
+        y: isDragging || isResizing ? CARD_INTERACTION_TRANSITION : CARD_POSITION_SPRING,
+        width: isAutoSize || isResizing ? CARD_INTERACTION_TRANSITION : CARD_SIZE_SPRING,
+        height: isAutoSize || isResizing ? CARD_INTERACTION_TRANSITION : CARD_SIZE_SPRING,
         scale: {
-          type: 'spring',
-          stiffness: 260,
-          damping: 20,
+          ...CARD_ENTRANCE_SPRING,
           delay: hasAnimated ? 0 : animationDelay,
         },
         opacity: {
-          type: 'spring',
-          stiffness: 260,
-          damping: 20,
+          ...CARD_ENTRANCE_SPRING,
           delay: hasAnimated ? 0 : animationDelay,
         },
       }}
@@ -185,7 +225,7 @@ export function DashboardCard({ card, animationIndex }: DashboardCardProps) {
       whileHover={
         !isEditMode
           ? {
-              scale: CARD_HOVER_SCALE,
+              scale: navigateTo ? CARD_HOVER_SCALE : 1.025,
               transition: CARD_HOVER_TRANSITION,
             }
           : undefined

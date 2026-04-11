@@ -77,7 +77,7 @@ export default function RootLayout({
             <Nav />
             <GlobalSearch />
             <ScrollToTop />
-            <div style={{ viewTransitionName: 'page-content' }}>{children}</div>
+            <div>{children}</div>
             <MusicPlayerProvider />
             <MusicPlayerGlobal />
             <ToastProvider />

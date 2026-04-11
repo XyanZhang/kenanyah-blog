@@ -1,7 +1,6 @@
 /* 博客详情页字体：霞鹜文楷（LXGW WenKai），在 layout.tsx 用 next/font/google 加载 */
 
 @import 'tailwindcss';
-@import './view-transitions.css';
 @import './themes.css';
 
 @theme {
