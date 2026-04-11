@@ -1,9 +1,9 @@
 'use client'
 
-import { useState, useRef, useCallback, useEffect, useMemo } from 'react'
+import { useState, useRef, useCallback, useEffect, useLayoutEffect, useMemo } from 'react'
 import { usePathname } from 'next/navigation'
 import Image from 'next/image'
-import { LayoutGroup, motion } from 'framer-motion'
+import { motion } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import { useDashboard } from '@/hooks/useDashboard'
 import { useDashboardStore } from '@/store/dashboard-store'
@@ -45,6 +45,13 @@ const NAV_TEXT_TRANSITION = {
 
 const NAV_CONTENT_SWAP_DELAY_MS = 0
 
+const NAV_INDICATOR_SPRING = {
+  type: 'spring' as const,
+  stiffness: 420,
+  damping: 32,
+  mass: 0.75,
+}
+
 /** 从首页布局中取 Profile 卡片的头像配置，与主卡片保持同步 */
 function useProfileAvatarFromLayout(): string {
   const layout = useDashboardStore((s) => s.layout)
@@ -64,9 +71,17 @@ export function Nav() {
   const [contentMode, setContentMode] = useState<'home' | 'compact'>(targetMode)
   const { scale, translateX, translateY, setViewportSize, hasRealViewport } = useHomeCanvasStore()
   const navRef = useRef<HTMLElement>(null)
+  const navItemsRef = useRef<HTMLDivElement>(null)
   const contentModeTimerRef = useRef<number | null>(null)
   const previousTargetModeRef = useRef<'home' | 'compact'>(targetMode)
   const [hoverIndex, setHoverIndex] = useState<number | null>(null)
+  const [indicatorRect, setIndicatorRect] = useState({
+    x: 0,
+    y: 0,
+    width: 0,
+    height: 0,
+    opacity: 0,
+  })
   const [measuredSizes, setMeasuredSizes] = useState({
     home: { width: 200, height: 60 },
     compact: { width: 200, height: 60 },
@@ -254,6 +269,87 @@ export function Nav() {
     hoverIndex ?? visibleNavItems.findIndex((item) => item.href === pathname)
   const animateShell = isReady && !isDragging && !isResizing
 
+  useLayoutEffect(() => {
+    const container = navItemsRef.current
+    if (!container || highlightedIndex < 0) {
+      setIndicatorRect((current) =>
+        current.opacity === 0
+          ? current
+          : {
+              ...current,
+              opacity: 0,
+            }
+      )
+      return
+    }
+
+    const target = container.querySelector<HTMLElement>(`[data-nav-item-index="${highlightedIndex}"]`)
+    if (!target) {
+      setIndicatorRect((current) =>
+        current.opacity === 0
+          ? current
+          : {
+              ...current,
+              opacity: 0,
+            }
+      )
+      return
+    }
+
+    const containerRect = container.getBoundingClientRect()
+    const targetRect = target.getBoundingClientRect()
+    const nextRect = {
+      x: targetRect.left - containerRect.left,
+      y: targetRect.top - containerRect.top,
+      width: targetRect.width,
+      height: targetRect.height,
+      opacity: 1,
+    }
+
+    setIndicatorRect((current) => {
+      if (
+        Math.abs(current.x - nextRect.x) < 0.5 &&
+        Math.abs(current.y - nextRect.y) < 0.5 &&
+        Math.abs(current.width - nextRect.width) < 0.5 &&
+        Math.abs(current.height - nextRect.height) < 0.5 &&
+        current.opacity === nextRect.opacity
+      ) {
+        return current
+      }
+
+      return nextRect
+    })
+  }, [highlightedIndex, pathname, isVisualHomepage, visibleNavItems.length])
+
+  useEffect(() => {
+    const container = navItemsRef.current
+    if (!container) return
+
+    const updateIndicator = () => {
+      if (highlightedIndex < 0) return
+      const target = container.querySelector<HTMLElement>(`[data-nav-item-index="${highlightedIndex}"]`)
+      if (!target) return
+
+      const containerRect = container.getBoundingClientRect()
+      const targetRect = target.getBoundingClientRect()
+      setIndicatorRect({
+        x: targetRect.left - containerRect.left,
+        y: targetRect.top - containerRect.top,
+        width: targetRect.width,
+        height: targetRect.height,
+        opacity: 1,
+      })
+    }
+
+    const observer = new ResizeObserver(updateIndicator)
+    observer.observe(container)
+    Array.from(container.children).forEach((child) => observer.observe(child))
+
+    return () => {
+      observer.disconnect()
+    }
+  }, [highlightedIndex, isVisualHomepage, visibleNavItems.length])
+
   return (
     <motion.div
       initial={false}
@@ -327,26 +423,38 @@ export function Nav() {
           ) : null}
         </div>
 
-        <LayoutGroup id="main-nav-items">
-          <div
-            data-nav-items
-            className={cn(
-              'relative flex min-w-0 flex-1 overflow-hidden',
-              isVisualHomepage ? 'min-w-30 flex-col justify-center gap-1' : 'flex-row items-center gap-0'
-            )}
-          >
-            {visibleNavItems.map((item, index) => (
-              <NavItem
-                key={item.id}
-                item={item}
-                isActive={pathname === item.href}
-                isHighlighted={highlightedIndex === index}
-                isCompact={!isVisualHomepage}
-                onMouseEnter={() => handleMouseEnter(index)}
-              />
-            ))}
-          </div>
-        </LayoutGroup>
+        <div
+          ref={navItemsRef}
+          data-nav-items
+          className={cn(
+            'relative flex min-w-0 flex-1 overflow-hidden',
+            isVisualHomepage ? 'min-w-30 flex-col justify-center gap-1' : 'flex-row items-center gap-0'
+          )}
+        >
+          <motion.div
+            aria-hidden
+            className="pointer-events-none absolute rounded-xl bg-accent-primary-light"
+            animate={indicatorRect}
+            transition={NAV_INDICATOR_SPRING}
+            style={{
+              left: 0,
+              top: 0,
+              willChange: 'transform, width, height, opacity',
+            }}
+          />
+
+          {visibleNavItems.map((item, index) => (
+            <NavItem
+              key={item.id}
+              index={index}
+              item={item}
+              isActive={pathname === item.href}
+              isHighlighted={highlightedIndex === index}
+              isCompact={!isVisualHomepage}
+              onMouseEnter={() => handleMouseEnter(index)}
+            />
+          ))}
+        </div>
 
         {isEditMode && <ResizeHandles onResizeStart={handleResizeStart} />}
       </nav>

@@ -2,7 +2,6 @@
 
 import Link from 'next/link'
 import type { Route } from 'next'
-import { motion } from 'framer-motion'
 import { Home, FileText, Search, User, Camera, FolderOpen, LayoutGrid, MessageCircle, Bookmark, LucideIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { NavItem as NavItemType } from './nav-items'
@@ -21,21 +20,8 @@ const iconMap: Record<string, LucideIcon> = {
   Bookmark,
 }
 
-const NAV_INDICATOR_SPRING = {
-  type: 'spring' as const,
-  stiffness: 420,
-  damping: 32,
-  mass: 0.75,
-}
-
-const NAV_ITEM_LAYOUT_SPRING = {
-  type: 'spring' as const,
-  stiffness: 380,
-  damping: 30,
-  mass: 0.82,
-}
-
 interface NavItemProps {
+  index: number
   item: NavItemType
   isActive: boolean
   isHighlighted: boolean
@@ -44,6 +30,7 @@ interface NavItemProps {
 }
 
 export function NavItem({
+  index,
   item,
   isActive,
   isHighlighted,
@@ -79,42 +66,32 @@ export function NavItem({
   )
 
   const content = (
-    <>
-      {isHighlighted ? (
-        <motion.div
-          layoutId="main-nav-indicator"
-          className="absolute inset-0 rounded-xl bg-accent-primary-light"
-          transition={NAV_INDICATOR_SPRING}
-        />
-      ) : null}
+    <div className={cn('relative z-10 flex items-center', isCompact ? 'justify-center' : 'gap-3')}>
+      <IconComponent
+        className={cn(
+          'h-5 w-5 transition-colors duration-150 ease-out',
+          isHighlighted
+            ? 'fill-accent-primary-dark text-accent-primary-dark'
+            : 'text-content-tertiary'
+        )}
+      />
 
-      <div className={cn('relative z-10 flex items-center', isCompact ? 'justify-center' : 'gap-3')}>
-        <IconComponent
+      {!isCompact ? (
+        <span
           className={cn(
-            'h-5 w-5 transition-colors duration-150 ease-out',
-            isHighlighted
-              ? 'fill-accent-primary-dark text-accent-primary-dark'
-              : 'text-content-tertiary'
+            'whitespace-nowrap text-sm font-medium transition-colors duration-150 ease-out',
+            isHighlighted ? 'text-accent-primary-dark' : 'text-accent-primary'
           )}
-        />
-
-        {!isCompact ? (
-          <span
-            className={cn(
-              'whitespace-nowrap text-sm font-medium transition-colors duration-150 ease-out',
-              isHighlighted ? 'text-accent-primary-dark' : 'text-accent-primary'
-            )}
-          >
-            {item.label}
-          </span>
-        ) : null}
-      </div>
-    </>
+        >
+          {item.label}
+        </span>
+      ) : null}
+    </div>
   )
 
   if (isExternal) {
     return (
-      <motion.div layout="position" transition={NAV_ITEM_LAYOUT_SPRING} className="relative">
+      <div data-nav-item-index={index} className="relative">
         <a
           href={item.href}
           target="_blank"
@@ -125,12 +102,12 @@ export function NavItem({
         >
           {content}
         </a>
-      </motion.div>
+      </div>
     )
   }
 
   return (
-    <motion.div layout="position" transition={NAV_ITEM_LAYOUT_SPRING} className="relative">
+    <div data-nav-item-index={index} className="relative">
       <Link
         href={item.href as Route}
         className={baseClassName}
@@ -140,6 +117,6 @@ export function NavItem({
       >
         {content}
       </Link>
-    </motion.div>
+    </div>
   )
 }
