@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import type { Route } from 'next'
-import { AnimatePresence, motion } from 'framer-motion'
+import { motion } from 'framer-motion'
 import { Home, FileText, Search, User, Camera, FolderOpen, LayoutGrid, MessageCircle, Bookmark, LucideIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { NavItem as NavItemType } from './nav-items'
@@ -21,13 +21,6 @@ const iconMap: Record<string, LucideIcon> = {
   Bookmark,
 }
 
-const NAV_ITEM_SPRING = {
-  type: 'spring' as const,
-  stiffness: 400,
-  damping: 34,
-  mass: 0.8,
-}
-
 const NAV_INDICATOR_SPRING = {
   type: 'spring' as const,
   stiffness: 420,
@@ -35,9 +28,11 @@ const NAV_INDICATOR_SPRING = {
   mass: 0.75,
 }
 
-const NAV_LABEL_TRANSITION = {
-  duration: 0.22,
-  ease: [0.22, 1, 0.36, 1] as const,
+const NAV_ITEM_LAYOUT_SPRING = {
+  type: 'spring' as const,
+  stiffness: 380,
+  damping: 30,
+  mass: 0.82,
 }
 
 interface NavItemProps {
@@ -103,30 +98,23 @@ export function NavItem({
           )}
         />
 
-        <AnimatePresence initial={false}>
-          {!isCompact ? (
-            <motion.span
-              key="label"
-              initial={{ opacity: 0, width: 0 }}
-              animate={{ opacity: 1, width: 'auto' }}
-              exit={{ opacity: 0, width: 0 }}
-              transition={NAV_LABEL_TRANSITION}
-              className={cn(
-                'overflow-hidden whitespace-nowrap text-sm font-medium transition-colors duration-150 ease-out',
-                isHighlighted ? 'text-accent-primary-dark' : 'text-accent-primary'
-              )}
-            >
-              {item.label}
-            </motion.span>
-          ) : null}
-        </AnimatePresence>
+        {!isCompact ? (
+          <span
+            className={cn(
+              'whitespace-nowrap text-sm font-medium transition-colors duration-150 ease-out',
+              isHighlighted ? 'text-accent-primary-dark' : 'text-accent-primary'
+            )}
+          >
+            {item.label}
+          </span>
+        ) : null}
       </div>
     </>
   )
 
   if (isExternal) {
     return (
-      <motion.div layout transition={NAV_ITEM_SPRING} className="relative">
+      <motion.div layout="position" transition={NAV_ITEM_LAYOUT_SPRING} className="relative">
         <a
           href={item.href}
           target="_blank"
@@ -142,7 +130,7 @@ export function NavItem({
   }
 
   return (
-    <motion.div layout transition={NAV_ITEM_SPRING} className="relative">
+    <motion.div layout="position" transition={NAV_ITEM_LAYOUT_SPRING} className="relative">
       <Link
         href={item.href as Route}
         className={baseClassName}

@@ -3,7 +3,7 @@
 import { useState, useRef, useCallback, useEffect, useMemo } from 'react'
 import { usePathname } from 'next/navigation'
 import Image from 'next/image'
-import { AnimatePresence, motion } from 'framer-motion'
+import { LayoutGroup, motion } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import { useDashboard } from '@/hooks/useDashboard'
 import { useDashboardStore } from '@/store/dashboard-store'
@@ -43,6 +43,8 @@ const NAV_TEXT_TRANSITION = {
   ease: [0.22, 1, 0.36, 1] as const,
 }
 
+const NAV_CONTENT_SWAP_DELAY_MS = 0
+
 /** 从首页布局中取 Profile 卡片的头像配置，与主卡片保持同步 */
 function useProfileAvatarFromLayout(): string {
   const layout = useDashboardStore((s) => s.layout)
@@ -58,20 +60,57 @@ export function Nav() {
   const avatarSrc = useProfileAvatarFromLayout()
 
   const isHomepage = pathname === '/'
+  const targetMode = isHomepage ? 'home' : 'compact'
+  const [contentMode, setContentMode] = useState<'home' | 'compact'>(targetMode)
   const { scale, translateX, translateY, setViewportSize, hasRealViewport } = useHomeCanvasStore()
   const navRef = useRef<HTMLElement>(null)
+  const contentModeTimerRef = useRef<number | null>(null)
+  const previousTargetModeRef = useRef<'home' | 'compact'>(targetMode)
   const [hoverIndex, setHoverIndex] = useState<number | null>(null)
-  const [navSize, setNavSize] = useState({ width: 200, height: 60 })
-  const [hasMeasuredSize, setHasMeasuredSize] = useState(false)
+  const [measuredSizes, setMeasuredSizes] = useState({
+    home: { width: 200, height: 60 },
+    compact: { width: 200, height: 60 },
+  })
+  const [hasMeasuredHomeSize, setHasMeasuredHomeSize] = useState(false)
+  const [hasMeasuredCompactSize, setHasMeasuredCompactSize] = useState(false)
 
   // 同步监听窗口 resize，确保缩小/放大窗口时 store 更新、布局跟随。
   // 即使当前不是首页，也提前同步视口尺寸，这样从其它页面跳转回首页时不会用到默认视口导致导航位置不一致。
+  useEffect(() => {
+    const previousTargetMode = previousTargetModeRef.current
+    previousTargetModeRef.current = targetMode
+
+    if (contentModeTimerRef.current !== null) {
+      clearTimeout(contentModeTimerRef.current)
+      contentModeTimerRef.current = null
+    }
+
+    if (previousTargetMode === targetMode) {
+      setContentMode(targetMode)
+      return
+    }
+
+    contentModeTimerRef.current = window.setTimeout(() => {
+      setContentMode(targetMode)
+      contentModeTimerRef.current = null
+    }, NAV_CONTENT_SWAP_DELAY_MS)
+
+    return () => {
+      if (contentModeTimerRef.current !== null) {
+        clearTimeout(contentModeTimerRef.current)
+        contentModeTimerRef.current = null
+      }
+    }
+  }, [targetMode])
+
   useEffect(() => {
     const sync = () => setViewportSize(window.innerWidth, window.innerHeight)
     sync()
     window.addEventListener('resize', sync)
     return () => window.removeEventListener('resize', sync)
   }, [setViewportSize])
+
+  const isVisualHomepage = contentMode === 'home'
 
   const visibleNavItems: NavItemType[] = useMemo(
     () =>
@@ -94,11 +133,30 @@ export function Nav() {
     if (navRef.current && !config.customSize) {
       const rect = navRef.current.getBoundingClientRect()
       if (rect.width > 0 && rect.height > 0) {
-        setNavSize({ width: rect.width, height: rect.height })
-        setHasMeasuredSize(true)
+        const nextSize = { width: rect.width, height: rect.height }
+        setMeasuredSizes((current) => {
+          const currentSize = current[contentMode]
+          if (
+            Math.abs(currentSize.width - nextSize.width) < 0.5 &&
+            Math.abs(currentSize.height - nextSize.height) < 0.5
+          ) {
+            return current
+          }
+
+            return {
+              ...current,
+              [contentMode]: nextSize,
+            }
+          })
+
+        if (contentMode === 'home') {
+          setHasMeasuredHomeSize(true)
+        } else {
+          setHasMeasuredCompactSize(true)
+        }
       }
     }
-  }, [config.customSize, visibleNavItems.length, isHomepage])
+  }, [config.customSize, visibleNavItems.length, isVisualHomepage, contentMode])
 
   useEffect(() => {
     setHoverIndex(null)
@@ -125,7 +183,7 @@ export function Nav() {
     disabled: !isEditMode,
   })
 
-  const baseSize = config.customSize || navSize
+  const baseSize = config.customSize || measuredSizes[contentMode]
   const {
     isResizing,
     currentSize,
@@ -177,7 +235,7 @@ export function Nav() {
   }, [])
 
   const position = isHomepage ? config.verticalPosition : config.horizontalPosition
-  const baseSizeForPosition = config.customSize || navSize
+  const baseSizeForPosition = config.customSize || measuredSizes[targetMode]
   const navCanvasLeft = CANVAS_WIDTH / 2 + position.x - baseSizeForPosition.width / 2
   const navCanvasTop = CANVAS_HEIGHT / 2 + position.y - baseSizeForPosition.height / 2
   const homeLeft = translateX + navCanvasLeft * scale + dragDelta.x + (isResizing ? resizePositionDelta.x : 0)
@@ -185,9 +243,10 @@ export function Nav() {
 
   const useFixedSize = Boolean(config.customSize) || isResizing
   const displaySize = useFixedSize ? currentSize : undefined
+  const hasMeasuredTargetSize = targetMode === 'home' ? hasMeasuredHomeSize : hasMeasuredCompactSize
   const isReady =
     (!isHomepage || hasRealViewport) &&
-    (config.customSize ? true : hasMeasuredSize || !isHomepage)
+    (config.customSize ? true : hasMeasuredTargetSize || !isHomepage)
 
   const targetX = isHomepage ? homeLeft : 20
   const targetY = isHomepage ? homeTop : 20
@@ -196,9 +255,7 @@ export function Nav() {
   const animateShell = isReady && !isDragging && !isResizing
 
   return (
-    <motion.nav
-      ref={navRef}
-      layout={animateShell}
+    <motion.div
       initial={false}
       animate={{
         x: targetX,
@@ -214,86 +271,85 @@ export function Nav() {
         scale: isDragging ? NAV_SHELL_SPRING : NAV_TEXT_TRANSITION,
       }}
       className={cn(
-        'fixed left-0 top-0 z-50 group',
-        'rounded-2xl bg-surface-glass backdrop-blur-lg',
-        'border border-line-glass',
-        '[box-shadow:0_20px_40px_-10px_rgba(0,0,0,0.1)]',
-        isEditMode && 'cursor-grab active:cursor-grabbing ring-2 ring-accent-primary/50',
-        isDragging && 'opacity-80'
+        'fixed left-0 top-0 z-50'
       )}
       style={{
-        display: 'flex',
-        flexDirection: isHomepage ? 'column' : 'row',
-        alignItems: isHomepage ? undefined : 'center',
-        gap: '4px',
-        padding: isHomepage ? '12px' : '8px 12px',
-        width: isHomepage ? displaySize?.width : undefined,
-        height: isHomepage ? displaySize?.height : undefined,
-        minWidth: isHomepage ? undefined : 48,
-        minHeight: 48,
-        overflow: useFixedSize && !isEditMode ? 'hidden' : 'visible',
+        willChange: animateShell ? 'transform, opacity' : undefined,
+        backfaceVisibility: 'hidden',
       }}
-      onPointerDown={isEditMode ? dragHandlers.onPointerDown : undefined}
-      onMouseLeave={handleMouseLeave}
     >
-      {isEditMode && <NavToolbar isHomepage={isHomepage} />}
-
-      <motion.div
-        layout={animateShell}
-        transition={NAV_LAYOUT_SPRING}
+      <nav
+        ref={navRef}
         className={cn(
-          'flex shrink-0 items-center',
-          isHomepage ? 'mb-2 flex-col gap-2 border-b border-line-glass pb-3' : 'border-r border-line-glass pr-1'
+          'group rounded-2xl bg-surface-glass backdrop-blur-lg',
+          'border border-line-glass',
+          '[box-shadow:0_20px_40px_-10px_rgba(0,0,0,0.1)]',
+          isEditMode && 'cursor-grab active:cursor-grabbing ring-2 ring-accent-primary/50',
+          isDragging && 'opacity-80'
         )}
+        style={{
+          display: 'flex',
+          flexDirection: isVisualHomepage ? 'column' : 'row',
+          alignItems: isVisualHomepage ? undefined : 'center',
+          gap: '4px',
+          padding: isVisualHomepage ? '12px' : '8px 12px',
+          width: isVisualHomepage ? displaySize?.width : undefined,
+          height: isVisualHomepage ? displaySize?.height : undefined,
+          minWidth: isVisualHomepage ? undefined : 48,
+          minHeight: 48,
+          overflow: useFixedSize && !isEditMode ? 'hidden' : 'visible',
+          willChange: animateShell ? 'width, height' : undefined,
+          backfaceVisibility: 'hidden',
+        }}
+        onPointerDown={isEditMode ? dragHandlers.onPointerDown : undefined}
+        onMouseLeave={handleMouseLeave}
       >
-        <motion.div layout={animateShell} transition={NAV_LAYOUT_SPRING}>
-          <Image
-            src={avatarSrc}
-            alt="Kenanyah"
-            width={48}
-            height={48}
-            className={cn('rounded-full', isHomepage ? '' : 'mr-2')}
-          />
-        </motion.div>
+        {isEditMode && <NavToolbar isHomepage={isHomepage} />}
 
-        <AnimatePresence initial={false}>
-          {isHomepage ? (
-            <motion.span
-              key="nav-name"
-              initial={{ opacity: 0, y: 6 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -6 }}
-              transition={NAV_TEXT_TRANSITION}
-              className="text-sm font-medium text-content-primary"
-            >
-              Kenanyah
-            </motion.span>
+        <div
+          className={cn(
+            'flex shrink-0 items-center',
+            isVisualHomepage ? 'mb-2 flex-col gap-2 border-b border-line-glass pb-3' : 'border-r border-line-glass pr-1'
+          )}
+        >
+          <div>
+            <Image
+              src={avatarSrc}
+              alt="Kenanyah"
+              width={48}
+              height={48}
+              className={cn('rounded-full', isVisualHomepage ? '' : 'mr-2')}
+            />
+          </div>
+
+          {isVisualHomepage ? (
+            <span className="text-sm font-medium text-content-primary">Kenanyah</span>
           ) : null}
-        </AnimatePresence>
-      </motion.div>
+        </div>
 
-      <motion.div
-        layout={animateShell}
-        transition={NAV_LAYOUT_SPRING}
-        data-nav-items
-        className={cn(
-          'relative flex min-w-0 flex-1 overflow-hidden',
-          isHomepage ? 'min-w-30 flex-col justify-center gap-1' : 'flex-row items-center gap-0'
-        )}
-      >
-        {visibleNavItems.map((item, index) => (
-          <NavItem
-            key={item.id}
-            item={item}
-            isActive={pathname === item.href}
-            isHighlighted={highlightedIndex === index}
-            isCompact={!isHomepage}
-            onMouseEnter={() => handleMouseEnter(index)}
-          />
-        ))}
-      </motion.div>
+        <LayoutGroup id="main-nav-items">
+          <div
+            data-nav-items
+            className={cn(
+              'relative flex min-w-0 flex-1 overflow-hidden',
+              isVisualHomepage ? 'min-w-30 flex-col justify-center gap-1' : 'flex-row items-center gap-0'
+            )}
+          >
+            {visibleNavItems.map((item, index) => (
+              <NavItem
+                key={item.id}
+                item={item}
+                isActive={pathname === item.href}
+                isHighlighted={highlightedIndex === index}
+                isCompact={!isVisualHomepage}
+                onMouseEnter={() => handleMouseEnter(index)}
+              />
+            ))}
+          </div>
+        </LayoutGroup>
 
-      {isEditMode && <ResizeHandles onResizeStart={handleResizeStart} />}
-    </motion.nav>
+        {isEditMode && <ResizeHandles onResizeStart={handleResizeStart} />}
+      </nav>
+    </motion.div>
   )
 }
