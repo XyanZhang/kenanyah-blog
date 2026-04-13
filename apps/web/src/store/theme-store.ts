@@ -12,11 +12,20 @@ export type ThemeId =
   | 'morandi'
   | 'sakura-pink'
 
+export type ColorModePreference = 'system' | 'dark' | 'light'
+export type ResolvedColorMode = Exclude<ColorModePreference, 'system'>
+
 export interface ThemeOption {
   readonly id: ThemeId
   readonly name: string
   readonly description: string
   readonly previewColors: readonly [string, string, string]
+}
+
+export interface ColorModeOption {
+  readonly id: ColorModePreference
+  readonly name: string
+  readonly description: string
 }
 
 export const THEME_OPTIONS: readonly ThemeOption[] = [
@@ -64,17 +73,52 @@ export const THEME_OPTIONS: readonly ThemeOption[] = [
   },
 ] as const
 
+export const COLOR_MODE_OPTIONS: readonly ColorModeOption[] = [
+  {
+    id: 'system',
+    name: '跟随系统',
+    description: '自动跟随设备的深浅色设置',
+  },
+  {
+    id: 'dark',
+    name: '深色',
+    description: '始终使用深色界面',
+  },
+  {
+    id: 'light',
+    name: '浅色',
+    description: '始终使用浅色界面',
+  },
+] as const
+
+export function resolveColorMode(
+  preference: ColorModePreference,
+  systemPrefersDark: boolean
+): ResolvedColorMode {
+  if (preference === 'system') {
+    return systemPrefersDark ? 'dark' : 'light'
+  }
+
+  return preference
+}
+
 interface ThemeState {
   readonly themeId: ThemeId
+  readonly colorModePreference: ColorModePreference
   readonly setTheme: (themeId: ThemeId) => void
+  readonly setColorModePreference: (preference: ColorModePreference) => void
 }
 
 export const useThemeStore = create<ThemeState>()(
   persist(
     (set) => ({
       themeId: 'default' as ThemeId,
+      colorModePreference: 'system' as ColorModePreference,
       setTheme: (themeId: ThemeId) => {
         set({ themeId })
+      },
+      setColorModePreference: (colorModePreference: ColorModePreference) => {
+        set({ colorModePreference })
       },
     }),
     {

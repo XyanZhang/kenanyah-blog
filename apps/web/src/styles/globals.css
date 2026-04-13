@@ -58,6 +58,10 @@
   --color-ui-success: var(--theme-ui-success);
   --color-ui-success-text: var(--theme-ui-success-text);
   --color-ui-switch-off: var(--theme-ui-switch-off);
+  --color-ui-warning: var(--theme-ui-warning);
+  --color-ui-warning-hover: var(--theme-ui-warning-hover);
+  --color-ui-warning-light: var(--theme-ui-warning-light);
+  --color-ui-warning-text: var(--theme-ui-warning-text);
 
   /* Legacy alias for alignment guides */
   --color-primary: var(--theme-accent-primary);

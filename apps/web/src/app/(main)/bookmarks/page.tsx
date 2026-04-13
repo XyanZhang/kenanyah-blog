@@ -120,7 +120,7 @@ export default function BookmarksPage() {
   if (error) {
     return (
       <main className="h-[calc(100vh-80px)] w-full flex flex-col items-center justify-center px-6">
-        <p className="text-red-600 dark:text-red-400" role="alert">
+        <p className="text-ui-destructive" role="alert">
           {error}
         </p>
         <Button variant="outline" className="mt-4" onClick={() => fetchBookmarks()}>

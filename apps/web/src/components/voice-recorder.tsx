@@ -519,7 +519,7 @@ export function VoiceRecorder({
             : status === 'recording'
               ? cancelIntent
                 ? 'cursor-pointer border-red-500/30 bg-red-500/10 text-red-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.2)]'
-                : 'cursor-pointer border-accent-primary/15 bg-white/85 text-content-primary shadow-[inset_0_1px_0_rgba(255,255,255,0.82),0_12px_28px_rgba(0,0,0,0.08)] dark:bg-surface-secondary/90'
+                : 'cursor-pointer border-accent-primary/15 bg-surface-primary/85 text-content-primary shadow-[inset_0_1px_0_rgba(255,255,255,0.82),0_12px_28px_rgba(0,0,0,0.08)]'
               : 'cursor-pointer border-line-glass bg-surface-tertiary/65 text-content-secondary hover:bg-surface-tertiary/80'
         )}
         aria-label={buttonLabel}

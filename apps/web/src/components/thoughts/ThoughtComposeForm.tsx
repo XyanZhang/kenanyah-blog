@@ -171,7 +171,7 @@ export function ThoughtComposeForm(props: Props) {
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       {error && (
-        <p className="text-sm text-red-600 dark:text-red-400" role="alert">
+        <p className="text-sm text-ui-destructive" role="alert">
           {error}
         </p>
       )}

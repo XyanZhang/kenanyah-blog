@@ -251,7 +251,7 @@ export function CalendarCard({ card }: CalendarCardProps) {
             </div>
             <p className="text-xs text-content-muted">登录后可保存标注，未登录时仅可查看当月已有标注。</p>
             {annotationError && (
-              <p className="text-sm text-red-600 dark:text-red-400">{annotationError}</p>
+              <p className="text-sm text-ui-destructive">{annotationError}</p>
             )}
           </div>
           <DialogFooter>

@@ -146,7 +146,7 @@ export default function PostPage() {
     return (
       <main className="min-h-[60vh] w-full max-w-[1140px] mx-auto px-4 sm:px-6 xl:px-0 py-8 sm:py-12">
         <div className="rounded-2xl border border-line-glass bg-surface-glass/80 p-8 text-center shadow-lg backdrop-blur-sm">
-          <p className="mb-6 text-red-600 dark:text-red-400" role="alert">
+          <p className="mb-6 text-ui-destructive" role="alert">
             {error ?? '文章不存在'}
           </p>
           <Link

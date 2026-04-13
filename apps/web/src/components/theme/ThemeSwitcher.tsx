@@ -3,19 +3,34 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useState, useRef, useEffect } from 'react'
-import { Palette, Check, Bot } from 'lucide-react'
-import { useThemeStore, THEME_OPTIONS, type ThemeId } from '@/store/theme-store'
+import { Palette, Check, Bot, Monitor, Moon, Sun } from 'lucide-react'
 import { useFloatingActions } from '@/components/providers/FloatingActionsProvider'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui'
+import { useTheme } from '@/hooks/useTheme'
+
+const colorModeIcons = {
+  system: Monitor,
+  dark: Moon,
+  light: Sun,
+} as const
 
 export function ThemeSwitcher() {
   const [isOpen, setIsOpen] = useState(false)
   const panelRef = useRef<HTMLDivElement>(null)
   const buttonRef = useRef<HTMLButtonElement>(null)
-  const { themeId, setTheme } = useThemeStore()
+  const {
+    themeId,
+    themes,
+    setTheme,
+    colorModePreference,
+    colorModes,
+    resolvedColorMode,
+    setColorModePreference,
+  } = useTheme()
   const { extraActions } = useFloatingActions()
   const pathname = usePathname()
   const isAiChatPage = pathname === '/ai-chat'
+  const ActiveColorModeIcon = colorModeIcons[colorModePreference]
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -48,7 +63,7 @@ export function ThemeSwitcher() {
     }
   }, [isOpen])
 
-  const handleThemeSelect = (newThemeId: ThemeId) => {
+  const handleThemeSelect = (newThemeId: typeof themeId) => {
     setTheme(newThemeId)
     setIsOpen(false)
   }
@@ -81,11 +96,55 @@ export function ThemeSwitcher() {
       {isOpen && (
         <div
           ref={panelRef}
-          className="absolute bottom-16 right-0 w-72 rounded-2xl border border-line-primary bg-surface-primary p-4 shadow-xl"
+          className="absolute bottom-16 right-0 w-80 rounded-2xl border border-line-primary bg-surface-primary p-4 shadow-xl"
         >
-          <h3 className="mb-3 text-sm font-semibold text-content-primary">选择主题</h3>
-          <div className="space-y-2">
-            {THEME_OPTIONS.map((theme) => (
+          <div className="mb-4">
+            <div className="mb-2 flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-content-primary">显示模式</h3>
+              <span className="text-xs text-content-muted">
+                {colorModePreference === 'system'
+                  ? `跟随系统 · 当前${resolvedColorMode === 'dark' ? '深色' : '浅色'}`
+                  : colorModePreference === 'dark'
+                    ? '固定深色'
+                    : '固定浅色'}
+              </span>
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              {colorModes.map((mode) => {
+                const Icon = colorModeIcons[mode.id]
+                const isSelected = colorModePreference === mode.id
+
+                return (
+                  <button
+                    key={mode.id}
+                    type="button"
+                    onClick={() => setColorModePreference(mode.id)}
+                    className={`
+                      flex flex-col items-start gap-1 rounded-xl border px-3 py-3 text-left transition-colors
+                      ${isSelected
+                        ? 'border-line-focus bg-surface-selected text-content-primary'
+                        : 'border-line-primary bg-surface-secondary text-content-secondary hover:bg-surface-hover'
+                      }
+                    `}
+                  >
+                    <span className="flex items-center gap-2 text-sm font-medium">
+                      <Icon className="h-4 w-4" />
+                      {mode.name}
+                    </span>
+                    <span className="text-xs text-content-muted">{mode.description}</span>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
+          <div className="border-t border-line-primary pt-4">
+            <div className="mb-3 flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-content-primary">配色主题</h3>
+              <span className="text-xs text-content-muted">保留当前明暗模式</span>
+            </div>
+            <div className="space-y-2">
+              {themes.map((theme) => (
               <button
                 key={theme.id}
                 onClick={() => handleThemeSelect(theme.id)}
@@ -94,7 +153,6 @@ export function ThemeSwitcher() {
                   ${themeId === theme.id ? 'bg-surface-tertiary' : 'hover:bg-surface-hover'}
                 `}
               >
-                {/* Color Preview Dots */}
                 <div className="flex -space-x-1">
                   {theme.previewColors.map((color, index) => (
                     <div
@@ -105,7 +163,6 @@ export function ThemeSwitcher() {
                   ))}
                 </div>
 
-                {/* Theme Info */}
                 <div className="flex-1">
                   <div className="text-sm font-medium text-content-primary">
                     {theme.name}
@@ -115,17 +172,16 @@ export function ThemeSwitcher() {
                   </div>
                 </div>
 
-                {/* Selected Indicator */}
                 {themeId === theme.id && (
                   <Check className="h-4 w-4 text-accent-primary" />
                 )}
               </button>
-            ))}
+              ))}
+            </div>
           </div>
         </div>
       )}
 
-      {/* Toggle Button */}
       <button
         ref={buttonRef}
         onClick={() => setIsOpen(!isOpen)}
@@ -136,9 +192,14 @@ export function ThemeSwitcher() {
             : 'bg-surface-primary text-content-secondary hover:bg-surface-hover border border-line-primary'
           }
         `}
-        aria-label="切换主题"
+        aria-label="切换主题与显示模式"
       >
-        <Palette className="h-5 w-5" />
+        <span className="relative flex items-center justify-center">
+          <Palette className="h-5 w-5" />
+          <span className="absolute -right-3 -top-3 flex h-5 w-5 items-center justify-center rounded-full border border-line-primary bg-surface-primary text-content-secondary shadow-sm">
+            <ActiveColorModeIcon className="h-3 w-3" />
+          </span>
+        </span>
       </button>
     </div>
   )

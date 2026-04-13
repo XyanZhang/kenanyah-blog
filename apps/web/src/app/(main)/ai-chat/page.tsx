@@ -179,7 +179,7 @@ function getChatEventStatusLabel(event: ChatStreamEvent): string | null {
 
 function getOperationActionButtonClass(style?: OperationCardAction['style']): string {
   if (style === 'danger') {
-    return 'border-red-500/25 bg-red-500/10 text-red-600 hover:bg-red-500/15 dark:text-red-300'
+    return 'border-ui-destructive/25 bg-ui-destructive-light text-ui-destructive hover:bg-ui-destructive/12'
   }
 
   if (style === 'primary') {
@@ -1337,7 +1337,7 @@ export default function AiChatPage() {
                           </div>
                         )}
                         {msg.interrupted && (
-                          <div className="mb-2 text-[11px] font-medium text-amber-600 dark:text-amber-300">
+                          <div className="mb-2 text-[11px] font-medium text-ui-warning-text">
                             已中断
                           </div>
                         )}
@@ -1710,7 +1710,7 @@ export default function AiChatPage() {
                     type="button"
                     onClick={input.trim() ? handleInterruptAndContinueWorkflow : handleInterruptWorkflow}
                     disabled={!currentId}
-                    className="inline-flex h-10 flex-1 items-center justify-center gap-2 rounded-2xl border border-amber-500/35 bg-amber-500/8 px-4 text-sm font-medium text-amber-700 transition-colors disabled:cursor-not-allowed disabled:opacity-50 hover:bg-amber-500/12 md:flex-none dark:text-amber-200"
+                    className="inline-flex h-10 flex-1 items-center justify-center gap-2 rounded-2xl border border-ui-warning/35 bg-ui-warning-light px-4 text-sm font-medium text-ui-warning-text transition-colors disabled:cursor-not-allowed disabled:opacity-50 hover:bg-ui-warning/12 md:flex-none"
                   >
                     {input.trim() ? '中断并继续生成' : '中断生成'}
                   </button>
@@ -1720,7 +1720,7 @@ export default function AiChatPage() {
                     type="button"
                     onClick={handleInterruptAndSend}
                     disabled={!input.trim() || !canUseChatActions}
-                    className="inline-flex h-10 flex-1 items-center justify-center gap-2 rounded-2xl border border-amber-500/35 bg-amber-500/8 px-4 text-sm font-medium text-amber-700 transition-colors disabled:cursor-not-allowed disabled:opacity-50 hover:bg-amber-500/12 md:flex-none dark:text-amber-200"
+                    className="inline-flex h-10 flex-1 items-center justify-center gap-2 rounded-2xl border border-ui-warning/35 bg-ui-warning-light px-4 text-sm font-medium text-ui-warning-text transition-colors disabled:cursor-not-allowed disabled:opacity-50 hover:bg-ui-warning/12 md:flex-none"
                   >
                     中断并发送
                   </button>

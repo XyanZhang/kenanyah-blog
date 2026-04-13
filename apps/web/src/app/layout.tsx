@@ -40,13 +40,32 @@ const lxgwWenKai = LXGW_WenKai_TC({
 
 const themeScript = `
   try {
+    var root = document.documentElement;
     var stored = localStorage.getItem('blog-theme');
+    var themeId = 'default';
+    var colorModePreference = 'system';
+
     if (stored) {
       var parsed = JSON.parse(stored);
-      if (parsed && parsed.state && parsed.state.themeId) {
-        document.documentElement.setAttribute('data-theme', parsed.state.themeId);
+      if (parsed && parsed.state) {
+        if (parsed.state.themeId) {
+          themeId = parsed.state.themeId;
+        }
+        if (parsed.state.colorModePreference) {
+          colorModePreference = parsed.state.colorModePreference;
+        }
       }
     }
+
+    var resolvedColorMode =
+      colorModePreference === 'system'
+        ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+        : colorModePreference;
+
+    root.setAttribute('data-theme', themeId);
+    root.setAttribute('data-color-mode-preference', colorModePreference);
+    root.setAttribute('data-color-mode', resolvedColorMode);
+    root.style.colorScheme = resolvedColorMode;
   } catch(e) {}
 `
 
@@ -64,7 +83,14 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en" data-theme="default" suppressHydrationWarning className={`${plusJakartaSans.variable} ${spaceGrotesk.variable} ${nunito.variable} ${lxgwWenKai.variable}`}>
+    <html
+      lang="en"
+      data-theme="default"
+      data-color-mode="light"
+      data-color-mode-preference="system"
+      suppressHydrationWarning
+      className={`${plusJakartaSans.variable} ${spaceGrotesk.variable} ${nunito.variable} ${lxgwWenKai.variable}`}
+    >
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>

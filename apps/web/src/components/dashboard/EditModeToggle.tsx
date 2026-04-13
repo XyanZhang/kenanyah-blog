@@ -101,10 +101,10 @@ function EditModeActions({ onAddCard, onSelectLayout, onSyncToCloud, onSyncToSta
                   </TooltipContent>
                 </Tooltip>
                 {syncStatus === 'success' && (
-                  <span className="text-xs text-green-600 dark:text-green-400">已同步</span>
+                  <span className="text-xs text-ui-success-text">已同步</span>
                 )}
                 {syncStatus === 'error' && (
-                  <span className="text-xs text-red-600 dark:text-red-400">同步失败</span>
+                  <span className="text-xs text-ui-destructive">同步失败</span>
                 )}
               </motion.div>
             )}
@@ -141,10 +141,10 @@ function EditModeActions({ onAddCard, onSelectLayout, onSyncToCloud, onSyncToSta
                   </TooltipContent>
                 </Tooltip>
                 {staticSyncStatus === 'success' && (
-                  <span className="text-xs text-green-600 dark:text-green-400">已同步</span>
+                  <span className="text-xs text-ui-success-text">已同步</span>
                 )}
                 {staticSyncStatus === 'error' && (
-                  <span className="text-xs text-red-600 dark:text-red-400">同步失败</span>
+                  <span className="text-xs text-ui-destructive">同步失败</span>
                 )}
               </motion.div>
             )}

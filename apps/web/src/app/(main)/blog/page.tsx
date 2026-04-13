@@ -100,7 +100,7 @@ export default function BlogPage() {
   if (error) {
     return (
       <main className="h-[calc(100vh-80px)] w-full flex flex-col items-center justify-center">
-        <p className="text-red-600 dark:text-red-400" role="alert">
+        <p className="text-ui-destructive" role="alert">
           {error}
         </p>
       </main>
