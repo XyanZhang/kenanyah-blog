@@ -530,78 +530,23 @@
 /* ========== 全局页面加载动效 (PageLoading) ========== */
 @keyframes page-loading-bar {
   0% {
-    transform: translateX(-100%);
-  }
-  50% {
-    transform: translateX(200%);
+    transform: translateX(-120%);
   }
   100% {
-    transform: translateX(-100%);
-  }
-}
-
-@keyframes page-loading-spinner {
-  to {
-    transform: rotate(360deg);
+    transform: translateX(420%);
   }
 }
 
 .page-loading-bar {
-  animation: page-loading-bar 1.2s ease-in-out infinite;
-}
-
-.page-loading-spinner-ring {
-  position: absolute;
-  inset: 0;
-  border-radius: 50%;
-  border: 3px solid transparent;
-  border-top-color: var(--theme-accent-primary);
-  border-right-color: var(--theme-accent-secondary);
-  animation: page-loading-spinner 1.1s linear infinite;
-}
-
-.page-loading-spinner-ring--delay {
-  inset: 6px;
-  border-top-color: var(--theme-accent-tertiary);
-  border-right-color: var(--theme-accent-primary);
-  animation-duration: 0.9s;
-  animation-direction: reverse;
-}
-
-/* loading 文案：轻微呼吸 + 字间距动效 */
-@keyframes page-loading-text {
-  0%,
-  100% {
-    opacity: 0.5;
-    letter-spacing: 0.15em;
-  }
-  50% {
-    opacity: 1;
-    letter-spacing: 0.25em;
-  }
-}
-
-.page-loading-text {
-  animation: page-loading-text 1.4s ease-in-out infinite;
+  animation: page-loading-bar 1.05s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  will-change: transform;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .page-loading-bar,
-  .page-loading-spinner-ring,
-  .page-loading-spinner-ring--delay,
-  .page-loading-text {
+  .page-loading-bar {
     animation: none;
-  }
-  .page-loading-text {
-    opacity: 1;
-    letter-spacing: 0.2em;
-  }
-  .page-loading-spinner-ring {
-    border-top-color: var(--theme-accent-primary);
-    border-right-color: var(--theme-accent-primary);
-    opacity: 0.6;
-  }
-  .page-loading-spinner-ring--delay {
-    opacity: 0.3;
+    transform: none;
+    width: 100%;
+    opacity: 0.65;
   }
 }

@@ -18,6 +18,7 @@ export {
   SelectItem,
 } from './select'
 export { Slider } from './slider'
+export { Skeleton } from './skeleton'
 export { Switch } from './switch'
 export {
   Tooltip,

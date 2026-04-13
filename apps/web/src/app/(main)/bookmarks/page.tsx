@@ -3,10 +3,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { BookmarkCard, type BookmarkItem } from '@/components/bookmarks/BookmarkCard'
 import { AddBookmarkDialog } from '@/components/bookmarks/AddBookmarkDialog'
-import { PageLoading } from '@/components/layout/PageLoading'
 import { apiClient } from '@/lib/api-client'
 import { getApiErrorMessage } from '@/lib/api-error'
 import { Button } from '@/components/ui/button'
+import { Skeleton } from '@/components/ui/skeleton'
 import { Bookmark, Plus, Search, ArrowDown, ArrowUp } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -29,6 +29,56 @@ type ApiResponse = {
 }
 
 type SortOrder = 'newest' | 'oldest'
+
+function BookmarksPageSkeleton() {
+  return (
+    <main className="min-h-[calc(100vh-80px)] w-full flex flex-col" aria-busy="true">
+      <div className="mx-auto w-full max-w-3xl px-6 py-8">
+        <header className="mb-8">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <Skeleton className="h-8 w-20 rounded-2xl sm:h-9 sm:w-24" />
+              <Skeleton className="mt-3 h-4 w-52 rounded-full" />
+            </div>
+            <Skeleton className="h-9 w-28 rounded-xl" />
+          </div>
+
+          <div className="mt-6 space-y-4">
+            <Skeleton className="h-11 w-full rounded-xl" />
+            <div className="flex flex-wrap items-center gap-2">
+              <Skeleton className="h-4 w-10 rounded-full" />
+              <Skeleton className="h-8 w-12 rounded-lg" />
+              <Skeleton className="h-8 w-16 rounded-lg" />
+              <Skeleton className="h-8 w-20 rounded-lg" />
+              <Skeleton className="ml-auto h-8 w-14 rounded-lg" />
+            </div>
+          </div>
+        </header>
+
+        <div className="space-y-3">
+          {Array.from({ length: 7 }).map((_, index) => (
+            <div
+              key={index}
+              className="flex items-center gap-3 rounded-xl border border-line-glass/40 bg-surface-glass/25 px-3 py-2 backdrop-blur-sm"
+            >
+              <Skeleton className="h-8 w-8 shrink-0 rounded-md" />
+              <div className="min-w-0 flex flex-1 items-center gap-2">
+                <Skeleton
+                  className={`h-4 rounded-full ${
+                    index % 3 === 0 ? 'w-32 sm:w-44' : index % 3 === 1 ? 'w-40 sm:w-56' : 'w-28 sm:w-36'
+                  }`}
+                />
+                <Skeleton className="hidden sm:block h-3 w-20 rounded-full" />
+                <Skeleton className="hidden md:block h-5 w-14 rounded-md" />
+                <Skeleton className="ml-auto h-3 w-10 rounded-full" />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </main>
+  )
+}
 
 export default function BookmarksPage() {
   const [items, setItems] = useState<BookmarkItem[]>([])
@@ -110,11 +160,7 @@ export default function BookmarksPage() {
   }, [items, searchQuery, categoryFilter, sortOrder])
 
   if (loading) {
-    return (
-      <main className="min-h-[calc(100vh-80px)] w-full">
-        <PageLoading hideTopBar />
-      </main>
-    )
+    return <BookmarksPageSkeleton />
   }
 
   if (error) {
