@@ -13,6 +13,7 @@ import {
 import { generateSlug } from '@blog/utils'
 import { NotFoundError, ForbiddenError } from '../middleware/error'
 import { indexPost, removePostFromIndex } from '../lib/semantic-search'
+import { removeEventsForSource, syncPostEvent } from '../lib/calendar-events'
 
 type PostVariables = {
   validatedBody: unknown
@@ -323,6 +324,9 @@ posts.post('/', authMiddleware, validateBody(createPostSchema), async (c) => {
   indexPost(post.id).catch((err) =>
     console.error('[semantic-search] index post failed:', err)
   )
+  syncPostEvent(post).catch((err) =>
+    console.error('[calendar-events] sync post event failed:', err)
+  )
 
   return c.json(
     {
@@ -431,6 +435,9 @@ posts.patch('/:id', authMiddleware, validateBody(updatePostSchema), async (c) =>
   indexPost(post.id).catch((err) =>
     console.error('[semantic-search] index post failed:', err)
   )
+  syncPostEvent(post).catch((err) =>
+    console.error('[calendar-events] sync post event failed:', err)
+  )
 
   return c.json({
     success: true,
@@ -458,6 +465,9 @@ posts.delete('/:id', authMiddleware, async (c) => {
 
   await removePostFromIndex(id).catch((err) =>
     console.error('[semantic-search] remove from index failed:', err)
+  )
+  await removeEventsForSource('post', id).catch((err) =>
+    console.error('[calendar-events] remove post event failed:', err)
   )
   await prisma.post.delete({
     where: { id },

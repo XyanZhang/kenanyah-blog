@@ -5,6 +5,7 @@ import { type ChatToolCall } from '../agents/chat-coordinator-agents'
 import { prisma } from '../lib/db'
 import { throwIfAborted } from '../lib/abort'
 import { indexPost, removePostFromIndex } from '../lib/semantic-search'
+import { removeEventsForSource, syncPostEvent, syncThoughtEvent } from '../lib/calendar-events'
 import {
   buildDeletePostConfirmOperationCardMessage,
   buildFollowupOperationCardMessage,
@@ -400,6 +401,16 @@ async function executePublishPostTool(
   indexPost(updated.id).catch((err) => {
     console.error('[chat-tools] index post after publish failed:', err)
   })
+  syncPostEvent({
+    ...post,
+    id: updated.id,
+    slug: updated.slug,
+    title: updated.title,
+    published: updated.published,
+    publishedAt: new Date(),
+  }).catch((err) => {
+    console.error('[chat-tools] sync post event after publish failed:', err)
+  })
 
   return {
     tool: 'publish_post',
@@ -530,6 +541,12 @@ async function executeUpdatePostTool(
   indexPost(updated.id).catch((err) => {
     console.error('[chat-tools] index post after update failed:', err)
   })
+  prisma.post.findUnique({ where: { id: updated.id } }).then((fullPost) => {
+    if (!fullPost) return
+    return syncPostEvent(fullPost)
+  }).catch((err) => {
+    console.error('[chat-tools] sync post event after update failed:', err)
+  })
 
   const postUrl = buildPostUrl(input.siteBaseUrl, updated.slug || updated.id)
   return {
@@ -623,6 +640,9 @@ async function executeDeletePostTool(
 
   await removePostFromIndex(post.id).catch((err) => {
     console.error('[chat-tools] remove post index failed:', err)
+  })
+  await removeEventsForSource('post', post.id).catch((err) => {
+    console.error('[chat-tools] remove post event failed:', err)
   })
   await prisma.post.delete({
     where: { id: post.id },
@@ -799,12 +819,21 @@ async function executeCreateThoughtTool(
     },
     select: {
       id: true,
+      authorId: true,
       content: true,
+      images: true,
+      likeCount: true,
+      commentCount: true,
+      createdAt: true,
+      updatedAt: true,
     },
   })
 
   thoughtsRagAgent.indexThought(thought.id).catch((err) => {
     console.error('[chat-tools] index thought failed:', err)
+  })
+  syncThoughtEvent(thought).catch((err) => {
+    console.error('[chat-tools] sync thought event failed:', err)
   })
 
   return {

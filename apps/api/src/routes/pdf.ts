@@ -13,6 +13,7 @@ import { cleanPdfText, mergeSoftLineBreaks, removeSpacesKeepNewlines } from '../
 import { splitTextForRag } from '../lib/text-splitter'
 import { generateSlug } from '@blog/utils'
 import { indexPost } from '../lib/semantic-search'
+import { syncPostEvent } from '../lib/calendar-events'
 import { logger } from '../lib/logger'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -634,6 +635,12 @@ pdf.post('/documents/:id/save-post', authMiddleware, async (c) => {
       console.error('[semantic-search] index post failed:', err)
     )
   }
+  prisma.post.findUnique({ where: { id: post.id } }).then((fullPost) => {
+    if (!fullPost) return
+    return syncPostEvent(fullPost)
+  }).catch((err) =>
+    console.error('[calendar-events] sync post event failed:', err)
+  )
 
   logger.info(
     {
@@ -651,4 +658,3 @@ pdf.post('/documents/:id/save-post', authMiddleware, async (c) => {
 })
 
 export default pdf
-

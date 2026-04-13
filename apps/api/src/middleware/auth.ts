@@ -1,4 +1,4 @@
-import type { Context, Next } from 'hono'
+import type { Context, MiddlewareHandler, Next } from 'hono'
 import { getCookie } from 'hono/cookie'
 import { verifyAccessToken, type JwtPayload } from '../lib/jwt'
 import { prisma } from '../lib/db'
@@ -70,12 +70,62 @@ async function authMiddlewareCore(c: Context, next: Next, allowDevFallback: bool
   }
 }
 
+async function resolveAuthenticatedUser(
+  c: Context,
+  allowDevFallback: boolean
+): Promise<JwtPayload | null> {
+  let token = getCookie(c, 'access_token')
+  if (!token) {
+    const authHeader = c.req.header('Authorization')
+    if (authHeader?.startsWith('Bearer ')) {
+      token = authHeader.substring(7)
+    }
+  }
+
+  if (!token) {
+    const isDevOrTest = process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test'
+    if (allowDevFallback && isDevOrTest) {
+      if (!devDefaultUser) {
+        const user =
+          (await prisma.user.findUnique({
+            where: { email: DEV_DEFAULT_USER_EMAIL },
+          })) ??
+          (await prisma.user.findFirst({ orderBy: { createdAt: 'asc' } }))
+        if (user) {
+          devDefaultUser = {
+            userId: user.id,
+            email: user.email,
+            role: user.role,
+          }
+        }
+      }
+      return devDefaultUser
+    }
+
+    return null
+  }
+
+  try {
+    return verifyAccessToken(token)
+  } catch {
+    return null
+  }
+}
+
 export async function authMiddleware(c: Context, next: Next) {
   return authMiddlewareCore(c, next, true)
 }
 
 export async function authMiddlewareStrict(c: Context, next: Next) {
   return authMiddlewareCore(c, next, false)
+}
+
+export const optionalAuthMiddleware: MiddlewareHandler = async (c, next) => {
+  const user = await resolveAuthenticatedUser(c, true)
+  if (user) {
+    c.set('user', user)
+  }
+  await next()
 }
 
 export function requireRole(...roles: string[]) {

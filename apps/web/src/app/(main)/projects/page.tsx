@@ -1,10 +1,14 @@
 import type { Metadata, Route } from 'next'
 import Link from 'next/link'
 import { ArrowUpRight } from 'lucide-react'
+import type { ProjectEntryDto } from '@blog/types'
+import { getApiFetchUrl } from '@/lib/api-client'
 
 export const metadata: Metadata = {
   title: '项目',
 }
+
+export const revalidate = 60
 
 const projects: Array<{
   name: string
@@ -79,7 +83,26 @@ function coverShape(index: number) {
   return shapes[index % shapes.length]
 }
 
-export default function ProjectsPage() {
+type ProjectsApiResponse = {
+  success?: boolean
+  data?: ProjectEntryDto[]
+}
+
+async function loadDatabaseProjects(): Promise<ProjectEntryDto[]> {
+  try {
+    const res = await fetch(getApiFetchUrl('/projects'), { next: { revalidate: 60 } })
+    if (!res.ok) return []
+    const json = (await res.json()) as ProjectsApiResponse
+    if (!json.success || !Array.isArray(json.data)) return []
+    return json.data
+  } catch {
+    return []
+  }
+}
+
+export default async function ProjectsPage() {
+  const databaseProjects = await loadDatabaseProjects()
+
   return (
     <main className="min-h-screen px-4 pb-16 pt-6 sm:px-6 lg:pl-24 lg:pr-8 lg:pt-8">
       <div className="mx-auto max-w-7xl">
@@ -115,6 +138,70 @@ export default function ProjectsPage() {
             </div>
           </div>
         </section>
+
+        {databaseProjects.length > 0 && (
+          <section className="mt-8 rounded-[2rem] border border-black/8 bg-white/68 p-5 backdrop-blur-sm">
+            <div className="flex flex-col gap-2 border-b border-black/8 pb-4 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <p className="text-[11px] uppercase tracking-[0.34em] text-content-muted">Database Feed</p>
+                <h2 className="mt-3 text-2xl font-semibold tracking-[-0.04em] text-content-primary">
+                  当下正在推进
+                </h2>
+              </div>
+              <p className="max-w-xl text-sm leading-7 text-content-secondary">
+                这部分来自数据库，会和日历事件流联动，适合承接 AI 快速创建和日常补记。
+              </p>
+            </div>
+
+            <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+              {databaseProjects.map((project) => (
+                <article
+                  key={project.id}
+                  className="rounded-[1.4rem] border border-black/8 bg-white/78 p-4 shadow-[0_16px_40px_rgba(15,23,42,0.05)]"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <div className="text-[11px] uppercase tracking-[0.26em] text-content-muted">
+                        {project.status}
+                      </div>
+                      <h3 className="mt-3 text-xl font-semibold tracking-[-0.04em] text-content-primary">
+                        {project.title}
+                      </h3>
+                    </div>
+                    {project.href && (
+                      <a
+                        href={project.href}
+                        className="inline-flex rounded-full border border-black/8 p-2 text-content-secondary transition-colors hover:bg-black/[0.04] hover:text-content-primary"
+                      >
+                        <ArrowUpRight className="h-4 w-4" />
+                      </a>
+                    )}
+                  </div>
+
+                  {project.description && (
+                    <p className="mt-4 text-sm leading-7 text-content-secondary">{project.description}</p>
+                  )}
+
+                  <div className="mt-5 flex flex-wrap gap-2">
+                    {project.category && (
+                      <span className="rounded-full bg-black/[0.04] px-3 py-1 text-[11px] uppercase tracking-[0.18em] text-content-secondary">
+                        {project.category}
+                      </span>
+                    )}
+                    {project.tags.map((tag) => (
+                      <span
+                        key={`${project.id}-${tag}`}
+                        className="rounded-full bg-black/[0.04] px-3 py-1 text-[11px] uppercase tracking-[0.18em] text-content-secondary"
+                      >
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                </article>
+              ))}
+            </div>
+          </section>
+        )}
 
         <section className="mt-8 grid gap-6 md:grid-cols-2 xl:grid-cols-3">
           {projects.map((project, index) => {

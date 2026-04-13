@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useMemo, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import {
   startOfMonth,
   endOfMonth,
@@ -16,61 +17,50 @@ import {
 import { zhCN } from 'date-fns/locale'
 import { DashboardCard, CalendarCardConfig } from '@blog/types'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
-import { getCalendarAnnotations, getPublishedPostDates, saveCalendarAnnotation } from '@/lib/calendar-api'
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-  Button,
-  Label,
-  Input,
-} from '@/components/ui'
+import { getCalendarEventSummary } from '@/lib/calendar-api'
 
 interface CalendarCardProps {
   card: DashboardCard
 }
 
+type DaySummary = {
+  totalCount: number
+  plannedCount: number
+  completedCount: number
+  annotationLabel: string | null
+}
+
 const WEEKDAYS = ['日', '一', '二', '三', '四', '五', '六']
 
 export function CalendarCard({ card }: CalendarCardProps) {
+  const router = useRouter()
   const config = card.config as CalendarCardConfig
   const [currentDate, setCurrentDate] = useState(new Date())
-  const [annotations, setAnnotations] = useState<Map<string, string>>(new Map())
-  const [annotationDialogOpen, setAnnotationDialogOpen] = useState(false)
-  const [selectedDate, setSelectedDate] = useState<Date | null>(null)
-  const [annotationLabel, setAnnotationLabel] = useState('')
-  const [saving, setSaving] = useState(false)
-  const [annotationError, setAnnotationError] = useState<string | null>(null)
-  const [postDatesSet, setPostDatesSet] = useState<Set<string>>(new Set())
+  const [summaryMap, setSummaryMap] = useState<Map<string, DaySummary>>(new Map())
 
   const showAnnotations = config.showAnnotations !== false
-
   const monthStart = useMemo(() => startOfMonth(currentDate), [currentDate])
   const monthEnd = useMemo(() => endOfMonth(currentDate), [currentDate])
 
   useEffect(() => {
-    if (!showAnnotations) return
     const from = format(monthStart, 'yyyy-MM-dd')
     const to = format(monthEnd, 'yyyy-MM-dd')
-    getCalendarAnnotations({ from, to })
-      .then((list) => {
-        const map = new Map<string, string>()
-        list.forEach((a) => map.set(a.date, a.label))
-        setAnnotations(map)
-      })
-      .catch(() => setAnnotations(new Map()))
-  }, [showAnnotations, monthStart, monthEnd])
 
-  useEffect(() => {
-    if (!config.showPostDots) return
-    const from = format(monthStart, 'yyyy-MM-dd')
-    const to = format(monthEnd, 'yyyy-MM-dd')
-    getPublishedPostDates({ from, to })
-      .then((dates) => setPostDatesSet(new Set(dates)))
-      .catch(() => setPostDatesSet(new Set()))
-  }, [config.showPostDots, monthStart, monthEnd])
+    getCalendarEventSummary({ from, to })
+      .then((list) => {
+        const next = new Map<string, DaySummary>()
+        list.forEach((item) => {
+          next.set(item.date, {
+            totalCount: item.totalCount,
+            plannedCount: item.plannedCount,
+            completedCount: item.completedCount,
+            annotationLabel: item.annotationLabel,
+          })
+        })
+        setSummaryMap(next)
+      })
+      .catch(() => setSummaryMap(new Map()))
+  }, [monthStart, monthEnd])
 
   const calendarDays = useMemo(() => {
     const calendarStart = startOfWeek(monthStart, { weekStartsOn: 0 })
@@ -86,44 +76,8 @@ export function CalendarCard({ card }: CalendarCardProps) {
     setCurrentDate(addMonths(currentDate, 1))
   }
 
-  const goToToday = () => {
-    setCurrentDate(new Date())
-  }
-
-  const hasPost = (date: Date) => {
-    return postDatesSet.has(format(date, 'yyyy-MM-dd'))
-  }
-
-  const getAnnotation = (date: Date) => {
-    return annotations.get(format(date, 'yyyy-MM-dd')) ?? null
-  }
-
-  const openAnnotationDialog = (date: Date) => {
-    setSelectedDate(date)
-    setAnnotationLabel(getAnnotation(date) ?? '')
-    setAnnotationDialogOpen(true)
-  }
-
-  const handleSaveAnnotation = async () => {
-    if (!selectedDate) return
-    const dateStr = format(selectedDate, 'yyyy-MM-dd')
-    setSaving(true)
-    setAnnotationError(null)
-    try {
-      await saveCalendarAnnotation({ date: dateStr, label: annotationLabel.trim() || dateStr })
-      setAnnotations((prev) => {
-        const next = new Map(prev)
-        next.set(dateStr, annotationLabel.trim() || dateStr)
-        return next
-      })
-      setAnnotationDialogOpen(false)
-      setSelectedDate(null)
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : '保存失败'
-      setAnnotationError(msg.includes('401') || msg.includes('未登录') ? '请先登录后再保存标注' : msg)
-    } finally {
-      setSaving(false)
-    }
+  const openDay = (date: Date) => {
+    router.push(`/calendar/day/${format(date, 'yyyy-MM-dd')}`)
   }
 
   return (
@@ -141,7 +95,7 @@ export function CalendarCard({ card }: CalendarCardProps) {
             {format(currentDate, 'yyyy年MM月', { locale: zhCN })}
           </h3>
           <button
-            onClick={goToToday}
+            onClick={() => openDay(new Date())}
             className="rounded-md px-2 py-0.5 text-xs text-accent-primary transition-colors hover:bg-accent-primary-subtle"
           >
             今天
@@ -158,19 +112,20 @@ export function CalendarCard({ card }: CalendarCardProps) {
 
       <div className="grid grid-cols-7 gap-1">
         {WEEKDAYS.map((day) => (
-          <div
-            key={day}
-            className="py-1 text-center text-xs font-medium text-content-muted"
-          >
+          <div key={day} className="py-1 text-center text-xs font-medium text-content-muted">
             {day}
           </div>
         ))}
 
         {calendarDays.map((day, index) => {
+          const dateStr = format(day, 'yyyy-MM-dd')
           const isCurrentMonth = isSameMonth(day, currentDate)
           const isCurrentDay = isToday(day)
-          const dayHasPost = hasPost(day)
-          const dayAnnotation = getAnnotation(day)
+          const summary = summaryMap.get(dateStr)
+          const hasEvents = (summary?.totalCount ?? 0) > 0
+          const hasPlanned = (summary?.plannedCount ?? 0) > 0
+          const hasCompleted = (summary?.completedCount ?? 0) > 0
+          const hasAnnotation = Boolean(summary?.annotationLabel)
 
           return (
             <button
@@ -179,7 +134,7 @@ export function CalendarCard({ card }: CalendarCardProps) {
               onClick={(e) => {
                 e.preventDefault()
                 e.stopPropagation()
-                if (showAnnotations) openAnnotationDialog(day)
+                openDay(day)
               }}
               className={`
                 relative aspect-square rounded-lg p-1 text-sm transition-all
@@ -187,26 +142,35 @@ export function CalendarCard({ card }: CalendarCardProps) {
                 ${isCurrentDay && config.highlightToday ? 'bg-accent-primary font-semibold text-white shadow-md' : ''}
                 ${!isCurrentDay && isCurrentMonth ? 'hover:bg-surface-glass/50' : ''}
               `}
+              title={
+                summary
+                  ? `${dateStr} · ${summary.totalCount} 条事件${summary.annotationLabel ? ` · ${summary.annotationLabel}` : ''}`
+                  : dateStr
+              }
             >
+              {hasEvents && isCurrentMonth && (
+                <span className="absolute right-1 top-1 rounded-full bg-surface-primary/80 px-1.5 py-0.5 text-[10px] font-medium text-content-primary shadow-sm">
+                  {summary?.totalCount}
+                </span>
+              )}
+
               <span
                 className={`flex h-full w-full items-center justify-center ${isCurrentDay && config.highlightToday ? 'text-white' : ''}`}
               >
                 {format(day, 'd')}
               </span>
 
-              {config.showPostDots && dayHasPost && isCurrentMonth && (
+              {hasEvents && isCurrentMonth && (
                 <span
                   className={`
-                    absolute bottom-0.5 left-1/2 h-1 w-1 -translate-x-1/2 rounded-full
-                    ${isCurrentDay ? 'bg-surface-primary' : 'bg-accent-primary-muted'}
+                    absolute bottom-0.5 left-1/2 h-1.5 w-1.5 -translate-x-1/2 rounded-full
+                    ${hasPlanned ? 'bg-accent-secondary' : hasCompleted ? 'bg-accent-primary-muted' : 'bg-content-muted'}
                   `}
                 />
               )}
-              {showAnnotations && dayAnnotation && isCurrentMonth && (
-                <span
-                  className="absolute bottom-0.5 left-1/2 h-1.5 w-1.5 -translate-x-1/2 rounded-full bg-accent-secondary"
-                  title={dayAnnotation}
-                />
+
+              {showAnnotations && hasAnnotation && isCurrentMonth && (
+                <span className="absolute bottom-0.5 left-[58%] h-1.5 w-1.5 rounded-full border border-white bg-accent-primary" />
               )}
             </button>
           )
@@ -218,52 +182,21 @@ export function CalendarCard({ card }: CalendarCardProps) {
           <span className="h-2 w-2 rounded-full bg-accent-primary" />
           <span>今天</span>
         </div>
-        {config.showPostDots && (
-          <div className="flex items-center gap-1">
-            <span className="h-1.5 w-1.5 rounded-full bg-accent-primary-muted" />
-            <span>有文章</span>
-          </div>
-        )}
+        <div className="flex items-center gap-1">
+          <span className="h-1.5 w-1.5 rounded-full bg-accent-primary-muted" />
+          <span>已完成</span>
+        </div>
+        <div className="flex items-center gap-1">
+          <span className="h-1.5 w-1.5 rounded-full bg-accent-secondary" />
+          <span>计划中</span>
+        </div>
         {showAnnotations && (
           <div className="flex items-center gap-1">
-            <span className="h-1.5 w-1.5 rounded-full bg-accent-secondary" />
-            <span>标注</span>
+            <span className="h-1.5 w-1.5 rounded-full border border-white bg-accent-primary" />
+            <span>附注</span>
           </div>
         )}
       </div>
-
-      <Dialog open={annotationDialogOpen} onOpenChange={setAnnotationDialogOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>
-              {selectedDate ? format(selectedDate, 'yyyy年M月d日', { locale: zhCN }) : '标注日期'}
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="annotation-label">标注内容</Label>
-              <Input
-                id="annotation-label"
-                value={annotationLabel}
-                onChange={(e) => setAnnotationLabel(e.target.value)}
-                placeholder="例如：生日、纪念日、待办…"
-              />
-            </div>
-            <p className="text-xs text-content-muted">登录后可保存标注，未登录时仅可查看当月已有标注。</p>
-            {annotationError && (
-              <p className="text-sm text-ui-destructive">{annotationError}</p>
-            )}
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setAnnotationDialogOpen(false)}>
-              取消
-            </Button>
-            <Button onClick={handleSaveAnnotation} disabled={saving}>
-              {saving ? '保存中…' : '保存'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   )
 }

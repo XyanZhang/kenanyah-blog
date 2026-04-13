@@ -14,6 +14,7 @@ import {
   Plus,
   Keyboard,
   Mic,
+  Sparkles,
 } from 'lucide-react'
 import {
   listConversations,
@@ -28,6 +29,7 @@ import {
   type ChatMessage,
   type ChatStreamEvent,
 } from '@/lib/ai-chat-api'
+import { quickCreateCalendarEvent } from '@/lib/calendar-api'
 import {
   buildWorkflowFollowupOperationCardMessage,
   isWorkflowOperationCardContent,
@@ -216,6 +218,16 @@ export default function AiChatPage() {
   const [operationCardReplyDrafts, setOperationCardReplyDrafts] = useState<Record<string, string>>({})
   const [chatQueue, setChatQueue] = useState<ChatQueueItem[]>([])
   const [workflowQueue, setWorkflowQueue] = useState<WorkflowQueueItem[]>([])
+  const [quickEventText, setQuickEventText] = useState('')
+  const [quickEventDate, setQuickEventDate] = useState(() => {
+    const now = new Date()
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+  })
+  const [quickEventBusy, setQuickEventBusy] = useState(false)
+  const [quickEventError, setQuickEventError] = useState<string | null>(null)
+  const [quickEventNote, setQuickEventNote] = useState<string | null>(null)
+  const [quickEventJumpUrl, setQuickEventJumpUrl] = useState<string | null>(null)
+  const [quickEventInputType, setQuickEventInputType] = useState<'text' | 'voice'>('text')
   const bottomRef = useRef<HTMLDivElement | null>(null)
   const isComposingRef = useRef(false)
   const inputRef = useRef<HTMLTextAreaElement | null>(null)
@@ -261,6 +273,57 @@ export default function AiChatPage() {
     },
     [switchToTextInput]
   )
+
+  const handleQuickEventVoiceComplete = useCallback((text: string) => {
+    const normalizedText = text.trim()
+    if (!normalizedText) {
+      return
+    }
+
+    setQuickEventInputType('voice')
+    setQuickEventText((prev) => {
+      if (!prev.trim()) {
+        return normalizedText
+      }
+
+      return `${prev.trimEnd()}\n${normalizedText}`
+    })
+  }, [])
+
+  const handleQuickEventCreate = useCallback(async () => {
+    const rawText = quickEventText.trim()
+    if (!rawText) {
+      setQuickEventError('请先输入或录入要创建的事件内容')
+      return
+    }
+
+    setQuickEventBusy(true)
+    setQuickEventError(null)
+    setQuickEventNote(null)
+    try {
+      const result = await quickCreateCalendarEvent({
+        rawText,
+        defaultDate: quickEventDate,
+        sourceInputType: quickEventInputType,
+      })
+      setQuickEventNote(result.note)
+      setQuickEventJumpUrl(result.linkedEntity?.jumpUrl ?? `/calendar/day/${result.targetDate}`)
+      setQuickEventText('')
+      setQuickEventDate(result.targetDate)
+      setQuickEventInputType('text')
+    } catch (err) {
+      setQuickEventError(err instanceof Error ? err.message : '快速创建失败')
+    } finally {
+      setQuickEventBusy(false)
+    }
+  }, [quickEventDate, quickEventInputType, quickEventText])
+
+  useEffect(() => {
+    const quickDate = searchParams.get('quickDate')
+    if (quickDate && /^\d{4}-\d{2}-\d{2}$/.test(quickDate)) {
+      setQuickEventDate(quickDate)
+    }
+  }, [searchParams])
 
   useEffect(() => {
     try {
@@ -1180,6 +1243,84 @@ export default function AiChatPage() {
             >
               <Plus className="h-4 w-4" />
               新建会话
+            </button>
+          </div>
+        </div>
+        <div className="mb-4 rounded-2xl border border-line-glass bg-surface-glass/80 p-3 backdrop-blur-sm">
+          <div className="flex items-start gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-accent-secondary/12 text-accent-secondary">
+              <Sparkles className="h-5 w-5" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <h2 className="text-sm font-semibold text-content-primary">事件快速创建</h2>
+              <p className="mt-1 text-xs leading-5 text-content-secondary">
+                直接把语音或文本整理成可跳转的日历事件。
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-3 space-y-3">
+            <input
+              type="date"
+              value={quickEventDate}
+              onChange={(e) => {
+                setQuickEventInputType('text')
+                setQuickEventDate(e.target.value)
+              }}
+              className="h-10 w-full rounded-xl border border-line-glass bg-surface-glass px-3 text-sm text-content-primary focus:outline-none focus:ring-2 focus:ring-accent-primary/40"
+            />
+            <textarea
+              value={quickEventText}
+              onChange={(e) => {
+                setQuickEventInputType('text')
+                setQuickEventText(e.target.value)
+              }}
+              rows={4}
+              className="w-full resize-none rounded-xl border border-line-glass bg-surface-glass px-3 py-2 text-sm text-content-primary placeholder:text-content-tertiary focus:outline-none focus:ring-2 focus:ring-accent-primary/40"
+              placeholder="例如：明天发布一篇 React Compiler 调研，顺便记录一个项目方向。"
+            />
+            <div className="rounded-xl border border-dashed border-line-glass bg-surface-glass/55 p-2">
+              <VoiceRecorder
+                onTranscriptionComplete={handleQuickEventVoiceComplete}
+                disabled={quickEventBusy}
+                maxDuration={60}
+              />
+            </div>
+            {quickEventError && (
+              <p className="text-xs leading-5 text-red-500">{quickEventError}</p>
+            )}
+            {quickEventNote && (
+              <div className="rounded-xl border border-accent-primary/20 bg-accent-primary/8 px-3 py-2 text-xs leading-5 text-content-secondary">
+                <div>{quickEventNote}</div>
+                {quickEventJumpUrl && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (typeof window !== 'undefined') {
+                        window.location.assign(quickEventJumpUrl)
+                      }
+                    }}
+                    className="mt-2 text-accent-primary transition-colors hover:text-accent-primary/80"
+                  >
+                    打开对应页面
+                  </button>
+                )}
+              </div>
+            )}
+            <button
+              type="button"
+              onClick={() => {
+                void handleQuickEventCreate()
+              }}
+              disabled={quickEventBusy || !quickEventText.trim()}
+              className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-accent-secondary px-3 py-2.5 text-sm font-medium text-white transition-colors hover:bg-accent-secondary/90 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {quickEventBusy ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Sparkles className="h-4 w-4" />
+              )}
+              创建并写入日历
             </button>
           </div>
         </div>

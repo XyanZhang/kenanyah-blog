@@ -1,6 +1,7 @@
 import { generateSlug } from '@blog/utils'
 import { prisma } from '../lib/db'
 import { indexPost } from '../lib/semantic-search'
+import { syncPostEvent } from '../lib/calendar-events'
 
 export type CreateAIBlogInput = {
   authorId: string
@@ -78,6 +79,12 @@ export async function createAndMaybePublishPost(input: CreateAIBlogInput) {
 
   indexPost(post.id).catch((err) => {
     console.error('[semantic-search] index post failed:', err)
+  })
+  prisma.post.findUnique({ where: { id: post.id } }).then((fullPost) => {
+    if (!fullPost) return
+    return syncPostEvent(fullPost)
+  }).catch((err) => {
+    console.error('[calendar-events] sync post event failed:', err)
   })
 
   return post

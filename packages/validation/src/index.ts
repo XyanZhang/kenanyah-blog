@@ -109,6 +109,22 @@ export {
   type CalendarAnnotationQueryInput,
 } from './calendarAnnotation'
 
+// Calendar events
+export {
+  calendarEventSourceTypeSchema,
+  calendarEventStatusSchema,
+  calendarEventQuerySchema,
+  createCalendarEventSchema,
+  updateCalendarEventSchema,
+  quickCreateCalendarEventSchema,
+  type CalendarEventSourceTypeInput,
+  type CalendarEventStatusInput,
+  type CalendarEventQueryInput,
+  type CreateCalendarEventInput,
+  type UpdateCalendarEventInput,
+  type QuickCreateCalendarEventInput,
+} from './calendarEvent'
+
 // Bookmarks
 export {
   createBookmarkSchema,

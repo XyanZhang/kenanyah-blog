@@ -50,6 +50,7 @@ export async function saveImageFromUrl(
 
 /** 思考流配图：写入 uploads/thoughts/，与其他业务子目录区分 */
 const THOUGHT_IMAGES_SUBDIR = 'thoughts'
+const PICTURE_IMAGES_SUBDIR = 'pictures'
 
 export async function saveThoughtImageBuffer(
   buffer: Buffer,
@@ -64,4 +65,19 @@ export async function saveThoughtImageBuffer(
   await fs.writeFile(filePath, buffer)
   const baseUrl = getUploadBaseUrl().replace(/\/$/, '')
   return `${baseUrl}/uploads/${THOUGHT_IMAGES_SUBDIR}/${filename}`
+}
+
+export async function savePictureImageBuffer(
+  buffer: Buffer,
+  ext: string
+): Promise<string> {
+  const safeExt =
+    ext && /^\.(jpe?g|png|gif|webp|avif)$/i.test(ext) ? ext.toLowerCase() : '.jpg'
+  const filename = `${randomUUID()}${safeExt}`
+  const dir = path.join(getUploadDir(), PICTURE_IMAGES_SUBDIR)
+  await fs.mkdir(dir, { recursive: true })
+  const filePath = path.join(dir, filename)
+  await fs.writeFile(filePath, buffer)
+  const baseUrl = getUploadBaseUrl().replace(/\/$/, '')
+  return `${baseUrl}/uploads/${PICTURE_IMAGES_SUBDIR}/${filename}`
 }

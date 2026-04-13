@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import type { CSSProperties } from 'react'
 import { Cormorant_Garamond, Manrope } from 'next/font/google'
+import type { PhotoEntryDto } from '@blog/types'
 import { PictureStack, type PictureStackItem } from '@/components/pictures'
 import { getApiFetchUrl } from '@/lib/api-client'
 
@@ -14,6 +15,11 @@ export const revalidate = 60
 type PicturesApiResponse = {
   success?: boolean
   data?: PictureStackItem[]
+}
+
+type PhotoEntriesApiResponse = {
+  success?: boolean
+  data?: PhotoEntryDto[]
 }
 
 const cormorant = Cormorant_Garamond({
@@ -43,8 +49,30 @@ async function loadPictureItems(): Promise<PictureStackItem[]> {
   }
 }
 
+async function loadDatabasePhotoItems(): Promise<PictureStackItem[]> {
+  try {
+    const res = await fetch(getApiFetchUrl('/pictures/entries'), { next: { revalidate: 60 } })
+    if (!res.ok) return []
+    const json = (await res.json()) as PhotoEntriesApiResponse
+    if (!json.success || !Array.isArray(json.data)) return []
+    return json.data
+      .filter((item) => Boolean(item.imageUrl))
+      .map((item) => ({
+        id: `db-${item.id}`,
+        src: item.imageUrl!,
+        date: (item.takenAt ?? item.createdAt).slice(0, 10),
+      }))
+  } catch {
+    return []
+  }
+}
+
 export default async function PicturesPage() {
-  const items = await loadPictureItems()
+  const [staticItems, databaseItems] = await Promise.all([
+    loadPictureItems(),
+    loadDatabasePhotoItems(),
+  ])
+  const items = [...databaseItems, ...staticItems]
 
   return (
     <main

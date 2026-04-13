@@ -48,6 +48,19 @@ export type {
   PostFilters,
 } from './api'
 
+// Calendar types
+export type {
+  CalendarEventSourceType,
+  CalendarEventStatus,
+  CalendarAnnotationSummary,
+  CalendarEventDto,
+  CalendarDaySummaryDto,
+  CalendarDayResponse,
+  CalendarQuickCreateResult,
+  ProjectEntryDto,
+  PhotoEntryDto,
+} from './calendar'
+
 // Auth types
 export type {
   LoginDto,

@@ -16,6 +16,7 @@
     "prisma:push": "prisma db push",
     "prisma:studio": "prisma studio",
     "prisma:seed": "tsx --env-file=../../.env.test prisma/seed.ts",
+    "backfill-events": "tsx --env-file=../../.env.test scripts/backfill-event-items.ts",
     "index-posts": "tsx --env-file=../../.env.test scripts/index-all-posts.ts",
     "check-embeddings": "tsx --env-file=../../.env.test scripts/check-embeddings.ts",
     "gen-password": "tsx scripts/gen-password.ts",

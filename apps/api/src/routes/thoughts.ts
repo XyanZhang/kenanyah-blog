@@ -8,6 +8,7 @@ import { ThoughtsRagAgent } from '../agents/thoughts-rag-agent'
 import { saveThoughtImageBuffer } from '../lib/storage'
 import { assistThoughtWithQwen } from '../lib/qwen-thought-assist'
 import type { JwtPayload } from '../lib/jwt'
+import { removeEventsForSource, syncThoughtEvent } from '../lib/calendar-events'
 
 type ThoughtVariables = { user: JwtPayload }
 
@@ -128,6 +129,9 @@ thoughts.post('/', authMiddleware, async (c) => {
 
   rag.indexThought(thought.id).catch((err) =>
     console.error('[thoughts] indexThought failed:', err)
+  )
+  syncThoughtEvent(thought).catch((err) =>
+    console.error('[calendar-events] sync thought event failed:', err)
   )
 
   return c.json({ success: true, data: thought }, 201)
@@ -312,6 +316,9 @@ thoughts.patch('/:id', authMiddleware, async (c) => {
       console.error('[thoughts] indexThought failed:', err)
     )
   }
+  syncThoughtEvent(updated).catch((err) =>
+    console.error('[calendar-events] sync thought event failed:', err)
+  )
 
   return c.json({ success: true, data: updated })
 })
@@ -333,10 +340,12 @@ thoughts.delete('/:id', authMiddleware, async (c) => {
   await rag.removeThoughtFromIndex(id).catch((err) =>
     console.error('[thoughts] removeThoughtFromIndex failed:', err)
   )
+  await removeEventsForSource('thought', id).catch((err) =>
+    console.error('[calendar-events] remove thought event failed:', err)
+  )
   await prisma.thought.delete({ where: { id } })
 
   return c.json({ success: true, data: { message: 'Thought deleted successfully' } })
 })
 
 export default thoughts
-
