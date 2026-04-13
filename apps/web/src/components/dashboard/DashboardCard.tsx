@@ -36,12 +36,18 @@ const cardComponents = {
   [CardType.COUNTDOWN]: lazy(() => import('./cards/CountdownCard').then(m => ({ default: m.CountdownCard }))),
 }
 
-const CARD_HOVER_SCALE = 1.045
+const CARD_HOVER_SCALE = 1.052
+const CARD_SUBTLE_HOVER_SCALE = 1.036
+const CARD_HOVER_LIFT = 7
+const CARD_SUBTLE_HOVER_LIFT = 4
+const CARD_HOVER_SHADOW =
+  '0 26px 52px -20px rgba(0,0,0,0.18), inset 0 1px 0 rgba(255,255,255,0.78)'
+
 const CARD_POSITION_SPRING = {
   type: 'spring' as const,
-  stiffness: 300,
+  stiffness: 420,
   damping: 28,
-  mass: 0.88,
+  mass: 0.72,
 }
 
 const CARD_INTERACTION_TRANSITION = {
@@ -57,16 +63,16 @@ const CARD_SIZE_SPRING = {
 
 const CARD_ENTRANCE_SPRING = {
   type: 'spring' as const,
-  stiffness: 260,
-  damping: 24,
-  mass: 0.95,
+  stiffness: 380,
+  damping: 26,
+  mass: 0.7,
 }
 
 const CARD_HOVER_TRANSITION = {
   type: 'spring' as const,
-  stiffness: 430,
+  stiffness: 700,
   damping: 26,
-  mass: 0.72,
+  mass: 0.52,
 }
 
 function CardPlaceholder() {
@@ -156,6 +162,8 @@ export function DashboardCard({ card, animationIndex }: DashboardCardProps) {
   const handleOpenConfig = useCallback(() => setOpenConfigCardId(card.id), [card.id])
   const padding = card.padding ?? 24
   const hideCardContainer = card.config?.hideCardContainer ?? false
+  const hoverScale = navigateTo ? CARD_HOVER_SCALE : CARD_SUBTLE_HOVER_SCALE
+  const hoverLift = navigateTo ? CARD_HOVER_LIFT : CARD_SUBTLE_HOVER_LIFT
 
   // 画布坐标：card.position 为画布坐标，transform 与 positionDelta 为视口像素需除以 scale
   const position = useMemo(
@@ -182,7 +190,7 @@ export function DashboardCard({ card, animationIndex }: DashboardCardProps) {
         willChange: !isEditMode && !isDragging && !isResizing ? 'transform, width, height, opacity' : undefined,
       }}
       initial={{
-        scale: 0.94,
+        scale: 0.93,
         opacity: 0,
         x: position.x,
         y: position.y + 18,
@@ -225,7 +233,9 @@ export function DashboardCard({ card, animationIndex }: DashboardCardProps) {
       whileHover={
         !isEditMode
           ? {
-              scale: navigateTo ? CARD_HOVER_SCALE : 1.025,
+              scale: hoverScale,
+              y: position.y - hoverLift,
+              ...(hideCardContainer ? {} : { boxShadow: CARD_HOVER_SHADOW }),
               transition: CARD_HOVER_TRANSITION,
             }
           : undefined
