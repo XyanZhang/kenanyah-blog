@@ -1190,149 +1190,70 @@ export default function AiChatPage() {
         ? `正在执行博客工作流。你可以继续输入并加入生成队列${workflowQueue.length > 0 ? `，当前生成队列 ${workflowQueue.length} 条` : '。'}`
         : workflowFollowupMode
           ? '当前处于博客生成补充信息模式，发送后会继续走生成并入库流程。'
-          : sending
-            ? `正在生成回答。你可以继续输入并排队发送${chatQueue.length > 0 ? `，当前队列 ${chatQueue.length} 条` : ''}。`
-            : 'Enter 发送，Shift + Enter 换行。'
+        : sending
+          ? `正在生成回答。你可以继续输入并排队发送${chatQueue.length > 0 ? `，当前队列 ${chatQueue.length} 条` : ''}。`
+          : 'Enter 发送，Shift + Enter 换行。'
+
+  const currentConversation = conversations.find((conv) => conv.id === currentId) ?? null
+  const workspaceStatusLabel = runningWorkflow
+    ? '博客工作流执行中'
+    : workflowFollowupMode
+      ? '等待补充生成要求'
+      : sending
+        ? '正在生成回答'
+        : '可继续输入'
 
   return (
-    <main className="w-full max-w-6xl mx-auto px-4 py-6 md:py-8 flex flex-col md:flex-row gap-4 bg-linear-to-b from-surface-glass/40 via-surface-glass/10 to-surface-glass/40">
-      <section className="w-full md:w-72 shrink-0 md:h-[calc(100vh-140px)] md:max-h-[calc(100vh-140px)] flex flex-col">
-        <div className="mb-4 rounded-2xl border border-line-glass bg-surface-glass/75 p-3 backdrop-blur-sm">
+    <main className="mx-auto grid w-full max-w-[1520px] gap-4 px-4 py-6 md:py-8 xl:grid-cols-[280px_minmax(0,1fr)_320px]">
+      <section className="flex min-h-[24rem] flex-col xl:sticky xl:top-6 xl:h-[calc(100vh-7rem)]">
+        <div className="mb-4 rounded-[2rem] border border-line-glass bg-[linear-gradient(145deg,rgba(255,255,255,0.9),rgba(245,248,252,0.78))] p-4 shadow-[0_18px_50px_rgba(15,23,42,0.06)] backdrop-blur-sm">
           <div className="flex items-start gap-3">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-accent-primary/12 text-accent-primary">
               <Bot className="h-5 w-5" />
             </div>
             <div className="min-w-0 flex-1">
-              <h1 className="text-base font-semibold text-content-primary">AI 对话</h1>
+              <h1 className="text-base font-semibold text-content-primary">AI 工作台</h1>
               <p className="mt-1 text-xs leading-5 text-content-secondary">
-                管理会话并切换知识库检索模式。
+                左侧专注切换会话，主区域只处理当前对话。
               </p>
             </div>
           </div>
 
-          <div className="mt-3 grid gap-2">
+          <div className="mt-4 grid gap-2">
             <button
               type="button"
-              onClick={() => setUseKnowledgeBase((prev) => !prev)}
-              aria-pressed={useKnowledgeBase}
-              className={`flex w-full items-center justify-between rounded-xl border px-3 py-2.5 text-left transition-colors ${
-                useKnowledgeBase
-                  ? 'border-accent-primary/30 bg-accent-primary/10 text-accent-primary'
-                  : 'border-line-glass bg-surface-glass/70 text-content-secondary hover:border-accent-primary/20 hover:bg-surface-glass'
-              }`}
-            >
-              <span className="flex items-center gap-2">
-                <Database className="h-4 w-4" />
-                <span className="text-sm font-medium">检索本地知识库</span>
-              </span>
-              <span
-                className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${
-                  useKnowledgeBase
-                    ? 'bg-accent-primary/15 text-accent-primary'
-                    : 'bg-surface-tertiary text-content-tertiary'
-                }`}
-              >
-                {useKnowledgeBase ? '已开启' : '已关闭'}
-              </span>
-            </button>
-
-            <button
-              type="button"
-              className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-accent-primary px-3 py-2.5 text-sm font-medium text-white shadow-md transition-colors hover:bg-accent-primary/90"
               onClick={handleCreateConversation}
+              className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-accent-primary px-3 py-2.5 text-sm font-medium text-white shadow-md transition-colors hover:bg-accent-primary/90"
             >
               <Plus className="h-4 w-4" />
               新建会话
             </button>
-          </div>
-        </div>
-        <div className="mb-4 rounded-2xl border border-line-glass bg-surface-glass/80 p-3 backdrop-blur-sm">
-          <div className="flex items-start gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-accent-secondary/12 text-accent-secondary">
-              <Sparkles className="h-5 w-5" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <h2 className="text-sm font-semibold text-content-primary">事件快速创建</h2>
-              <p className="mt-1 text-xs leading-5 text-content-secondary">
-                直接把语音或文本整理成可跳转的日历事件。
-              </p>
-            </div>
-          </div>
 
-          <div className="mt-3 space-y-3">
-            <input
-              type="date"
-              value={quickEventDate}
-              onChange={(e) => {
-                setQuickEventInputType('text')
-                setQuickEventDate(e.target.value)
-              }}
-              className="h-10 w-full rounded-xl border border-line-glass bg-surface-glass px-3 text-sm text-content-primary focus:outline-none focus:ring-2 focus:ring-accent-primary/40"
-            />
-            <textarea
-              value={quickEventText}
-              onChange={(e) => {
-                setQuickEventInputType('text')
-                setQuickEventText(e.target.value)
-              }}
-              rows={4}
-              className="w-full resize-none rounded-xl border border-line-glass bg-surface-glass px-3 py-2 text-sm text-content-primary placeholder:text-content-tertiary focus:outline-none focus:ring-2 focus:ring-accent-primary/40"
-              placeholder="例如：明天发布一篇 React Compiler 调研，顺便记录一个项目方向。"
-            />
-            <div className="rounded-xl border border-dashed border-line-glass bg-surface-glass/55 p-2">
-              <VoiceRecorder
-                onTranscriptionComplete={handleQuickEventVoiceComplete}
-                disabled={quickEventBusy}
-                maxDuration={60}
-              />
-            </div>
-            {quickEventError && (
-              <p className="text-xs leading-5 text-red-500">{quickEventError}</p>
-            )}
-            {quickEventNote && (
-              <div className="rounded-xl border border-accent-primary/20 bg-accent-primary/8 px-3 py-2 text-xs leading-5 text-content-secondary">
-                <div>{quickEventNote}</div>
-                {quickEventJumpUrl && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (typeof window !== 'undefined') {
-                        window.location.assign(quickEventJumpUrl)
-                      }
-                    }}
-                    className="mt-2 text-accent-primary transition-colors hover:text-accent-primary/80"
-                  >
-                    打开对应页面
-                  </button>
-                )}
-              </div>
-            )}
             <button
               type="button"
-              onClick={() => {
-                void handleQuickEventCreate()
-              }}
-              disabled={quickEventBusy || !quickEventText.trim()}
-              className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-accent-secondary px-3 py-2.5 text-sm font-medium text-white transition-colors hover:bg-accent-secondary/90 disabled:cursor-not-allowed disabled:opacity-50"
+              onClick={() => router.push(`/calendar/day/${quickEventDate}`)}
+              className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-line-glass bg-white/72 px-3 py-2.5 text-sm font-medium text-content-primary transition-colors hover:bg-white"
             >
-              {quickEventBusy ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Sparkles className="h-4 w-4" />
-              )}
-              创建并写入日历
+              <Sparkles className="h-4 w-4 text-accent-secondary" />
+              查看当日中枢
             </button>
           </div>
         </div>
-        <div className="rounded-2xl border border-line-glass bg-surface-glass/80 backdrop-blur-sm p-2 flex-1 overflow-y-auto">
+        <div className="flex flex-1 flex-col overflow-hidden rounded-[2rem] border border-line-glass bg-surface-glass/82 p-2 shadow-[0_18px_48px_rgba(15,23,42,0.06)] backdrop-blur-sm">
+          <div className="border-b border-line-glass/60 px-2 pb-3 pt-1">
+            <div className="text-[11px] uppercase tracking-[0.28em] text-content-muted">Sessions</div>
+            <div className="mt-2 text-sm text-content-secondary">
+              当前共 {conversations.length} 个会话
+            </div>
+          </div>
           {loadingConversations ? (
-            <div className="flex items-center justify-center py-8">
+            <div className="flex flex-1 items-center justify-center py-8">
               <Loader2 className="h-5 w-5 animate-spin text-content-muted" />
             </div>
           ) : conversations.length === 0 ? (
-            <p className="text-sm text-content-secondary px-2 py-4">暂无会话，先发一条消息试试吧。</p>
+            <p className="px-2 py-4 text-sm text-content-secondary">暂无会话，先发一条消息试试吧。</p>
           ) : (
-            <ul className="space-y-1">
+            <ul className="mt-2 flex-1 space-y-1 overflow-y-auto">
               {conversations.map((conv) => (
                 <li key={conv.id}>
                   {editingId === conv.id ? (
@@ -1417,8 +1338,65 @@ export default function AiChatPage() {
         </div>
       </section>
 
-      <section className="flex-1 flex flex-col md:h-[calc(100vh-140px)] md:max-h-[calc(100vh-140px)] min-h-[60vh]">
-        <div className="flex-1 rounded-3xl border border-line-glass bg-surface-glass/90 backdrop-blur-lg p-4 md:p-5 flex flex-col shadow-lg shadow-black/10 overflow-hidden">
+      <section className="flex min-h-[60vh] flex-col xl:h-[calc(100vh-7rem)]">
+        <div className="mb-4 rounded-[2.2rem] border border-line-glass bg-[linear-gradient(135deg,rgba(255,255,255,0.94),rgba(244,247,251,0.82))] p-4 shadow-[0_20px_56px_rgba(15,23,42,0.07)]">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+            <div className="min-w-0">
+              <div className="text-[11px] uppercase tracking-[0.3em] text-content-muted">Workspace</div>
+              <h1 className="mt-2 truncate text-2xl font-semibold tracking-[-0.04em] text-content-primary sm:text-3xl">
+                {currentConversation?.title || '未命名会话'}
+              </h1>
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-content-secondary">
+                主区域只处理当前上下文，右侧用于快速创建事件和查看当前工作流状态。
+              </p>
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => setUseKnowledgeBase((prev) => !prev)}
+                aria-pressed={useKnowledgeBase}
+                className={`inline-flex items-center gap-2 rounded-full border px-3 py-2 text-sm font-medium transition-colors ${
+                  useKnowledgeBase
+                    ? 'border-accent-primary/30 bg-accent-primary/10 text-accent-primary'
+                    : 'border-line-glass bg-white/70 text-content-secondary hover:border-accent-primary/20 hover:text-content-primary'
+                }`}
+              >
+                <Database className="h-4 w-4" />
+                {useKnowledgeBase ? '知识库已开启' : '知识库已关闭'}
+              </button>
+              <button
+                type="button"
+                onClick={handleCreateConversation}
+                className="inline-flex items-center gap-2 rounded-full border border-line-glass bg-white/72 px-3 py-2 text-sm font-medium text-content-primary transition-colors hover:bg-white"
+              >
+                <Plus className="h-4 w-4" />
+                新建会话
+              </button>
+            </div>
+          </div>
+
+          <div className="mt-4 grid gap-3 sm:grid-cols-3">
+            <div className="rounded-[1.25rem] border border-white/70 bg-white/78 px-4 py-3">
+              <div className="text-[11px] uppercase tracking-[0.24em] text-content-muted">Messages</div>
+              <div className="mt-2 text-2xl font-semibold tracking-[-0.04em] text-content-primary">
+                {messages.length}
+              </div>
+            </div>
+            <div className="rounded-[1.25rem] border border-white/70 bg-white/78 px-4 py-3">
+              <div className="text-[11px] uppercase tracking-[0.24em] text-content-muted">Status</div>
+              <div className="mt-2 text-sm font-medium text-content-primary">{workspaceStatusLabel}</div>
+            </div>
+            <div className="rounded-[1.25rem] border border-white/70 bg-white/78 px-4 py-3">
+              <div className="text-[11px] uppercase tracking-[0.24em] text-content-muted">Queue</div>
+              <div className="mt-2 text-sm font-medium text-content-primary">
+                对话 {chatQueue.length} / 博客 {workflowQueue.length}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex flex-1 flex-col overflow-hidden rounded-[2.2rem] border border-line-glass bg-surface-glass/90 p-4 shadow-[0_20px_56px_rgba(15,23,42,0.08)] backdrop-blur-lg md:p-5">
           {error && (
             <p className="mb-3 text-sm text-red-500" role="alert">
               {error}
@@ -1770,7 +1748,7 @@ export default function AiChatPage() {
           )}
         </div>
 
-        <div className="mt-3 md:mt-4 rounded-3xl border border-line-glass bg-surface-glass/95 backdrop-blur-xl p-3 md:p-4 shadow-[0_18px_45px_rgba(0,0,0,0.25)]">
+        <div className="mt-3 rounded-[2.2rem] border border-line-glass bg-surface-glass/95 p-3 shadow-[0_18px_45px_rgba(0,0,0,0.14)] backdrop-blur-xl md:p-4">
           <div className="flex flex-col gap-3">
             <div className="flex items-end gap-3">
               <button
@@ -1890,6 +1868,113 @@ export default function AiChatPage() {
           </div>
         </div>
       </section>
+
+      <aside className="flex flex-col gap-4 xl:sticky xl:top-6 xl:h-[calc(100vh-7rem)]">
+        <div className="rounded-[2rem] border border-line-glass bg-[linear-gradient(145deg,rgba(255,255,255,0.94),rgba(245,247,252,0.82))] p-4 shadow-[0_18px_50px_rgba(15,23,42,0.06)]">
+          <div className="flex items-start gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-accent-secondary/12 text-accent-secondary">
+              <Sparkles className="h-5 w-5" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <h2 className="text-sm font-semibold text-content-primary">事件快速创建</h2>
+              <p className="mt-1 text-xs leading-5 text-content-secondary">
+                这里负责语音或文本快速入库，不再挤占会话侧栏。
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-4 space-y-3">
+            <input
+              type="date"
+              value={quickEventDate}
+              onChange={(e) => {
+                setQuickEventInputType('text')
+                setQuickEventDate(e.target.value)
+              }}
+              className="h-10 w-full rounded-xl border border-line-glass bg-white/76 px-3 text-sm text-content-primary focus:outline-none focus:ring-2 focus:ring-accent-primary/40"
+            />
+            <textarea
+              value={quickEventText}
+              onChange={(e) => {
+                setQuickEventInputType('text')
+                setQuickEventText(e.target.value)
+              }}
+              rows={5}
+              className="w-full resize-none rounded-xl border border-line-glass bg-white/76 px-3 py-2 text-sm text-content-primary placeholder:text-content-tertiary focus:outline-none focus:ring-2 focus:ring-accent-primary/40"
+              placeholder="例如：明天下午发布一篇 React Compiler 调研，再记录一个日历页面改版想法。"
+            />
+            <div className="rounded-xl border border-dashed border-line-glass bg-white/62 p-2">
+              <VoiceRecorder
+                onTranscriptionComplete={handleQuickEventVoiceComplete}
+                disabled={quickEventBusy}
+                maxDuration={60}
+              />
+            </div>
+            {quickEventError && (
+              <p className="text-xs leading-5 text-red-500">{quickEventError}</p>
+            )}
+            {quickEventNote && (
+              <div className="rounded-xl border border-accent-primary/20 bg-accent-primary/8 px-3 py-2 text-xs leading-5 text-content-secondary">
+                <div>{quickEventNote}</div>
+                {quickEventJumpUrl && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (typeof window !== 'undefined') {
+                        window.location.assign(quickEventJumpUrl)
+                      }
+                    }}
+                    className="mt-2 text-accent-primary transition-colors hover:text-accent-primary/80"
+                  >
+                    打开对应页面
+                  </button>
+                )}
+              </div>
+            )}
+            <button
+              type="button"
+              onClick={() => {
+                void handleQuickEventCreate()
+              }}
+              disabled={quickEventBusy || !quickEventText.trim()}
+              className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-accent-secondary px-3 py-2.5 text-sm font-medium text-white transition-colors hover:bg-accent-secondary/90 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {quickEventBusy ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Sparkles className="h-4 w-4" />
+              )}
+              创建并写入日历
+            </button>
+          </div>
+        </div>
+
+        <div className="rounded-[2rem] border border-line-glass bg-surface-glass/82 p-4 shadow-[0_18px_50px_rgba(15,23,42,0.06)] backdrop-blur-sm">
+          <div className="text-[11px] uppercase tracking-[0.28em] text-content-muted">Workflow</div>
+          <div className="mt-3 space-y-3">
+            <div className="rounded-[1.25rem] border border-line-glass bg-white/72 px-4 py-3">
+              <div className="text-xs text-content-secondary">当前模式</div>
+              <div className="mt-2 text-sm font-medium text-content-primary">{workspaceStatusLabel}</div>
+            </div>
+            <button
+              type="button"
+              onClick={() => router.push(`/calendar/day/${quickEventDate}`)}
+              className="inline-flex w-full items-center justify-between rounded-[1.25rem] border border-line-glass bg-white/72 px-4 py-3 text-left text-sm font-medium text-content-primary transition-colors hover:bg-white"
+            >
+              <span>打开当日事件中枢</span>
+              <Sparkles className="h-4 w-4 text-accent-secondary" />
+            </button>
+            <button
+              type="button"
+              onClick={() => router.push('/blog/editor')}
+              className="inline-flex w-full items-center justify-between rounded-[1.25rem] border border-line-glass bg-white/72 px-4 py-3 text-left text-sm font-medium text-content-primary transition-colors hover:bg-white"
+            >
+              <span>直接去写博客</span>
+              <FilePenLine className="h-4 w-4 text-accent-primary" />
+            </button>
+          </div>
+        </div>
+      </aside>
     </main>
   )
 }
