@@ -38,10 +38,11 @@ type FollowupOperationCard = {
 type ConfirmOperationCard = {
   version: 1
   kind: 'confirm'
-  scope: 'delete_post'
+  scope: 'delete_post' | 'calendar_schedule'
   title: string
   description?: string
   emphasis?: 'danger'
+  confirmPayload?: string
   details: OperationCardDetail[]
   actions: OperationCardAction[]
 }
@@ -150,6 +151,55 @@ export function buildDeletePostConfirmOperationCardMessage(input: {
         type: 'send_message',
         label: '取消',
         message: `取消删除 ${input.postId}`,
+        mode: 'chat',
+        style: 'secondary',
+      },
+    ],
+  })
+}
+
+export function buildCalendarScheduleConfirmOperationCardMessage(input: {
+  date: string
+  description: string
+  existingSummary: string
+  planItems: string[]
+  calendarDayUrl: string
+  confirmMessage: string
+  confirmPayload: string
+}): string {
+  return stringifyOperationCard({
+    version: 1,
+    kind: 'confirm',
+    scope: 'calendar_schedule',
+    title: '确认创建日程安排',
+    description: input.description,
+    confirmPayload: input.confirmPayload,
+    details: [
+      { label: '日期', value: input.date },
+      { label: '现有安排', value: input.existingSummary },
+      ...input.planItems.slice(0, 5).map((item, index) => ({
+        label: `计划 ${index + 1}`,
+        value: item,
+      })),
+    ],
+    actions: [
+      {
+        type: 'open_url',
+        label: '查看当天日历',
+        url: input.calendarDayUrl,
+        style: 'ghost',
+      },
+      {
+        type: 'send_message',
+        label: '确认创建',
+        message: input.confirmMessage,
+        mode: 'chat',
+        style: 'primary',
+      },
+      {
+        type: 'send_message',
+        label: '取消',
+        message: '取消创建日程计划',
         mode: 'chat',
         style: 'secondary',
       },

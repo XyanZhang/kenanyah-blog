@@ -164,6 +164,10 @@ function getChatEventStatusLabel(event: ChatStreamEvent): string | null {
     return event.label
   }
 
+  if (event.type === 'skill_phase') {
+    return event.label
+  }
+
   if (event.type === 'tool_call') {
     return event.label
   }

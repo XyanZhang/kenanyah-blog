@@ -39,10 +39,11 @@ export type FollowupOperationCard = {
 export type ConfirmOperationCard = {
   version: 1
   kind: 'confirm'
-  scope: 'delete_post'
+  scope: 'delete_post' | 'calendar_schedule'
   title: string
   description?: string
   emphasis?: 'danger'
+  confirmPayload?: string
   details: OperationCardDetail[]
   actions: OperationCardAction[]
 }

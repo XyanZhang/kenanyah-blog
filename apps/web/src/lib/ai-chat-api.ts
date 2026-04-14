@@ -37,6 +37,12 @@ export type ChatStreamEvent =
   | { type: 'start' }
   | { type: 'stage'; stage: ChatAgentStage; label: string }
   | {
+      type: 'skill_phase'
+      skill: 'calendar_planning'
+      phase: 'draft' | 'confirm' | 'create' | 'advise'
+      label: string
+    }
+  | {
       type: 'tool_call'
       tool:
         | 'knowledge_base_search'
@@ -45,6 +51,7 @@ export type ChatStreamEvent =
         | 'delete_post'
         | 'get_post_detail'
         | 'list_drafts'
+        | 'create_calendar_event'
         | 'create_thought'
         | 'save_bookmark_from_url'
         | 'list_bookmarks'
@@ -64,6 +71,7 @@ export type ChatStreamEvent =
         | 'delete_post'
         | 'get_post_detail'
         | 'list_drafts'
+        | 'create_calendar_event'
         | 'create_thought'
         | 'save_bookmark_from_url'
         | 'list_bookmarks'

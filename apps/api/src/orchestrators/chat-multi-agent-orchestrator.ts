@@ -1,12 +1,13 @@
 import {
+  type ChatExecutionRoute,
   type ChatToolCall,
-  resolveExecutionRoute,
   runBusinessToolAgent,
   runIntentRecognitionAgent,
   runTaskPlanningAgent,
   runToolRoutingAgent,
   type ChatToolName,
 } from '../agents/chat-coordinator-agents'
+import { resolveChatAppSkill, type ResolvedChatAppSkill } from '../agents/chat-app-skills'
 import { throwIfAborted } from '../lib/abort'
 import { streamChat } from '../lib/llm'
 import {
@@ -30,6 +31,12 @@ export type ChatMultiAgentStreamEvent =
   | {
       type: 'stage'
       stage: ChatAgentStage
+      label: string
+    }
+  | {
+      type: 'skill_phase'
+      skill: 'calendar_planning'
+      phase: 'draft' | 'confirm' | 'create' | 'advise'
       label: string
     }
   | {
@@ -121,7 +128,7 @@ function createEmptyStageTimingMap(): ChatStageTimingMap {
 }
 
 function logChatStageTimings(input: ChatMultiAgentInput, options: {
-  route: ReturnType<typeof resolveExecutionRoute> | 'unknown'
+  route: ChatExecutionRoute | 'unknown'
   timings: ChatStageTimingMap
   totalMs: number
   status: 'completed' | 'aborted' | 'failed'
@@ -188,6 +195,10 @@ function buildToolCallLabel(tool: ChatToolName, options?: {
     return options?.query
       ? `正在查询相关草稿：${options.query}`
       : '正在列出当前草稿…'
+  }
+
+  if (tool === 'create_calendar_event') {
+    return '正在创建日程安排并写入日历…'
   }
 
   if (tool === 'create_thought') {
@@ -272,7 +283,7 @@ function buildToolResultsContext(toolResults: ChatToolExecutionResult[]): string
     .join('\n\n---\n\n')
 }
 
-function buildResponderSystemPrompt(): string {
+function buildResponderSystemPrompt(skill: ResolvedChatAppSkill): string {
   return [
     '你是多 Agent 协作聊天系统中的 Result Agent。',
     '你会收到：对话历史、用户最新消息、意图识别结果、任务拆解结果、工具执行结果。',
@@ -282,6 +293,8 @@ function buildResponderSystemPrompt(): string {
     '3. 如果工具结果为空或不足以支撑结论，要明确说明本地信息不足，再给出下一步建议。',
     '4. 如果用户明显是在准备生成博客/文章，但当前只是聊天链路，可以先帮助澄清需求，同时提醒对方使用博客生成工作流来落库/发布。',
     '5. 默认保持简洁，但不要牺牲可执行性。',
+    `当前应用 skill：${skill.label}。${skill.description}`,
+    skill.prompts.responder?.trim() || '',
   ].join('\n')
 }
 
@@ -292,11 +305,13 @@ function buildResponderUserPrompt(input: {
   intent: Awaited<ReturnType<typeof runIntentRecognitionAgent>>
   plan: Awaited<ReturnType<typeof runTaskPlanningAgent>>
   toolResults: ChatToolExecutionResult[]
+  skill: ResolvedChatAppSkill
 }): string {
   return [
     `用户最新消息：${input.latestUserMessage}`,
     '',
     `是否允许检索本地知识库：${input.useKnowledgeBase ? '是' : '否'}`,
+    `当前应用 skill：${input.skill.id}`,
     '',
     'Intent Agent 输出：',
     JSON.stringify(input.intent, null, 2),
@@ -344,7 +359,7 @@ export async function* runChatMultiAgentOrchestrator(
 ): AsyncGenerator<ChatMultiAgentStreamEvent, void, undefined> {
   const orchestratorStartedAt = Date.now()
   const stageTimings = createEmptyStageTimingMap()
-  let executionRoute: ReturnType<typeof resolveExecutionRoute> | 'unknown' = 'unknown'
+  let executionRoute: ChatExecutionRoute | 'unknown' = 'unknown'
   let completed = false
 
   try {
@@ -366,13 +381,18 @@ export async function* runChatMultiAgentOrchestrator(
     stageTimings.intent += Date.now() - intentStartedAt
     throwIfAborted(input.signal)
 
-    executionRoute = resolveExecutionRoute(intent.intent)
+    const skill = resolveChatAppSkill({
+      intent,
+      latestUserMessage: input.latestUserMessage,
+      useKnowledgeBase: input.useKnowledgeBase,
+    })
+    executionRoute = skill.route
 
     if (executionRoute === 'blog_workflow') {
       yield {
         type: 'stage',
         stage: 'workflow',
-        label: '已识别为博客创作请求，正在切换到博客工作流…',
+        label: `已匹配技能「${skill.label}」，正在切换到博客工作流…`,
       }
 
       const workflowStartedAt = Date.now()
@@ -433,7 +453,7 @@ export async function* runChatMultiAgentOrchestrator(
       yield {
         type: 'stage',
         stage: 'tool',
-        label: '已识别为业务操作请求，正在准备执行工具…',
+        label: `已匹配技能「${skill.label}」，正在准备执行工具…`,
       }
 
       const toolStartedAt = Date.now()
@@ -441,6 +461,8 @@ export async function* runChatMultiAgentOrchestrator(
         conversationText,
         latestUserMessage: input.latestUserMessage,
         intent,
+        availableTools: skill.businessTools,
+        skillPrompt: skill.prompts.businessTool,
         signal: input.signal,
       })
       throwIfAborted(input.signal)
@@ -477,10 +499,26 @@ export async function* runChatMultiAgentOrchestrator(
         siteBaseUrl: input.siteBaseUrl,
         latestUserMessage: input.latestUserMessage,
         conversationText,
+        useKnowledgeBase: input.useKnowledgeBase,
         signal: input.signal,
       })
       stageTimings.tool += Date.now() - toolStartedAt
       throwIfAborted(input.signal)
+
+      if (
+        skill.id === 'calendar_planning' &&
+        result.tool === 'create_calendar_event' &&
+        Array.isArray(result.skillPhases)
+      ) {
+        for (const phaseEvent of result.skillPhases) {
+          yield {
+            type: 'skill_phase',
+            skill: 'calendar_planning',
+            phase: phaseEvent.phase,
+            label: phaseEvent.label,
+          }
+        }
+      }
 
       if (result.status === 'need_more_info' && result.followupQuestions?.length) {
         yield {
@@ -511,13 +549,14 @@ export async function* runChatMultiAgentOrchestrator(
       yield {
         type: 'stage',
         stage: 'plan',
-        label: '正在拆解任务并判断是否需要追问…',
+        label: `已匹配技能「${skill.label}」，正在拆解任务并判断是否需要追问…`,
       }
       const planStartedAt = Date.now()
       resolvedPlan = await runTaskPlanningAgent({
         conversationText,
         latestUserMessage: input.latestUserMessage,
         intent,
+        skillPrompt: skill.prompts.planner,
         signal: input.signal,
       })
       stageTimings.plan += Date.now() - planStartedAt
@@ -544,15 +583,14 @@ export async function* runChatMultiAgentOrchestrator(
       return
     }
 
-    const availableTools: ChatToolName[] =
-      input.useKnowledgeBase && intent.shouldUseKnowledgeBase ? ['knowledge_base_search'] : []
+    const availableTools: ChatToolName[] = skill.retrievalTools
     let toolResults: ChatToolExecutionResult[] = []
 
     if (availableTools.length > 0) {
       yield {
         type: 'stage',
         stage: 'tool',
-        label: '正在评估是否需要调用工具…',
+        label: `已匹配技能「${skill.label}」，正在评估是否需要调用工具…`,
       }
 
       const toolStartedAt = Date.now()
@@ -562,6 +600,7 @@ export async function* runChatMultiAgentOrchestrator(
         intent,
         plan: resolvedPlan,
         availableTools,
+        skillPrompt: skill.prompts.toolRouting,
         signal: input.signal,
       })
       throwIfAborted(input.signal)
@@ -616,10 +655,11 @@ export async function* runChatMultiAgentOrchestrator(
       intent,
       plan: resolvedPlan,
       toolResults,
+      skill,
     })
 
     const respondStartedAt = Date.now()
-    for await (const chunk of streamChat(responseUserPrompt, buildResponderSystemPrompt(), {
+    for await (const chunk of streamChat(responseUserPrompt, buildResponderSystemPrompt(skill), {
       model: 'default',
       temperature: 0.4,
       signal: input.signal,

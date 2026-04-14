@@ -1,12 +1,29 @@
+import { z } from 'zod'
 import { generateSlug } from '@blog/utils'
 import { Prisma } from '../generated/prisma/client/client'
 import { ThoughtsRagAgent } from '../agents/thoughts-rag-agent'
 import { type ChatToolCall } from '../agents/chat-coordinator-agents'
+import { type CalendarPlanningSkillPhase } from '../agents/chat-app-skills'
 import { prisma } from '../lib/db'
 import { throwIfAborted } from '../lib/abort'
+import { invokeChat } from '../lib/llm'
+import { parseExplicitDate, toDateString } from '../lib/calendar-quick-create'
 import { indexPost, removePostFromIndex } from '../lib/semantic-search'
-import { removeEventsForSource, syncPostEvent, syncThoughtEvent } from '../lib/calendar-events'
 import {
+  searchSemanticAll,
+  type PdfSemanticHit,
+  type SemanticSearchHit,
+} from '../lib/semantic-search'
+import {
+  createQuickCalendarEntry,
+  createManualEvent,
+  getCalendarDay,
+  removeEventsForSource,
+  syncPostEvent,
+  syncThoughtEvent,
+} from '../lib/calendar-events'
+import {
+  buildCalendarScheduleConfirmOperationCardMessage,
   buildDeletePostConfirmOperationCardMessage,
   buildFollowupOperationCardMessage,
 } from '../lib/operation-card'
@@ -16,6 +33,7 @@ type UpdatePostToolCall = Extract<ChatToolCall, { tool: 'update_post' }>
 type DeletePostToolCall = Extract<ChatToolCall, { tool: 'delete_post' }>
 type GetPostDetailToolCall = Extract<ChatToolCall, { tool: 'get_post_detail' }>
 type ListDraftsToolCall = Extract<ChatToolCall, { tool: 'list_drafts' }>
+type CreateCalendarEventToolCall = Extract<ChatToolCall, { tool: 'create_calendar_event' }>
 type CreateThoughtToolCall = Extract<ChatToolCall, { tool: 'create_thought' }>
 type SaveBookmarkFromUrlToolCall = Extract<ChatToolCall, { tool: 'save_bookmark_from_url' }>
 type ListBookmarksToolCall = Extract<ChatToolCall, { tool: 'list_bookmarks' }>
@@ -23,6 +41,43 @@ type SearchThoughtsToolCall = Extract<ChatToolCall, { tool: 'search_thoughts' }>
 type AnswerThoughtsToolCall = Extract<ChatToolCall, { tool: 'answer_thoughts' }>
 
 const thoughtsRagAgent = new ThoughtsRagAgent()
+const SCHEDULE_PLAN_CONFIRM_PREFIX = '确认创建日程计划'
+
+const calendarSchedulePlanSchema = z.object({
+  summary: z.string().trim().min(1).max(120).catch('日程安排方案'),
+  rationale: z.string().trim().min(1).max(240).catch('按优先级和执行顺序安排。'),
+  items: z
+    .array(
+      z.object({
+        title: z.string().trim().min(1).max(120),
+        description: z.string().trim().max(240).catch(''),
+        implementationAdvice: z.string().trim().max(320).catch(''),
+      })
+    )
+    .min(1)
+    .max(6)
+    .catch([]),
+})
+
+type CalendarSchedulePlan = z.infer<typeof calendarSchedulePlanSchema>
+type PendingCalendarSchedulePlan = {
+  version: 1
+  date: string
+  sourceMessage: string
+  rationale: string
+  items: Array<{
+    title: string
+    description?: string
+    implementationAdvice?: string
+  }>
+}
+
+type CalendarPlanningPhaseEvent = {
+  phase: CalendarPlanningSkillPhase
+  label: string
+}
+
+type PlanningReferenceHit = SemanticSearchHit | PdfSemanticHit
 
 export type BusinessToolExecutionResult =
   | {
@@ -88,6 +143,32 @@ export type BusinessToolExecutionResult =
         updatedAt: string
         editUrl: string
       }>
+    }
+  | {
+      tool: 'create_calendar_event'
+      status: 'created' | 'need_more_info' | 'cancelled'
+      summary: string
+      assistantMessage?: string
+      skillPhases?: CalendarPlanningPhaseEvent[]
+      followupQuestions?: string[]
+      event?: {
+        id: string
+        title: string
+        date: string
+        status: string
+        jumpUrl: string | null
+      }
+      createdEvents?: Array<{
+        id: string
+        title: string
+        date: string
+        jumpUrl: string | null
+      }>
+      linkedEntity?: {
+        type: 'post' | 'thought' | 'project' | 'photo'
+        id: string
+        jumpUrl: string | null
+      } | null
     }
   | {
       tool: 'create_thought'
@@ -329,6 +410,300 @@ function extractBookmarkTitleFromUrl(url: string): string {
     return parsed.hostname.replace(/^www\./, '')
   } catch {
     return url
+  }
+}
+
+function extractJsonObject(text: string): string | null {
+  const start = text.indexOf('{')
+  const end = text.lastIndexOf('}')
+  if (start === -1 || end === -1 || end <= start) {
+    return null
+  }
+  return text.slice(start, end + 1)
+}
+
+function compactText(value: string): string {
+  return value.replace(/\s+/g, ' ').trim()
+}
+
+function shouldRetrievePlanningContext(input: {
+  rawText: string
+  conversationText: string
+  useKnowledgeBase: boolean
+}): boolean {
+  if (input.useKnowledgeBase) {
+    return true
+  }
+
+  const text = compactText(`${input.rawText}\n${input.conversationText}`)
+  return /之前|上次|历史|延续|沿用|参考|结合|这个页面|这个方案|这套流程|项目里/.test(text)
+}
+
+function formatPlanningReferenceSource(hit: PlanningReferenceHit): string {
+  if (hit.type === 'post') {
+    return `博客文章:${hit.slug ?? hit.postId ?? ''}`
+  }
+
+  if (hit.type === 'conversation') {
+    return `历史对话:${hit.conversationId ?? ''}`
+  }
+
+  if (hit.type === 'pdf') {
+    return `PDF:${hit.documentId}#${hit.chunkIndex}`
+  }
+
+  return '未知来源'
+}
+
+function formatPlanningReferences(hits: PlanningReferenceHit[]): string {
+  if (hits.length === 0) {
+    return '未检索到可复用的本地知识或历史记录。'
+  }
+
+  return hits
+    .map(
+      (hit, index) =>
+        `[${index + 1}] 来源：${formatPlanningReferenceSource(hit)}\n标题：${hit.title}\n相关度：${Number(hit.score).toFixed(3)}\n片段：${compactText(hit.snippet).slice(0, 220)}`
+    )
+    .join('\n\n')
+}
+
+async function loadPlanningReferences(input: {
+  rawText: string
+  conversationText: string
+  useKnowledgeBase: boolean
+  signal?: AbortSignal
+}): Promise<PlanningReferenceHit[]> {
+  if (!shouldRetrievePlanningContext(input)) {
+    return []
+  }
+
+  const query = compactText(input.rawText).slice(0, 200)
+  if (!query) {
+    return []
+  }
+
+  throwIfAborted(input.signal)
+  try {
+    const hits = await searchSemanticAll(query, 4)
+    throwIfAborted(input.signal)
+    return hits.filter((hit) => Number(hit.score) > 0.2).slice(0, 4)
+  } catch (error) {
+    console.warn('[chat-tools] load planning references failed:', error)
+    return []
+  }
+}
+
+function looksLikeSchedulePlanningRequest(rawText: string): boolean {
+  const text = compactText(rawText)
+  return (
+    /(?:帮我|请)?(?:安排|规划|梳理|排一下|排个|计划一下|排期|统筹)/.test(text) ||
+    /(?:合理安排|怎么安排|如何安排|做事顺序|执行顺序)/.test(text) ||
+    (/[，、；;]/.test(text) && /(?:今天|明天|后天|本周|下周|日程|计划|待办)/.test(text))
+  )
+}
+
+function looksLikeSchedulePlanConfirmation(rawText: string): boolean {
+  return new RegExp(`^${SCHEDULE_PLAN_CONFIRM_PREFIX}(?:\\s.*)?$`).test(compactText(rawText))
+}
+
+function looksLikeSchedulePlanCancellation(rawText: string): boolean {
+  return /^取消创建日程计划(?:\s.*)?$/.test(compactText(rawText))
+}
+
+function encodePendingCalendarSchedulePlan(plan: PendingCalendarSchedulePlan): string {
+  return Buffer.from(JSON.stringify(plan), 'utf8').toString('base64url')
+}
+
+function parsePendingCalendarSchedulePlan(encoded: string): PendingCalendarSchedulePlan | null {
+  if (!encoded) {
+    return null
+  }
+
+  try {
+    const parsed = JSON.parse(Buffer.from(encoded, 'base64url').toString('utf8')) as PendingCalendarSchedulePlan
+    if (
+      !parsed ||
+      parsed.version !== 1 ||
+      typeof parsed.date !== 'string' ||
+      !Array.isArray(parsed.items) ||
+      parsed.items.length === 0
+    ) {
+      return null
+    }
+    return parsed
+  } catch {
+    return null
+  }
+}
+
+function extractLatestScheduleConfirmPayload(conversationText: string): string {
+  const matches = [
+    ...conversationText.matchAll(
+      /"scope":"calendar_schedule"[\s\S]*?"confirmPayload":"([A-Za-z0-9_-]+)"/g
+    ),
+  ]
+
+  return matches.at(-1)?.[1] ?? ''
+}
+
+function decodePendingCalendarSchedulePlan(
+  rawText: string,
+  conversationText: string
+): PendingCalendarSchedulePlan | null {
+  const compact = compactText(rawText)
+  const inlineEncoded =
+    compact.match(/^确认创建日程计划\s+([A-Za-z0-9_-]+)$/)?.[1] ??
+    extractLatestScheduleConfirmPayload(conversationText)
+  const encoded = inlineEncoded?.trim()
+  if (!encoded) {
+    return null
+  }
+
+  return parsePendingCalendarSchedulePlan(encoded)
+}
+
+function formatExistingCalendarSummary(
+  day: Awaited<ReturnType<typeof getCalendarDay>>
+): string {
+  if (day.events.length === 0) {
+    return '当天暂无已记录安排'
+  }
+
+  const titles = day.events
+    .slice(0, 3)
+    .map((event) => event.title)
+    .join('；')
+
+  return `已有 ${day.events.length} 项：${titles}${day.events.length > 3 ? ' 等' : ''}`
+}
+
+function buildCalendarAdviceRecap(items: PendingCalendarSchedulePlan['items']): string {
+  const lines = items
+    .map((item, index) => {
+      const advice = compactText(item.implementationAdvice || '')
+      if (!advice) {
+        return ''
+      }
+      return `${index + 1}. ${item.title}：${advice}`
+    })
+    .filter(Boolean)
+    .slice(0, 6)
+
+  return lines.length > 0 ? `执行建议：\n${lines.join('\n')}` : ''
+}
+
+function buildSchedulePlanItemsFallback(rawText: string): Array<{
+  title: string
+  description: string
+  implementationAdvice: string
+}> {
+  const normalized = rawText
+    .replace(/\b\d{4}-\d{2}-\d{2}\b/g, ' ')
+    .replace(/\b\d{4}\/\d{2}\/\d{2}\b/g, ' ')
+    .replace(/今天|明天|后天|昨天|前天|本周|下周/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+
+  const parts = normalized
+    .split(/[，、；;]+/)
+    .map((part) => compactText(part))
+    .filter(Boolean)
+    .slice(0, 5)
+
+  if (parts.length > 1) {
+    return parts.map((part) => ({
+      title: part,
+      description: '按原始需求拆分出的待办事项',
+      implementationAdvice: '先明确这一步的产出，再开始执行，完成后补充结果记录。',
+    }))
+  }
+
+  return [
+    {
+      title: compactText(rawText).slice(0, 120),
+      description: '按当前需求拆成一项待执行安排',
+      implementationAdvice: '先把目标和交付物写清楚，再开始处理，完成后回顾是否需要拆分下一步。',
+    },
+  ]
+}
+
+async function buildCalendarSchedulePlan(input: {
+  rawText: string
+  targetDate: string
+  existingDay: Awaited<ReturnType<typeof getCalendarDay>>
+  conversationText: string
+  useKnowledgeBase: boolean
+  signal?: AbortSignal
+}): Promise<CalendarSchedulePlan> {
+  const fallbackItems = buildSchedulePlanItemsFallback(input.rawText)
+  const planningReferences = await loadPlanningReferences({
+    rawText: input.rawText,
+    conversationText: input.conversationText,
+    useKnowledgeBase: input.useKnowledgeBase,
+    signal: input.signal,
+  })
+  throwIfAborted(input.signal)
+
+  const fallback: CalendarSchedulePlan = {
+    summary: `${input.targetDate} 日程安排`,
+    rationale: '先按需求拆成可执行事项，再逐项推进。',
+    items: fallbackItems,
+  }
+
+  const systemPrompt = [
+    '你是一个日程规划助手。',
+    '任务：基于用户需求和当天已有安排，输出一个“按日期粒度”的执行计划。',
+    '严格输出 JSON，不要输出任何解释。',
+    '字段：summary, rationale, items。',
+    'items 是 1 到 6 条任务，每条包含 title, description, implementationAdvice。',
+    '注意：当前系统只支持按“天”记录事件，不支持小时分钟，因此不要输出具体时间点。',
+    '请尽量避免和当天已有安排重复；如果用户目标很大，请拆成 2 到 5 条更容易执行的步骤。',
+    'title 要简洁直接，description 用一句中文说明这一步为什么放在这个顺序或它的产出。',
+    'implementationAdvice 需要给出具体、可执行的建议，例如先做什么、重点关注什么、产出物是什么。',
+    '如果用户的问题带有明显的实施背景，请结合上下文给出更贴近任务本身的建议，不要只写空泛鸡汤。',
+    '如果提供了“本地知识/历史参考”，请在 implementationAdvice 中优先吸收其中可复用的经验、步骤或注意事项，但不要编造成事实。',
+    '如果参考信息不足，就明确按通用最佳实践给建议，不要硬凑。',
+  ].join('\n')
+
+  const userPrompt = JSON.stringify(
+    {
+      targetDate: input.targetDate,
+      request: input.rawText,
+      recentConversation: input.conversationText,
+      localReferences: formatPlanningReferences(planningReferences),
+      existingEvents: input.existingDay.events.map((event) => ({
+        title: event.title,
+        status: event.status,
+        sourceType: event.sourceType,
+      })),
+    },
+    null,
+    2
+  )
+
+  throwIfAborted(input.signal)
+  const raw = await invokeChat(userPrompt, systemPrompt, {
+    model: 'reasoning',
+    temperature: 0.2,
+    signal: input.signal,
+  })
+  throwIfAborted(input.signal)
+
+  const jsonText = extractJsonObject(raw)
+  if (!jsonText) {
+    return fallback
+  }
+
+  try {
+    const parsed = JSON.parse(jsonText)
+    const result = calendarSchedulePlanSchema.safeParse(parsed)
+    if (!result.success || result.data.items.length === 0) {
+      return fallback
+    }
+    return result.data
+  } catch {
+    return fallback
   }
 }
 
@@ -844,6 +1219,235 @@ async function executeCreateThoughtTool(
   }
 }
 
+async function executeCreateCalendarEventTool(
+  toolCall: CreateCalendarEventToolCall,
+  input: {
+    userId: string
+    siteBaseUrl: string
+    conversationText: string
+    useKnowledgeBase: boolean
+    signal?: AbortSignal
+  }
+): Promise<BusinessToolExecutionResult> {
+  throwIfAborted(input.signal)
+
+  const rawText = toolCall.rawText.trim()
+  const now = new Date()
+  const targetDate = parseExplicitDate(rawText, now) ?? toolCall.defaultDate ?? toDateString(now)
+  const calendarDayUrl = `${input.siteBaseUrl.replace(/\/+$/, '')}/calendar/day/${targetDate}`
+
+  if (looksLikeSchedulePlanCancellation(rawText)) {
+    return {
+      tool: 'create_calendar_event',
+      status: 'cancelled',
+      summary: '已取消这次日程创建，本次不会写入日历。',
+      skillPhases: [
+        {
+          phase: 'confirm',
+          label: '已取消日程规划确认，本次不会写入日历。',
+        },
+      ],
+    }
+  }
+
+  if (looksLikeSchedulePlanConfirmation(rawText)) {
+    const pendingPlan = decodePendingCalendarSchedulePlan(rawText, input.conversationText)
+    if (!pendingPlan) {
+      return {
+        tool: 'create_calendar_event',
+        status: 'need_more_info',
+        summary: '这份待确认的日程计划已经失效或无法识别，请重新让我规划一次。',
+        skillPhases: [
+          {
+            phase: 'confirm',
+            label: '未找到可确认的日程草案，需要重新生成规划。',
+          },
+        ],
+      }
+    }
+
+    const createdEvents = []
+    for (const item of pendingPlan.items.slice(0, 6)) {
+      throwIfAborted(input.signal)
+      const event = await createManualEvent({
+        userId: input.userId,
+        title: item.title,
+        description:
+          [compactText(item.description || ''), compactText(item.implementationAdvice || '')]
+            .filter(Boolean)
+            .join('\n执行建议：') ||
+          `来自 AI 日程规划：${compactText(pendingPlan.sourceMessage).slice(0, 180)}`,
+        date: pendingPlan.date,
+        status: 'planned',
+        allDay: true,
+        sourceType: 'manual',
+      })
+
+      createdEvents.push({
+        id: event.id,
+        title: event.title,
+        date: pendingPlan.date,
+        jumpUrl: `${calendarDayUrl}`,
+      })
+    }
+
+    return {
+      tool: 'create_calendar_event',
+      status: 'created',
+      summary: [
+        `已将 ${createdEvents.length} 项计划写入 ${pendingPlan.date} 的日历。`,
+        `规划思路：${pendingPlan.rationale}`,
+        ...createdEvents.map((event, index) => `${index + 1}. ${event.title}`),
+        `查看当天：${calendarDayUrl}`,
+      ].join('\n'),
+      assistantMessage: [
+        `已确认并创建 ${createdEvents.length} 项日程，已写入 ${pendingPlan.date} 的日历。`,
+        buildCalendarAdviceRecap(pendingPlan.items),
+        `查看当天：${calendarDayUrl}`,
+      ]
+        .filter(Boolean)
+        .join('\n\n'),
+      skillPhases: [
+        {
+          phase: 'create',
+          label: `正在把确认后的 ${createdEvents.length} 项计划写入日历。`,
+        },
+        {
+          phase: 'advise',
+          label: '正在整理每项计划的执行建议，方便你直接开始。',
+        },
+      ],
+      createdEvents,
+    }
+  }
+
+  if (!rawText || /^(帮我|请)?(?:安排|记录|添加|加入|创建)?(?:一个|一下)?(?:日程|待办|提醒|计划)?$/.test(rawText)) {
+    return {
+      tool: 'create_calendar_event',
+      status: 'need_more_info',
+      summary: '创建日程之前，我还需要知道具体要安排什么事情，以及大概的时间。',
+      followupQuestions: ['你想安排什么事？是今天、明天，还是某个具体日期？'],
+      assistantMessage: buildFollowupOperationCardMessage({
+        scope: 'tool',
+        title: '创建日程前还需要补充内容',
+        description: '请直接告诉我要安排的事项和时间，我会帮你写入日历。',
+        questions: ['你想安排什么事？是今天、明天，还是某个具体日期？'],
+        submitMode: 'chat',
+        submitLabel: '发送日程内容',
+        inputPlaceholder: '例如：明天下午整理 AI 对话页的日程工具串联方案',
+      }),
+    }
+  }
+
+  if (looksLikeSchedulePlanningRequest(rawText)) {
+    const existingDay = await getCalendarDay({ mode: 'user', userId: input.userId }, targetDate)
+    throwIfAborted(input.signal)
+
+    const plan = await buildCalendarSchedulePlan({
+      rawText,
+      targetDate,
+      existingDay,
+      conversationText: input.conversationText,
+      useKnowledgeBase: input.useKnowledgeBase,
+      signal: input.signal,
+    })
+    throwIfAborted(input.signal)
+
+    const payload = encodePendingCalendarSchedulePlan({
+      version: 1,
+      date: targetDate,
+      sourceMessage: rawText,
+      rationale: plan.rationale,
+      items: plan.items.map((item) => ({
+        title: compactText(item.title).slice(0, 120),
+        description: compactText(item.description || '').slice(0, 240) || undefined,
+        implementationAdvice:
+          compactText(item.implementationAdvice || '').slice(0, 320) || undefined,
+      })),
+    })
+
+    return {
+      tool: 'create_calendar_event',
+      status: 'need_more_info',
+      summary: `已为 ${targetDate} 生成一版日程方案，确认后会写入日历。`,
+      skillPhases: [
+        {
+          phase: 'draft',
+          label: `正在为 ${targetDate} 起草日程方案。`,
+        },
+        {
+          phase: 'confirm',
+          label: '日程草案已生成，等待你确认后写入日历。',
+        },
+      ],
+      assistantMessage: buildCalendarScheduleConfirmOperationCardMessage({
+        date: targetDate,
+        description: `${plan.summary}。${plan.rationale} 确认后会把以下计划写入日历。`,
+        existingSummary: formatExistingCalendarSummary(existingDay),
+        planItems: plan.items.map((item) =>
+          compactText(
+            [
+              item.title,
+              item.description ? `安排理由：${item.description}` : '',
+              item.implementationAdvice ? `执行建议：${item.implementationAdvice}` : '',
+            ]
+              .filter(Boolean)
+              .join('；')
+          ).slice(0, 180)
+        ),
+        calendarDayUrl,
+        confirmMessage: SCHEDULE_PLAN_CONFIRM_PREFIX,
+        confirmPayload: payload,
+      }),
+    }
+  }
+
+  const result = await createQuickCalendarEntry({
+    userId: input.userId,
+    rawText,
+    defaultDate: toolCall.defaultDate,
+    sourceInputType: 'text',
+  })
+  throwIfAborted(input.signal)
+
+  const lines = [
+    `已创建日程：${result.event.title}`,
+    `日期：${result.targetDate}`,
+    `状态：${result.inferredStatus === 'planned' ? '计划中' : result.inferredStatus === 'completed' ? '已完成' : '已取消'}`,
+    `类型：${result.inferredSourceType}`,
+    result.event.jumpUrl ? `跳转：${result.event.jumpUrl}` : null,
+    result.note,
+  ].filter(Boolean)
+
+  return {
+    tool: 'create_calendar_event',
+    status: 'created',
+    summary: lines.join('\n'),
+    skillPhases: [
+      {
+        phase: 'create',
+        label: `正在创建日程并写入 ${result.targetDate}。`,
+      },
+    ],
+    event: {
+      id: result.event.id,
+      title: result.event.title,
+      date: result.targetDate,
+      status: result.inferredStatus,
+      jumpUrl: result.event.jumpUrl,
+    },
+    linkedEntity: result.linkedEntity,
+    createdEvents: [
+      {
+        id: result.event.id,
+        title: result.event.title,
+        date: result.targetDate,
+        jumpUrl: result.event.jumpUrl,
+      },
+    ],
+  }
+}
+
 async function executeSaveBookmarkFromUrlTool(
   toolCall: SaveBookmarkFromUrlToolCall,
   input: {
@@ -1102,6 +1706,7 @@ export async function executeBusinessTool(
     siteBaseUrl: string
     latestUserMessage: string
     conversationText: string
+    useKnowledgeBase: boolean
     signal?: AbortSignal
   }
 ): Promise<BusinessToolExecutionResult> {
@@ -1123,6 +1728,10 @@ export async function executeBusinessTool(
 
   if (toolCall.tool === 'list_drafts') {
     return executeListDraftsTool(toolCall, input)
+  }
+
+  if (toolCall.tool === 'create_calendar_event') {
+    return executeCreateCalendarEventTool(toolCall, input)
   }
 
   if (toolCall.tool === 'create_thought') {
