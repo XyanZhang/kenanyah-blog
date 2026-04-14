@@ -213,6 +213,25 @@ calendar.patch('/events/:id', authMiddleware, validateBody(updateCalendarEventSc
   return c.json({ success: true, data: serializeEventItem(updated) })
 })
 
+// DELETE /calendar/events/:id
+calendar.delete('/events/:id', authMiddleware, async (c) => {
+  const id = c.req.param('id')
+  const { userId } = c.get('user')!
+
+  const existing = await prisma.eventItem.findUnique({
+    where: { id },
+  })
+
+  if (!existing) throw new NotFoundError('事件不存在')
+  if (existing.userId !== userId) throw new ForbiddenError('无权删除该事件')
+
+  await prisma.eventItem.delete({
+    where: { id },
+  })
+
+  return c.json({ success: true })
+})
+
 // POST /calendar/events/quick-create
 calendar.post('/events/quick-create', authMiddleware, validateBody(quickCreateCalendarEventSchema), async (c) => {
   const body = c.get('validatedBody') as QuickCreateCalendarEventInput

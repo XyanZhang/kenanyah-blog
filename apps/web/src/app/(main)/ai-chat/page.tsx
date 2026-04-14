@@ -9,6 +9,7 @@ import {
   Send,
   Bot,
   Pencil,
+  Trash2,
   FilePenLine,
   Database,
   Plus,
@@ -20,6 +21,7 @@ import {
   listConversations,
   cancelBlogWorkflow,
   createConversation,
+  deleteConversation,
   getConversation,
   streamChatMessage,
   streamBlogWorkflow,
@@ -204,10 +206,19 @@ function getConversationDisplayTitle(title?: string | null): string {
   return normalizedTitle ? normalizedTitle : '未命名'
 }
 
+function getTodayDateString() {
+  const now = new Date()
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(
+    now.getDate()
+  ).padStart(2, '0')}`
+}
+
 export default function AiChatPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const initialConversationId = searchParams.get('conversationId')
+  const quickDateFromQuery = searchParams.get('quickDate')
+  const todayDate = getTodayDateString()
 
   const [conversations, setConversations] = useState<ChatConversation[]>([])
   const [currentId, setCurrentId] = useState<string | null>(null)
@@ -228,10 +239,7 @@ export default function AiChatPage() {
   const [chatQueue, setChatQueue] = useState<ChatQueueItem[]>([])
   const [workflowQueue, setWorkflowQueue] = useState<WorkflowQueueItem[]>([])
   const [quickEventText, setQuickEventText] = useState('')
-  const [quickEventDate, setQuickEventDate] = useState(() => {
-    const now = new Date()
-    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
-  })
+  const [quickEventDate, setQuickEventDate] = useState('')
   const [quickEventBusy, setQuickEventBusy] = useState(false)
   const [quickEventError, setQuickEventError] = useState<string | null>(null)
   const [quickEventNote, setQuickEventNote] = useState<string | null>(null)
@@ -312,7 +320,7 @@ export default function AiChatPage() {
     try {
       const result = await quickCreateCalendarEvent({
         rawText,
-        defaultDate: quickEventDate,
+        defaultDate: quickEventDate || undefined,
         sourceInputType: quickEventInputType,
       })
       setQuickEventNote(result.note)
@@ -328,11 +336,10 @@ export default function AiChatPage() {
   }, [quickEventDate, quickEventInputType, quickEventText])
 
   useEffect(() => {
-    const quickDate = searchParams.get('quickDate')
-    if (quickDate && /^\d{4}-\d{2}-\d{2}$/.test(quickDate)) {
-      setQuickEventDate(quickDate)
+    if (quickDateFromQuery && /^\d{4}-\d{2}-\d{2}$/.test(quickDateFromQuery)) {
+      setQuickEventDate(quickDateFromQuery)
     }
-  }, [searchParams])
+  }, [quickDateFromQuery])
 
   useEffect(() => {
     try {
@@ -466,6 +473,32 @@ export default function AiChatPage() {
       router.push('/ai-chat')
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
+    }
+  }
+
+  async function handleDeleteConversation(conversationId: string) {
+    const target = conversations.find((item) => item.id === conversationId)
+    const title = getConversationDisplayTitle(target?.title)
+    if (typeof window !== 'undefined') {
+      const confirmed = window.confirm(`确认删除会话「${title}」吗？删除后无法恢复。`)
+      if (!confirmed) return
+    }
+
+    try {
+      await deleteConversation(conversationId)
+      const nextList = conversations.filter((item) => item.id !== conversationId)
+      setConversations(nextList)
+
+      if (currentId === conversationId) {
+        const nextCurrentId = nextList[0]?.id ?? null
+        setCurrentId(nextCurrentId)
+        if (!nextCurrentId) {
+          setMessages([])
+          router.push('/ai-chat')
+        }
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '删除会话失败')
     }
   }
 
@@ -1247,7 +1280,7 @@ export default function AiChatPage() {
 
             <button
               type="button"
-              onClick={() => router.push(`/calendar/day/${quickEventDate}`)}
+              onClick={() => router.push(`/calendar/day/${quickEventDate || todayDate}`)}
               className={`${ghostActionButtonClass} w-full justify-center py-2.5`}
             >
               <Sparkles className="h-4 w-4 text-accent-secondary" />
@@ -1349,6 +1382,17 @@ export default function AiChatPage() {
                         aria-label="编辑会话标题"
                       >
                         <Pencil className="h-3.5 w-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          void handleDeleteConversation(conv.id)
+                        }}
+                        className="shrink-0 rounded-xl p-1.5 text-content-tertiary transition-colors hover:bg-red-50 hover:text-red-500"
+                        aria-label="删除会话"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
                       </button>
                     </div>
                   )}
@@ -1549,6 +1593,30 @@ export default function AiChatPage() {
                                       </div>
                                     ))}
                                   </div>
+                                  {operationCard.sections && operationCard.sections.length > 0 && (
+                                    <div className="mt-3 space-y-3">
+                                      {operationCard.sections.map((section) => (
+                                        <div
+                                          key={`${msg.id}-${section.title}`}
+                                          className="rounded-xl border border-line-glass/70 bg-surface-glass/55 p-3"
+                                        >
+                                          <div className="text-[11px] font-semibold tracking-[0.14em] text-content-tertiary">
+                                            {section.title}
+                                          </div>
+                                          <div className="mt-2 space-y-2">
+                                            {section.items.map((item, itemIndex) => (
+                                              <div
+                                                key={`${msg.id}-${section.title}-${itemIndex}`}
+                                                className="rounded-lg bg-white/70 px-3 py-2 text-xs leading-5 text-content-primary"
+                                              >
+                                                {item}
+                                              </div>
+                                            ))}
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
                                   <div className="mt-3 flex flex-wrap gap-2">
                                     {operationCard.actions
                                       .filter((action) => action.type === 'open_url')
@@ -1910,7 +1978,9 @@ export default function AiChatPage() {
             </div>
             <div className="min-w-0 flex-1">
               <h2 className="text-sm font-semibold text-content-primary">事件快速创建</h2>
-              <p className="mt-1 text-xs leading-5 text-content-secondary">语音或文本快速入库。</p>
+              <p className="mt-1 text-xs leading-5 text-content-secondary">
+                文本里写了日期就按文本解析；没写日期时，才使用下面这个兜底日期。
+              </p>
             </div>
           </div>
 
@@ -1924,6 +1994,11 @@ export default function AiChatPage() {
               }}
               className="h-10 w-full rounded-2xl border border-line-glass bg-surface-glass/62 px-3 text-sm text-content-primary focus:outline-none focus:ring-2 focus:ring-accent-primary/40"
             />
+            <p className="text-[11px] leading-5 text-content-tertiary">
+              {quickEventDate
+                ? `当前兜底日期：${quickEventDate}`
+                : '当前未设置兜底日期，若文本里也没写日期，系统会按今天处理。'}
+            </p>
             <textarea
               value={quickEventText}
               onChange={(e) => {
@@ -1932,7 +2007,7 @@ export default function AiChatPage() {
               }}
               rows={5}
               className="w-full resize-none rounded-2xl border border-line-glass bg-surface-glass/62 px-3 py-2 text-sm text-content-primary placeholder:text-content-tertiary focus:outline-none focus:ring-2 focus:ring-accent-primary/40"
-              placeholder="例如：明天下午发布一篇 React Compiler 调研，再记录一个日历页面改版想法。"
+              placeholder="例如：4 月 18 日下午发布一篇 React Compiler 调研，再记录一个日历页面改版想法。"
             />
             <div className="rounded-2xl border border-dashed border-line-glass bg-surface-glass/52 p-2">
               <VoiceRecorder
@@ -1999,7 +2074,7 @@ export default function AiChatPage() {
             </div>
             <button
               type="button"
-              onClick={() => router.push(`/calendar/day/${quickEventDate}`)}
+              onClick={() => router.push(`/calendar/day/${quickEventDate || todayDate}`)}
               className={`${ghostActionButtonClass} w-full justify-between px-4 py-3 text-left`}
             >
               <span>打开当日事件中枢</span>

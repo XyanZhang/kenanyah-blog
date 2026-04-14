@@ -46,26 +46,43 @@ const SCHEDULE_PLAN_CONFIRM_PREFIX = '确认创建日程计划'
 const calendarSchedulePlanSchema = z.object({
   summary: z.string().trim().min(1).max(120).catch('日程安排方案'),
   rationale: z.string().trim().min(1).max(240).catch('按优先级和执行顺序安排。'),
+  preparationItems: z.array(z.string().trim().min(1).max(140)).max(6).catch([]),
+  watchouts: z.array(z.string().trim().min(1).max(140)).max(6).catch([]),
   items: z
     .array(
       z.object({
+        date: z.string().trim().regex(/^\d{4}-\d{2}-\d{2}$/).catch(''),
         title: z.string().trim().min(1).max(120),
         description: z.string().trim().max(240).catch(''),
         implementationAdvice: z.string().trim().max(320).catch(''),
       })
     )
     .min(1)
-    .max(6)
+    .max(8)
     .catch([]),
 })
 
+const scheduleContextSchema = z.object({
+  startDate: z.string().trim().regex(/^\d{4}-\d{2}-\d{2}$/).optional().catch(undefined),
+  endDate: z.string().trim().regex(/^\d{4}-\d{2}-\d{2}$/).optional().catch(undefined),
+  focusDate: z.string().trim().regex(/^\d{4}-\d{2}-\d{2}$/).optional().catch(undefined),
+  needsClarification: z.boolean().catch(false),
+  clarificationQuestion: z.string().trim().max(160).catch(''),
+})
+
 type CalendarSchedulePlan = z.infer<typeof calendarSchedulePlanSchema>
+type ScheduleContextExtraction = z.infer<typeof scheduleContextSchema>
 type PendingCalendarSchedulePlan = {
   version: 1
-  date: string
+  startDate: string
+  endDate: string
+  dateLabel: string
   sourceMessage: string
   rationale: string
+  preparationItems: string[]
+  watchouts: string[]
   items: Array<{
+    date: string
     title: string
     description?: string
     implementationAdvice?: string
@@ -426,6 +443,155 @@ function compactText(value: string): string {
   return value.replace(/\s+/g, ' ').trim()
 }
 
+function addUtcDays(value: string, days: number): string {
+  const date = new Date(`${value}T00:00:00.000Z`)
+  return new Date(date.getTime() + days * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
+}
+
+function parseDateRange(rawText: string, now: Date): { startDate: string; endDate: string } | null {
+  const isoRange = rawText.match(/\b(\d{4}-\d{2}-\d{2})\s*(?:到|至|-|—|~|～)\s*(\d{4}-\d{2}-\d{2})\b/)
+  if (isoRange) {
+    return { startDate: isoRange[1], endDate: isoRange[2] }
+  }
+
+  const slashRange = rawText.match(
+    /\b(\d{4})\/(\d{2})\/(\d{2})\s*(?:到|至|-|—|~|～)\s*(\d{4})\/(\d{2})\/(\d{2})\b/
+  )
+  if (slashRange) {
+    return {
+      startDate: `${slashRange[1]}-${slashRange[2]}-${slashRange[3]}`,
+      endDate: `${slashRange[4]}-${slashRange[5]}-${slashRange[6]}`,
+    }
+  }
+
+  const zhSameMonthRange = rawText.match(
+    /(\d{1,2})月(\d{1,2})日?\s*(?:到|至|-|—|~|～)\s*(\d{1,2})日/
+  )
+  if (zhSameMonthRange) {
+    const year = now.getUTCFullYear()
+    const month = zhSameMonthRange[1].padStart(2, '0')
+    const startDay = zhSameMonthRange[2].padStart(2, '0')
+    const endDay = zhSameMonthRange[3].padStart(2, '0')
+    return {
+      startDate: `${year}-${month}-${startDay}`,
+      endDate: `${year}-${month}-${endDay}`,
+    }
+  }
+
+  const zhRange = rawText.match(
+    /(\d{1,2})月(\d{1,2})日?\s*(?:到|至|-|—|~|～)\s*(\d{1,2})月(\d{1,2})日/
+  )
+  if (zhRange) {
+    const year = now.getUTCFullYear()
+    return {
+      startDate: `${year}-${zhRange[1].padStart(2, '0')}-${zhRange[2].padStart(2, '0')}`,
+      endDate: `${year}-${zhRange[3].padStart(2, '0')}-${zhRange[4].padStart(2, '0')}`,
+    }
+  }
+
+  const dayOnlyRange = rawText.match(/(\d{1,2})号\s*(?:到|至|-|—|~|～)\s*(\d{1,2})号/)
+  if (dayOnlyRange) {
+    const year = now.getUTCFullYear()
+    const month = String(now.getUTCMonth() + 1).padStart(2, '0')
+    return {
+      startDate: `${year}-${month}-${dayOnlyRange[1].padStart(2, '0')}`,
+      endDate: `${year}-${month}-${dayOnlyRange[2].padStart(2, '0')}`,
+    }
+  }
+
+  const compactMonthRange = rawText.match(
+    /(\d{1,2})[月\/\-.](\d{1,2})日?\s*(?:到|至|-|—|~|～)\s*(\d{1,2})[日号]?/
+  )
+  if (compactMonthRange) {
+    const year = now.getUTCFullYear()
+    return {
+      startDate: `${year}-${compactMonthRange[1].padStart(2, '0')}-${compactMonthRange[2].padStart(2, '0')}`,
+      endDate: `${year}-${compactMonthRange[1].padStart(2, '0')}-${compactMonthRange[3].padStart(2, '0')}`,
+    }
+  }
+
+  const compactDayOnlyRange = rawText.match(/(\d{1,2})\s*(?:到|至|-|—|~|～)\s*(\d{1,2})号/)
+  if (compactDayOnlyRange) {
+    const year = now.getUTCFullYear()
+    const month = String(now.getUTCMonth() + 1).padStart(2, '0')
+    return {
+      startDate: `${year}-${month}-${compactDayOnlyRange[1].padStart(2, '0')}`,
+      endDate: `${year}-${month}-${compactDayOnlyRange[2].padStart(2, '0')}`,
+    }
+  }
+
+  return null
+}
+
+function formatDateRangeLabel(startDate: string, endDate: string): string {
+  return startDate === endDate ? startDate : `${startDate} - ${endDate}`
+}
+
+function looksLikeScenarioPlanningRequest(rawText: string): boolean {
+  const text = compactText(rawText)
+  return /(?:出行|旅行|旅游|自驾|行程|攻略|拍照旅行|游玩|住宿|酒店|返程)/.test(text)
+}
+
+async function extractScheduleContext(input: {
+  rawText: string
+  conversationText: string
+  now: Date
+  signal?: AbortSignal
+}): Promise<ScheduleContextExtraction> {
+  const fallback: ScheduleContextExtraction = {
+    startDate: undefined,
+    endDate: undefined,
+    focusDate: undefined,
+    needsClarification: false,
+    clarificationQuestion: '',
+  }
+
+  throwIfAborted(input.signal)
+  const raw = await invokeChat(
+    JSON.stringify(
+      {
+        nowDate: toDateString(input.now),
+        latestUserMessage: input.rawText,
+        recentConversation: input.conversationText,
+      },
+      null,
+      2
+    ),
+    [
+      '你是一个时间信息提取助手。',
+      '任务：从用户自然语言中提取日程/场景规划所需的日期信息。',
+      '严格输出 JSON，不要输出任何额外解释。',
+      '字段：startDate, endDate, focusDate, needsClarification, clarificationQuestion。',
+      '所有日期都必须是 YYYY-MM-DD。',
+      '如果用户表达了多个日期点，请推断整个范围的最早日期为 startDate，最晚日期为 endDate。',
+      '如果用户表达的是多天出行、旅行、活动、筹备，请尽量推断完整范围。',
+      '对于像“4 月17 号”“19 号下午回成都”“18 号早上到西昌”这类自然表达，要结合当前年份和上下文理解。',
+      '如果用户只给了一个明确日期，focusDate 可以等于该日期，startDate/endDate 可只填一个或同一天。',
+      '只有在你确实无法稳定识别任何日期时，needsClarification 才设为 true。',
+      '如果能合理推断，就优先推断，不要轻易要求补充。',
+    ].join('\n'),
+    {
+      model: 'fast',
+      temperature: 0.1,
+      signal: input.signal,
+    }
+  )
+  throwIfAborted(input.signal)
+
+  const jsonText = extractJsonObject(raw)
+  if (!jsonText) {
+    return fallback
+  }
+
+  try {
+    const parsed = JSON.parse(jsonText)
+    const result = scheduleContextSchema.safeParse(parsed)
+    return result.success ? result.data : fallback
+  } catch {
+    return fallback
+  }
+}
+
 function shouldRetrievePlanningContext(input: {
   rawText: string
   conversationText: string
@@ -525,7 +691,8 @@ function parsePendingCalendarSchedulePlan(encoded: string): PendingCalendarSched
     if (
       !parsed ||
       parsed.version !== 1 ||
-      typeof parsed.date !== 'string' ||
+      typeof parsed.startDate !== 'string' ||
+      typeof parsed.endDate !== 'string' ||
       !Array.isArray(parsed.items) ||
       parsed.items.length === 0
     ) {
@@ -593,11 +760,92 @@ function buildCalendarAdviceRecap(items: PendingCalendarSchedulePlan['items']): 
   return lines.length > 0 ? `执行建议：\n${lines.join('\n')}` : ''
 }
 
+function buildScenarioExtrasRecap(input: {
+  preparationItems?: string[]
+  watchouts?: string[]
+}): string {
+  const blocks: string[] = []
+
+  if (input.preparationItems && input.preparationItems.length > 0) {
+    blocks.push(
+      `出发前准备：\n${input.preparationItems
+        .map((item, index) => `${index + 1}. ${compactText(item)}`)
+        .join('\n')}`
+    )
+  }
+
+  if (input.watchouts && input.watchouts.length > 0) {
+    blocks.push(
+      `注意事项：\n${input.watchouts
+        .map((item, index) => `${index + 1}. ${compactText(item)}`)
+        .join('\n')}`
+    )
+  }
+
+  return blocks.join('\n\n')
+}
+
+function buildCalendarPlanSections(
+  plan: {
+    preparationItems?: string[]
+    watchouts?: string[]
+    items: Array<{
+      date: string
+      title: string
+      description?: string
+      implementationAdvice?: string
+    }>
+  }
+): Array<{ title: string; items: string[] }> {
+  const sections: Array<{ title: string; items: string[] }> = []
+
+  if (Array.isArray(plan.preparationItems) && plan.preparationItems.length > 0) {
+    sections.push({
+      title: '出发前准备',
+      items: plan.preparationItems.map((item) => compactText(item)).filter(Boolean).slice(0, 6),
+    })
+  }
+
+  if (Array.isArray(plan.watchouts) && plan.watchouts.length > 0) {
+    sections.push({
+      title: '注意事项',
+      items: plan.watchouts.map((item) => compactText(item)).filter(Boolean).slice(0, 6),
+    })
+  }
+
+  const grouped = new Map<string, string[]>()
+
+  for (const item of plan.items) {
+    const lines = [
+      item.title,
+      item.description ? `安排理由：${compactText(item.description)}` : '',
+      item.implementationAdvice ? `执行建议：${compactText(item.implementationAdvice)}` : '',
+    ].filter(Boolean)
+
+    const entry = compactText(lines.join('；'))
+    if (!entry) continue
+    const current = grouped.get(item.date) ?? []
+    current.push(entry)
+    grouped.set(item.date, current)
+  }
+
+  sections.push(
+    ...[...grouped.entries()].map(([date, sectionItems]) => ({
+      title: date,
+      items: sectionItems.slice(0, 4),
+    }))
+  )
+
+  return sections
+}
+
 function buildSchedulePlanItemsFallback(rawText: string): Array<{
+  date: string
   title: string
   description: string
   implementationAdvice: string
 }> {
+  const fallbackDate = toDateString(new Date())
   const normalized = rawText
     .replace(/\b\d{4}-\d{2}-\d{2}\b/g, ' ')
     .replace(/\b\d{4}\/\d{2}\/\d{2}\b/g, ' ')
@@ -613,6 +861,7 @@ function buildSchedulePlanItemsFallback(rawText: string): Array<{
 
   if (parts.length > 1) {
     return parts.map((part) => ({
+      date: fallbackDate,
       title: part,
       description: '按原始需求拆分出的待办事项',
       implementationAdvice: '先明确这一步的产出，再开始执行，完成后补充结果记录。',
@@ -621,6 +870,7 @@ function buildSchedulePlanItemsFallback(rawText: string): Array<{
 
   return [
     {
+      date: fallbackDate,
       title: compactText(rawText).slice(0, 120),
       description: '按当前需求拆成一项待执行安排',
       implementationAdvice: '先把目标和交付物写清楚，再开始处理，完成后回顾是否需要拆分下一步。',
@@ -630,8 +880,9 @@ function buildSchedulePlanItemsFallback(rawText: string): Array<{
 
 async function buildCalendarSchedulePlan(input: {
   rawText: string
-  targetDate: string
-  existingDay: Awaited<ReturnType<typeof getCalendarDay>>
+  startDate: string
+  endDate: string
+  existingDays: Array<Awaited<ReturnType<typeof getCalendarDay>>>
   conversationText: string
   useKnowledgeBase: boolean
   signal?: AbortSignal
@@ -646,20 +897,33 @@ async function buildCalendarSchedulePlan(input: {
   throwIfAborted(input.signal)
 
   const fallback: CalendarSchedulePlan = {
-    summary: `${input.targetDate} 日程安排`,
-    rationale: '先按需求拆成可执行事项，再逐项推进。',
-    items: fallbackItems,
+    summary: `${formatDateRangeLabel(input.startDate, input.endDate)} 规划方案`,
+    rationale: '先按目标拆成准备事项和分天步骤，再尽量避开已有安排。',
+    preparationItems: ['确认出发时间、交通和关键预订信息', '准备证件、支付方式和随身必需品'],
+    watchouts: ['尽量避开你已有安排较多的日期堆叠重任务', '只把关键节点写入日历，细节执行可在当天再调整'],
+    items: fallbackItems.map((item, index) => ({
+      ...item,
+      date:
+        input.startDate === input.endDate
+          ? input.startDate
+          : addUtcDays(input.startDate, Math.min(index, 2)),
+    })),
   }
 
   const systemPrompt = [
-    '你是一个日程规划助手。',
-    '任务：基于用户需求和当天已有安排，输出一个“按日期粒度”的执行计划。',
+    '你是一个场景规划型日程助手。',
+    '任务：基于用户需求和现有安排，做出尽量合理的多天执行方案。',
     '严格输出 JSON，不要输出任何解释。',
-    '字段：summary, rationale, items。',
-    'items 是 1 到 6 条任务，每条包含 title, description, implementationAdvice。',
+    '字段：summary, rationale, preparationItems, watchouts, items。',
+    'preparationItems 是 0 到 6 条出发前准备事项。',
+    'watchouts 是 0 到 6 条注意事项、风险提醒或取舍建议。',
+    'items 是 1 到 8 条任务，每条包含 date, title, description, implementationAdvice。',
+    'date 必须是 YYYY-MM-DD，并且落在给定日期范围内。',
     '注意：当前系统只支持按“天”记录事件，不支持小时分钟，因此不要输出具体时间点。',
-    '请尽量避免和当天已有安排重复；如果用户目标很大，请拆成 2 到 5 条更容易执行的步骤。',
-    'title 要简洁直接，description 用一句中文说明这一步为什么放在这个顺序或它的产出。',
+    '如果是出行、旅行、活动、筹备等场景，请同时考虑：出发前准备、每天安排、回程或收尾事项。',
+    '请优先避开已有安排密集的日期，把重任务放到空档更多的日期，做出你认为更合理的自主决策。',
+    '如果范围内已有安排很多，可以减少写入项，只保留关键节点和准备事项。',
+    'title 要简洁直接，description 用一句中文说明为什么安排在这一天或它的产出。',
     'implementationAdvice 需要给出具体、可执行的建议，例如先做什么、重点关注什么、产出物是什么。',
     '如果用户的问题带有明显的实施背景，请结合上下文给出更贴近任务本身的建议，不要只写空泛鸡汤。',
     '如果提供了“本地知识/历史参考”，请在 implementationAdvice 中优先吸收其中可复用的经验、步骤或注意事项，但不要编造成事实。',
@@ -668,14 +932,19 @@ async function buildCalendarSchedulePlan(input: {
 
   const userPrompt = JSON.stringify(
     {
-      targetDate: input.targetDate,
+      startDate: input.startDate,
+      endDate: input.endDate,
       request: input.rawText,
       recentConversation: input.conversationText,
       localReferences: formatPlanningReferences(planningReferences),
-      existingEvents: input.existingDay.events.map((event) => ({
-        title: event.title,
-        status: event.status,
-        sourceType: event.sourceType,
+      existingEventsByDate: input.existingDays.map((day) => ({
+        date: day.date,
+        totalCount: day.summary.totalCount,
+        events: day.events.map((event) => ({
+          title: event.title,
+          status: event.status,
+          sourceType: event.sourceType,
+        })),
       })),
     },
     null,
@@ -701,7 +970,20 @@ async function buildCalendarSchedulePlan(input: {
     if (!result.success || result.data.items.length === 0) {
       return fallback
     }
-    return result.data
+    return {
+      ...result.data,
+      preparationItems: result.data.preparationItems,
+      watchouts: result.data.watchouts,
+      items: result.data.items.map((item, index) => ({
+        ...item,
+        date:
+          item.date && item.date >= input.startDate && item.date <= input.endDate
+            ? item.date
+            : input.startDate === input.endDate
+              ? input.startDate
+              : addUtcDays(input.startDate, Math.min(index, 2)),
+      })),
+    }
   } catch {
     return fallback
   }
@@ -1233,8 +1515,63 @@ async function executeCreateCalendarEventTool(
 
   const rawText = toolCall.rawText.trim()
   const now = new Date()
-  const targetDate = parseExplicitDate(rawText, now) ?? toolCall.defaultDate ?? toDateString(now)
-  const calendarDayUrl = `${input.siteBaseUrl.replace(/\/+$/, '')}/calendar/day/${targetDate}`
+  const extractedContext = await extractScheduleContext({
+    rawText,
+    conversationText: input.conversationText,
+    now,
+    signal: input.signal,
+  })
+  throwIfAborted(input.signal)
+
+  const parsedRange = parseDateRange(rawText, now)
+  const parsedExplicitDate = parseExplicitDate(rawText, now)
+  const targetDate =
+    extractedContext.focusDate ??
+    extractedContext.startDate ??
+    parsedExplicitDate ??
+    toolCall.defaultDate ??
+    toDateString(now)
+  const startDate = extractedContext.startDate ?? parsedRange?.startDate ?? targetDate
+  const endDate = extractedContext.endDate ?? parsedRange?.endDate ?? startDate
+  const dateLabel = formatDateRangeLabel(startDate, endDate)
+  const calendarDayUrl = `${input.siteBaseUrl.replace(/\/+$/, '')}/calendar/day/${startDate}`
+  const hasRecognizedDateSignal = Boolean(
+    extractedContext.focusDate ||
+      extractedContext.startDate ||
+      extractedContext.endDate ||
+      parsedExplicitDate ||
+      parsedRange
+  )
+
+  if (
+    looksLikeScenarioPlanningRequest(rawText) &&
+    !hasRecognizedDateSignal &&
+    extractedContext.needsClarification
+  ) {
+    return {
+      tool: 'create_calendar_event',
+      status: 'need_more_info',
+      summary:
+        '我识别到你在做多天场景规划，但还没有稳定识别出日期范围，所以先不按今天自动生成方案。',
+      followupQuestions: [
+        extractedContext.clarificationQuestion ||
+          '请明确告诉我是哪些日期，例如“2026-04-17 到 2026-04-19”或“4月17日到19日”。',
+      ],
+      assistantMessage: buildFollowupOperationCardMessage({
+        scope: 'tool',
+        title: '场景规划还需要明确日期范围',
+        description:
+          '为了避免把多天出行误写成今天的计划，请先明确日期范围；我会再结合你已有安排给出更合理的方案。',
+        questions: [
+          extractedContext.clarificationQuestion ||
+            '请明确告诉我是哪些日期，例如“2026-04-17 到 2026-04-19”或“4月17日到19日”。',
+        ],
+        submitMode: 'chat',
+        submitLabel: '发送日期范围',
+        inputPlaceholder: '例如：4月17日到19日，安排西昌自驾拍照旅行',
+      }),
+    }
+  }
 
   if (looksLikeSchedulePlanCancellation(rawText)) {
     return {
@@ -1267,7 +1604,7 @@ async function executeCreateCalendarEventTool(
     }
 
     const createdEvents = []
-    for (const item of pendingPlan.items.slice(0, 6)) {
+    for (const item of pendingPlan.items.slice(0, 8)) {
       throwIfAborted(input.signal)
       const event = await createManualEvent({
         userId: input.userId,
@@ -1277,7 +1614,7 @@ async function executeCreateCalendarEventTool(
             .filter(Boolean)
             .join('\n执行建议：') ||
           `来自 AI 日程规划：${compactText(pendingPlan.sourceMessage).slice(0, 180)}`,
-        date: pendingPlan.date,
+        date: item.date,
         status: 'planned',
         allDay: true,
         sourceType: 'manual',
@@ -1286,8 +1623,8 @@ async function executeCreateCalendarEventTool(
       createdEvents.push({
         id: event.id,
         title: event.title,
-        date: pendingPlan.date,
-        jumpUrl: `${calendarDayUrl}`,
+        date: item.date,
+        jumpUrl: `${input.siteBaseUrl.replace(/\/+$/, '')}/calendar/day/${item.date}`,
       })
     }
 
@@ -1295,15 +1632,19 @@ async function executeCreateCalendarEventTool(
       tool: 'create_calendar_event',
       status: 'created',
       summary: [
-        `已将 ${createdEvents.length} 项计划写入 ${pendingPlan.date} 的日历。`,
+        `已将 ${createdEvents.length} 项计划写入 ${pendingPlan.dateLabel} 的日历。`,
         `规划思路：${pendingPlan.rationale}`,
-        ...createdEvents.map((event, index) => `${index + 1}. ${event.title}`),
-        `查看当天：${calendarDayUrl}`,
+        ...createdEvents.map((event, index) => `${index + 1}. ${event.date} · ${event.title}`),
+        `查看开始日期：${input.siteBaseUrl.replace(/\/+$/, '')}/calendar/day/${pendingPlan.startDate}`,
       ].join('\n'),
       assistantMessage: [
-        `已确认并创建 ${createdEvents.length} 项日程，已写入 ${pendingPlan.date} 的日历。`,
+        `已确认并创建 ${createdEvents.length} 项日程，已写入 ${pendingPlan.dateLabel} 的日历。`,
+        buildScenarioExtrasRecap({
+          preparationItems: pendingPlan.preparationItems,
+          watchouts: pendingPlan.watchouts,
+        }),
         buildCalendarAdviceRecap(pendingPlan.items),
-        `查看当天：${calendarDayUrl}`,
+        `查看开始日期：${input.siteBaseUrl.replace(/\/+$/, '')}/calendar/day/${pendingPlan.startDate}`,
       ]
         .filter(Boolean)
         .join('\n\n'),
@@ -1340,13 +1681,23 @@ async function executeCreateCalendarEventTool(
   }
 
   if (looksLikeSchedulePlanningRequest(rawText)) {
-    const existingDay = await getCalendarDay({ mode: 'user', userId: input.userId }, targetDate)
-    throwIfAborted(input.signal)
+    const existingDays = []
+    let cursorDate = startDate
+    while (cursorDate <= endDate) {
+      // Limit autonomous planning window for safety and readability.
+      if (existingDays.length >= 7) {
+        break
+      }
+      existingDays.push(await getCalendarDay({ mode: 'user', userId: input.userId }, cursorDate))
+      throwIfAborted(input.signal)
+      cursorDate = addUtcDays(cursorDate, 1)
+    }
 
     const plan = await buildCalendarSchedulePlan({
       rawText,
-      targetDate,
-      existingDay,
+      startDate,
+      endDate,
+      existingDays,
       conversationText: input.conversationText,
       useKnowledgeBase: input.useKnowledgeBase,
       signal: input.signal,
@@ -1355,10 +1706,15 @@ async function executeCreateCalendarEventTool(
 
     const payload = encodePendingCalendarSchedulePlan({
       version: 1,
-      date: targetDate,
+      startDate,
+      endDate,
+      dateLabel,
       sourceMessage: rawText,
       rationale: plan.rationale,
+      preparationItems: plan.preparationItems,
+      watchouts: plan.watchouts,
       items: plan.items.map((item) => ({
+        date: item.date,
         title: compactText(item.title).slice(0, 120),
         description: compactText(item.description || '').slice(0, 240) || undefined,
         implementationAdvice:
@@ -1369,25 +1725,27 @@ async function executeCreateCalendarEventTool(
     return {
       tool: 'create_calendar_event',
       status: 'need_more_info',
-      summary: `已为 ${targetDate} 生成一版日程方案，确认后会写入日历。`,
+      summary: `已为 ${dateLabel} 生成一版场景方案，确认后会把关键节点写入日历。`,
       skillPhases: [
         {
           phase: 'draft',
-          label: `正在为 ${targetDate} 起草日程方案。`,
+          label: `正在结合 ${dateLabel} 的已有安排起草方案。`,
         },
         {
           phase: 'confirm',
-          label: '日程草案已生成，等待你确认后写入日历。',
+          label: '场景方案已生成，等待你确认后写入日历。',
         },
       ],
       assistantMessage: buildCalendarScheduleConfirmOperationCardMessage({
-        date: targetDate,
-        description: `${plan.summary}。${plan.rationale} 确认后会把以下计划写入日历。`,
-        existingSummary: formatExistingCalendarSummary(existingDay),
+        date: dateLabel,
+        description: `${plan.summary}。${plan.rationale} 我已参考你当前已有安排做了更优先级和日期分配，确认后会把以下关键节点写入日历。`,
+        existingSummary: existingDays
+          .map((day) => `${day.date}：${formatExistingCalendarSummary(day)}`)
+          .join(' / '),
         planItems: plan.items.map((item) =>
           compactText(
             [
-              item.title,
+              `${item.date} · ${item.title}`,
               item.description ? `安排理由：${item.description}` : '',
               item.implementationAdvice ? `执行建议：${item.implementationAdvice}` : '',
             ]
@@ -1395,6 +1753,7 @@ async function executeCreateCalendarEventTool(
               .join('；')
           ).slice(0, 180)
         ),
+        planSections: buildCalendarPlanSections(plan),
         calendarDayUrl,
         confirmMessage: SCHEDULE_PLAN_CONFIRM_PREFIX,
         confirmPayload: payload,

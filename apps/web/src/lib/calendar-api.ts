@@ -129,6 +129,11 @@ export async function updateCalendarEvent(
   return res.data
 }
 
+export async function deleteCalendarEvent(id: string): Promise<void> {
+  const res = await apiClient.delete(`calendar/events/${id}`).json<ApiResponse<unknown>>()
+  if (!res.success) throw new Error(res.error ?? '删除事件失败')
+}
+
 export async function quickCreateCalendarEvent(body: {
   rawText: string
   defaultDate?: string

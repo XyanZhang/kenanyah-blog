@@ -21,6 +21,11 @@ export type OperationCardDetail = {
   value: string
 }
 
+export type OperationCardSection = {
+  title: string
+  items: string[]
+}
+
 export type FollowupOperationCard = {
   version: 1
   kind: 'followup'
@@ -45,6 +50,7 @@ export type ConfirmOperationCard = {
   emphasis?: 'danger'
   confirmPayload?: string
   details: OperationCardDetail[]
+  sections?: OperationCardSection[]
   actions: OperationCardAction[]
 }
 

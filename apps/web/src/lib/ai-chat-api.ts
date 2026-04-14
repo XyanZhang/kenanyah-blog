@@ -168,6 +168,18 @@ export async function updateConversation(
   return json.data
 }
 
+export async function deleteConversation(id: string): Promise<void> {
+  const res = await fetch(`${API_BASE_URL}/chat/conversations/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+    credentials: 'include',
+    headers: getAuthHeaders(),
+  })
+  const json = (await res.json().catch(() => ({}))) as ApiResponse<unknown>
+  if (!res.ok || !json.success) {
+    throw new Error(json.error || '删除会话失败')
+  }
+}
+
 export async function streamChatMessage(
   conversationId: string,
   content: string,

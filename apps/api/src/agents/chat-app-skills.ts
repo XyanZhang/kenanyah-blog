@@ -9,6 +9,7 @@ export type ChatAppSkillId =
   | 'general_chat'
   | 'knowledge_context'
   | 'implementation_advice'
+  | 'scenario_planning'
   | 'calendar_planning'
   | 'content_management'
   | 'thoughts_memory'
@@ -84,6 +85,23 @@ const APP_SKILL_DEFINITIONS: ChatAppSkillDefinition[] = [
     toolPolicy: { mode: 'none' },
     prompts: {},
     matches: ({ intent }) => intent.intent === 'write_blog',
+  },
+  {
+    id: 'scenario_planning',
+    label: '场景规划',
+    description: '针对出行、活动、筹备、多天安排等场景，先做方案决策，再决定是否写入日历。',
+    route: 'tool',
+    toolPolicy: {
+      mode: 'business',
+      tools: ['create_calendar_event'],
+    },
+    prompts: {
+      businessTool:
+        '当前启用 skill=scenario_planning。把用户请求视为场景规划而不是单条事件记录。优先保留日期范围、已有安排约束、准备事项和分天计划，让下游先给方案，再决定是否写入日历。',
+    },
+    matches: ({ intent, latestUserMessage }) =>
+      intent.intent === 'create_calendar_event' &&
+      /(?:出行|旅行|旅游|行程|攻略|安排.*天|几天|到|至|\-|—|~|～)/.test(latestUserMessage),
   },
   {
     id: 'calendar_planning',

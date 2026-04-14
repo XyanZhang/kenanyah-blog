@@ -14,6 +14,7 @@ import {
   NotebookPen,
   Plus,
   Sparkles,
+  Trash2,
 } from 'lucide-react'
 import { addDays, format, subDays } from 'date-fns'
 import { zhCN } from 'date-fns/locale'
@@ -22,6 +23,7 @@ import { Input } from '@/components/ui/input'
 import { useAuthSession } from '@/hooks/useAuthSession'
 import {
   createCalendarEvent,
+  deleteCalendarEvent,
   getCalendarDay,
   saveCalendarAnnotation,
   updateCalendarEvent,
@@ -126,6 +128,12 @@ function getStatusStyles(status: CalendarEventStatus) {
   }
 }
 
+function getEventPrimaryJumpUrl(event: CalendarEventDto, currentDate: string): string | null {
+  if (!event.jumpUrl) return null
+  const normalizedCurrentDayUrl = `/calendar/day/${currentDate}`
+  return event.jumpUrl === normalizedCurrentDayUrl ? null : event.jumpUrl
+}
+
 function emptyEditDraft(event: CalendarEventDto): EventEditDraft {
   return {
     title: event.title,
@@ -210,7 +218,7 @@ export function CalendarDayView({ date }: { date: string }) {
 
   const timelineHint =
     activeStatusFilter === 'all'
-      ? '只保留时间和标题，方便快速扫读今天的动作。'
+      ? '按时间查看这一天的记录、说明和状态，重要操作可以直接在卡片里完成。'
       : `当前只看${getStatusLabel(activeStatusFilter)}的事件。`
 
   const reload = async () => {
@@ -366,6 +374,29 @@ export function CalendarDayView({ date }: { date: string }) {
     }
   }
 
+  const handleDeleteEvent = async (eventId: string, title: string) => {
+    const confirmed =
+      typeof window === 'undefined'
+        ? true
+        : window.confirm(`确认删除日历计划「${title}」吗？删除后无法恢复。`)
+    if (!confirmed) return
+
+    setError(null)
+    setUpdatingEventId(eventId)
+    try {
+      await deleteCalendarEvent(eventId)
+      if (editingEventId === eventId) {
+        setEditingEventId(null)
+        setEditDraft(null)
+      }
+      await reload()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '删除事件失败')
+    } finally {
+      setUpdatingEventId(null)
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex min-h-[55vh] items-center justify-center">
@@ -514,48 +545,110 @@ export function CalendarDayView({ date }: { date: string }) {
                   const isEditing = editingEventId === event.id && editDraft
                   const savingThisEvent = updatingEventId === event.id
                   const statusStyles = getStatusStyles(event.status)
+                  const primaryJumpUrl = getEventPrimaryJumpUrl(event, date)
 
                   if (!isEditing) {
                     return (
                       <article
                         key={event.id}
-                        className="rounded-[1.2rem] border border-black/8 bg-white/78 px-4 py-3 transition-colors hover:bg-white"
+                        className="rounded-[1.2rem] border border-black/8 bg-white/78 px-4 py-4 transition-colors hover:bg-white"
                       >
-                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                          <div className="w-16 shrink-0 text-sm font-medium text-content-secondary">
-                            {formatTimelineTimeLabel(event)}
-                          </div>
+                        <div className="flex flex-col gap-4">
+                          <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
+                            <div className="w-16 shrink-0 text-sm font-medium text-content-secondary">
+                              {formatTimelineTimeLabel(event)}
+                            </div>
 
-                          <div className="min-w-0 flex-1 flex items-center gap-3">
-                            <span
-                              className={cn('h-2.5 w-2.5 shrink-0 rounded-full', statusStyles.dot)}
-                            />
-                            <span
-                              title={getSourceLabel(event.sourceType)}
-                              className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-black/[0.04] text-content-secondary"
-                            >
-                              {getSourceIcon(event.sourceType)}
-                            </span>
-                            <div className="min-w-0 truncate text-sm font-medium text-content-primary sm:text-[15px]">
-                              {event.title}
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-start gap-3">
+                                <span
+                                  className={cn('mt-1 h-2.5 w-2.5 shrink-0 rounded-full', statusStyles.dot)}
+                                />
+                                <span
+                                  title={getSourceLabel(event.sourceType)}
+                                  className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-black/[0.04] text-content-secondary"
+                                >
+                                  {getSourceIcon(event.sourceType)}
+                                </span>
+                                <div className="min-w-0 flex-1">
+                                  <div className="text-sm font-medium text-content-primary sm:text-[15px]">
+                                    {event.title}
+                                  </div>
+                                  <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-content-secondary">
+                                    <span className="rounded-full bg-black/[0.04] px-2 py-0.5">
+                                      {getSourceLabel(event.sourceType)}
+                                    </span>
+                                    <span className="rounded-full bg-black/[0.04] px-2 py-0.5">
+                                      {getStatusLabel(event.status)}
+                                    </span>
+                                    <span>{event.date.slice(0, 10)}</span>
+                                  </div>
+                                  {event.description && (
+                                    <div className="mt-3 whitespace-pre-wrap text-sm leading-6 text-content-secondary">
+                                      {event.description}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="flex flex-wrap gap-2 sm:justify-end">
+                              {primaryJumpUrl && (
+                                <a
+                                  href={primaryJumpUrl}
+                                  className="inline-flex h-8 items-center justify-center rounded-md border border-black/8 bg-white px-3 text-xs font-medium text-content-primary transition-colors hover:bg-black/[0.02]"
+                                >
+                                  打开详情
+                                </a>
+                              )}
+                              {user && (
+                                <Button variant="outline" size="sm" onClick={() => beginEdit(event)}>
+                                  编辑详情
+                                </Button>
+                              )}
+                              {user && (
+                                <button
+                                  type="button"
+                                  disabled={savingThisEvent}
+                                  onClick={() => {
+                                    void handleDeleteEvent(event.id, event.title)
+                                  }}
+                                  className="inline-flex h-8 items-center justify-center rounded-md border border-red-200 bg-red-50 px-3 text-xs font-medium text-red-500 transition-colors hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-55"
+                                >
+                                  <Trash2 className="mr-1 h-3.5 w-3.5" />
+                                  删除
+                                </button>
+                              )}
                             </div>
                           </div>
 
-                          <div className="flex flex-wrap gap-2 sm:justify-end">
-                            {event.jumpUrl && (
-                              <a
-                                href={event.jumpUrl}
-                                className="inline-flex h-8 items-center justify-center rounded-md border border-black/8 bg-white px-3 text-xs font-medium text-content-primary transition-colors hover:bg-black/[0.02]"
-                              >
-                                打开
-                              </a>
-                            )}
-                            {user && (
-                              <Button variant="outline" size="sm" onClick={() => beginEdit(event)}>
-                                编辑
-                              </Button>
-                            )}
-                          </div>
+                          {user && (
+                            <div className="flex flex-wrap items-center gap-2 border-t border-black/8 pt-3">
+                              <span className="text-xs text-content-secondary">快速改状态</span>
+                              {(['planned', 'completed', 'canceled'] as CalendarEventStatus[]).map((status) => (
+                                <button
+                                  key={status}
+                                  type="button"
+                                  disabled={savingThisEvent || event.status === status}
+                                  onClick={() => {
+                                    void updateCalendarEvent(event.id, { status })
+                                      .then(() => reload())
+                                      .catch((err) =>
+                                        setError(err instanceof Error ? err.message : '更新事件失败')
+                                      )
+                                  }}
+                                  className={cn(
+                                    'inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-55',
+                                    event.status === status
+                                      ? 'border-accent-primary/25 bg-accent-primary/8 text-accent-primary'
+                                      : 'border-black/8 bg-white text-content-secondary hover:bg-black/[0.02] hover:text-content-primary'
+                                  )}
+                                >
+                                  {getStatusLabel(status)}
+                                </button>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       </article>
                     )
@@ -678,7 +771,7 @@ export function CalendarDayView({ date }: { date: string }) {
               <div>
                 <h2 className="text-lg font-semibold text-content-primary">快速新增</h2>
                 <p className="mt-2 text-sm leading-7 text-content-secondary">
-                  选择类型后直接补录到当天。
+                  保留一个轻量补录入口，适合临时记一条，不替代上面的主时间线操作。
                 </p>
               </div>
 

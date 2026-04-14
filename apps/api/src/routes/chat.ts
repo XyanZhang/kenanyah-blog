@@ -111,6 +111,34 @@ chat.patch('/conversations/:id', async (c) => {
   })
 })
 
+// 删除会话及其消息
+chat.delete('/conversations/:id', async (c) => {
+  const user = c.get('user')
+  const { id } = c.req.param()
+
+  const conversation = await prisma.chatConversation.findFirst({
+    where: {
+      id,
+      OR: [{ userId: user.userId }, { userId: null }],
+    },
+  })
+
+  if (!conversation) {
+    return c.json({ success: false, error: '会话不存在' }, 404)
+  }
+
+  await prisma.$transaction([
+    prisma.chatMessage.deleteMany({
+      where: { conversationId: id },
+    }),
+    prisma.chatConversation.delete({
+      where: { id },
+    }),
+  ])
+
+  return c.json({ success: true })
+})
+
 // 获取单个会话及消息
 chat.get('/conversations/:id', async (c) => {
   const user = c.get('user')

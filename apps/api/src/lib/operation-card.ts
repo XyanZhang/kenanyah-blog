@@ -20,6 +20,11 @@ type OperationCardDetail = {
   value: string
 }
 
+type OperationCardSection = {
+  title: string
+  items: string[]
+}
+
 type FollowupOperationCard = {
   version: 1
   kind: 'followup'
@@ -44,6 +49,7 @@ type ConfirmOperationCard = {
   emphasis?: 'danger'
   confirmPayload?: string
   details: OperationCardDetail[]
+  sections?: OperationCardSection[]
   actions: OperationCardAction[]
 }
 
@@ -163,6 +169,7 @@ export function buildCalendarScheduleConfirmOperationCardMessage(input: {
   description: string
   existingSummary: string
   planItems: string[]
+  planSections?: OperationCardSection[]
   calendarDayUrl: string
   confirmMessage: string
   confirmPayload: string
@@ -182,6 +189,7 @@ export function buildCalendarScheduleConfirmOperationCardMessage(input: {
         value: item,
       })),
     ],
+    sections: input.planSections?.filter((section) => section.items.length > 0).slice(0, 8),
     actions: [
       {
         type: 'open_url',
