@@ -80,6 +80,10 @@ export function CalendarCard({ card }: CalendarCardProps) {
     router.push(`/calendar/day/${format(date, 'yyyy-MM-dd')}`)
   }
 
+  const openMonth = (date: Date) => {
+    router.push(`/calendar/month/${format(date, 'yyyy-MM')}`)
+  }
+
   return (
     <div className="flex h-full flex-col">
       <div className="mb-3 flex items-center justify-between">
@@ -91,9 +95,13 @@ export function CalendarCard({ card }: CalendarCardProps) {
         </button>
 
         <div className="flex items-center gap-2">
-          <h3 className="text-base font-semibold text-content-primary">
+          <button
+            type="button"
+            onClick={() => openMonth(currentDate)}
+            className="text-base font-semibold text-content-primary transition-colors hover:text-accent-primary"
+          >
             {format(currentDate, 'yyyy年MM月', { locale: zhCN })}
-          </h3>
+          </button>
           <button
             onClick={() => openDay(new Date())}
             className="rounded-md px-2 py-0.5 text-xs text-accent-primary transition-colors hover:bg-accent-primary-subtle"

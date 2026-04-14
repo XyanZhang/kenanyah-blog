@@ -429,6 +429,9 @@ export function CalendarDayView({ date }: { date: string }) {
               <Button variant="outline" onClick={() => router.push(`/calendar/day/${nextDate}`)}>
                 后一天
               </Button>
+              <Button variant="outline" onClick={() => router.push(`/calendar/month/${date.slice(0, 7)}`)}>
+                月视图
+              </Button>
               <Button variant="outline" onClick={() => router.push('/calendar/today')}>
                 回到今天
               </Button>
