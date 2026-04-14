@@ -139,6 +139,7 @@ function buildEventsMap(events: CalendarEventDto[]): EventsMap {
 export function CalendarMonthView({ month }: { month: string }) {
   const router = useRouter()
   const calendarSurfaceRef = useRef<HTMLElement | null>(null)
+  const hoverHideTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [currentMonth, setCurrentMonth] = useState(() => parseMonth(month))
   const [selectedDate, setSelectedDate] = useState(() => parseMonth(month))
   const [hoveredDate, setHoveredDate] = useState<Date | null>(null)
@@ -170,6 +171,14 @@ export function CalendarMonthView({ month }: { month: string }) {
       return nextMonth
     })
   }, [month])
+
+  useEffect(() => {
+    return () => {
+      if (hoverHideTimeoutRef.current) {
+        clearTimeout(hoverHideTimeoutRef.current)
+      }
+    }
+  }, [])
 
   useEffect(() => {
     const from = format(startOfMonth(currentMonth), 'yyyy-MM-dd')
@@ -233,6 +242,23 @@ export function CalendarMonthView({ month }: { month: string }) {
     router.push(`/calendar/day/${format(date, 'yyyy-MM-dd')}`)
   }
 
+  const cancelHoverHide = () => {
+    if (hoverHideTimeoutRef.current) {
+      clearTimeout(hoverHideTimeoutRef.current)
+      hoverHideTimeoutRef.current = null
+    }
+  }
+
+  const scheduleHoverHide = () => {
+    if (pinnedDate) return
+    cancelHoverHide()
+    hoverHideTimeoutRef.current = setTimeout(() => {
+      setHoveredDate(null)
+      setHoverCardStyle(null)
+      hoverHideTimeoutRef.current = null
+    }, 3000)
+  }
+
   const getFloatingCardPosition = (element: HTMLElement): FloatingCardPosition | null => {
     const container = calendarSurfaceRef.current
     if (!container) return null
@@ -257,6 +283,7 @@ export function CalendarMonthView({ month }: { month: string }) {
 
   const placeHoverCard = (day: Date, element: HTMLElement) => {
     if (pinnedDate) return
+    cancelHoverHide()
     const nextPosition = getFloatingCardPosition(element)
     if (!nextPosition) return
 
@@ -265,6 +292,7 @@ export function CalendarMonthView({ month }: { month: string }) {
   }
 
   const pinCard = (day: Date, element: HTMLElement) => {
+    cancelHoverHide()
     const nextPosition = getFloatingCardPosition(element)
     if (!nextPosition) return
 
@@ -379,11 +407,8 @@ export function CalendarMonthView({ month }: { month: string }) {
 
             <div
               className="grid grid-cols-7 gap-2 sm:gap-3"
-              onMouseLeave={() => {
-                if (pinnedDate) return
-                setHoveredDate(null)
-                setHoverCardStyle(null)
-              }}
+              onMouseEnter={cancelHoverHide}
+              onMouseLeave={scheduleHoverHide}
             >
               {WEEKDAYS.map((weekday) => (
                 <div
