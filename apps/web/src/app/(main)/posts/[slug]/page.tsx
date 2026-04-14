@@ -15,6 +15,7 @@ import { cn } from '@/lib/utils'
 import { buildDynamicImageUrl, isStaticsSource } from '@/lib/image-service'
 import { collectTocFromMarkdown, slugifyHeading } from '@/lib/heading'
 import { PostAside } from '@/components/posts/PostAside'
+import PostDetailSkeletonGenerated from '@/components/skeletons/generated/PostDetailSkeletonGenerated'
 
 type PostDetail = {
   id: string
@@ -129,17 +130,7 @@ export default function PostPage() {
   }, [slug])
 
   if (loading) {
-    return (
-      <main className="min-h-[60vh] w-full max-w-[1140px] mx-auto px-4 sm:px-6 xl:px-0 py-8 sm:py-12">
-        <div className="animate-pulse flex flex-col gap-6">
-          <div className="h-4 w-24 rounded bg-surface-tertiary/60" />
-          <div className="h-10 w-3/4 rounded bg-surface-tertiary/60" />
-          <div className="h-4 w-full max-w-md rounded bg-surface-tertiary/40" />
-          <div className="h-4 w-full rounded bg-surface-tertiary/40" />
-          <div className="h-4 w-5/6 rounded bg-surface-tertiary/40" />
-        </div>
-      </main>
-    )
+    return <PostDetailSkeletonGenerated />
   }
 
   if (error || !post) {
@@ -170,6 +161,7 @@ export default function PostPage() {
       {/* 让正文列 + 右侧目录作为一个 1140px 布局整体居中，目录仍保持 fixed。 */}
       <div className="relative mx-auto w-full max-w-[1140px] px-4 sm:px-6 xl:px-0">
         <div
+          data-skeleton="ignore"
           className="hidden xl:block fixed top-28 z-40 w-[208px]"
           style={{ left: POST_ASIDE_LEFT }}
         >
@@ -192,6 +184,7 @@ export default function PostPage() {
             </Link>
             {authChecked && isAuthenticated ? (
               <Link
+                data-skeleton="ignore"
                 href={`/blog/editor/${post.id}` as import('next').Route}
                 className="inline-flex items-center gap-2 rounded-xl border border-line-primary bg-surface-glass px-4 py-2.5 text-sm font-medium text-content-primary transition-colors hover:border-accent-primary/50 hover:bg-accent-primary/10"
               >
@@ -286,6 +279,7 @@ export default function PostPage() {
 
           <div className="mt-8 flex justify-center">
             <Link
+              data-skeleton="ignore"
               href="/blog"
               className="inline-flex items-center gap-2 rounded-xl border border-line-primary bg-surface-glass px-4 py-2.5 text-sm font-medium text-content-primary transition-colors hover:border-accent-primary/50 hover:bg-accent-primary/10"
             >
