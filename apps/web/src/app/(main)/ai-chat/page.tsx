@@ -195,6 +195,11 @@ function getOperationActionButtonClass(style?: OperationCardAction['style']): st
   return 'border-accent-primary/25 bg-accent-primary/8 text-accent-primary hover:bg-accent-primary/12'
 }
 
+function getConversationDisplayTitle(title?: string | null): string {
+  const normalizedTitle = title?.trim()
+  return normalizedTitle ? normalizedTitle : '未命名'
+}
+
 export default function AiChatPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -1195,6 +1200,9 @@ export default function AiChatPage() {
           : 'Enter 发送，Shift + Enter 换行。'
 
   const currentConversation = conversations.find((conv) => conv.id === currentId) ?? null
+  const currentConversationTitle = currentConversation?.title?.trim() ?? ''
+  const currentConversationDisplayTitle = currentConversationTitle || '当前会话'
+  const currentConversationIsUntitled = !currentConversationTitle
   const workspaceStatusLabel = runningWorkflow
     ? '博客工作流执行中'
     : workflowFollowupMode
@@ -1202,20 +1210,24 @@ export default function AiChatPage() {
       : sending
         ? '正在生成回答'
         : '可继续输入'
+  const panelClass =
+    'rounded-[1.5rem] border border-line-glass bg-surface-glass/88 shadow-[0_18px_48px_rgba(15,23,42,0.06)] backdrop-blur-lg'
+  const subtlePanelClass =
+    'rounded-[1rem] border border-line-glass/70 bg-surface-glass/58 shadow-[inset_0_1px_0_rgba(255,255,255,0.42)]'
+  const ghostActionButtonClass =
+    'inline-flex items-center gap-2 rounded-2xl border border-line-glass bg-surface-glass/62 px-3 py-2 text-sm font-medium text-content-primary transition-colors hover:bg-surface-glass/78'
 
   return (
-    <main className="mx-auto grid w-full max-w-[1520px] gap-4 px-4 py-6 md:py-8 xl:grid-cols-[280px_minmax(0,1fr)_320px]">
+    <main className="mx-auto grid w-full max-w-[1560px] gap-4 px-4 py-6 md:py-8 xl:grid-cols-[252px_minmax(0,1fr)_296px] 2xl:grid-cols-[264px_minmax(0,1fr)_312px]">
       <section className="flex min-h-[24rem] flex-col xl:sticky xl:top-6 xl:h-[calc(100vh-7rem)]">
-        <div className="mb-4 rounded-[2rem] border border-line-glass bg-[linear-gradient(145deg,rgba(255,255,255,0.9),rgba(245,248,252,0.78))] p-4 shadow-[0_18px_50px_rgba(15,23,42,0.06)] backdrop-blur-sm">
+        <div className={`${panelClass} mb-4 p-3.5`}>
           <div className="flex items-start gap-3">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-accent-primary/12 text-accent-primary">
               <Bot className="h-5 w-5" />
             </div>
             <div className="min-w-0 flex-1">
               <h1 className="text-base font-semibold text-content-primary">AI 工作台</h1>
-              <p className="mt-1 text-xs leading-5 text-content-secondary">
-                左侧专注切换会话，主区域只处理当前对话。
-              </p>
+              <p className="mt-1 text-xs leading-5 text-content-secondary">切换会话、进入当前上下文。</p>
             </div>
           </div>
 
@@ -1223,7 +1235,7 @@ export default function AiChatPage() {
             <button
               type="button"
               onClick={handleCreateConversation}
-              className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-accent-primary px-3 py-2.5 text-sm font-medium text-white shadow-md transition-colors hover:bg-accent-primary/90"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-accent-primary px-3 py-2.5 text-sm font-medium text-white shadow-md transition-colors hover:bg-accent-primary/90"
             >
               <Plus className="h-4 w-4" />
               新建会话
@@ -1232,14 +1244,14 @@ export default function AiChatPage() {
             <button
               type="button"
               onClick={() => router.push(`/calendar/day/${quickEventDate}`)}
-              className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-line-glass bg-white/72 px-3 py-2.5 text-sm font-medium text-content-primary transition-colors hover:bg-white"
+              className={`${ghostActionButtonClass} w-full justify-center py-2.5`}
             >
               <Sparkles className="h-4 w-4 text-accent-secondary" />
               查看当日中枢
             </button>
           </div>
         </div>
-        <div className="flex flex-1 flex-col overflow-hidden rounded-[2rem] border border-line-glass bg-surface-glass/82 p-2 shadow-[0_18px_48px_rgba(15,23,42,0.06)] backdrop-blur-sm">
+        <div className={`${panelClass} flex flex-1 flex-col overflow-hidden p-2`}>
           <div className="border-b border-line-glass/60 px-2 pb-3 pt-1">
             <div className="text-[11px] uppercase tracking-[0.28em] text-content-muted">Sessions</div>
             <div className="mt-2 text-sm text-content-secondary">
@@ -1257,7 +1269,7 @@ export default function AiChatPage() {
               {conversations.map((conv) => (
                 <li key={conv.id}>
                   {editingId === conv.id ? (
-                    <div className="px-3 py-2 rounded-xl bg-surface-tertiary/50">
+                    <div className="rounded-2xl border border-line-glass/70 bg-white/62 px-3 py-2">
                       <input
                         type="text"
                         value={editingTitle}
@@ -1303,15 +1315,20 @@ export default function AiChatPage() {
                           setCurrentId(conv.id)
                         }
                       }}
-                      className={`flex items-start gap-1 w-full text-left px-3 py-2 rounded-xl text-sm transition-colors cursor-pointer ${
+                      className={`flex w-full items-start gap-2 rounded-2xl border px-3 py-2.5 text-left text-sm transition-all cursor-pointer ${
                         conv.id === currentId
-                          ? 'bg-accent-primary/10 text-accent-primary'
-                          : 'bg-transparent text-content-secondary hover:bg-surface-tertiary'
+                          ? 'border-accent-primary/18 bg-accent-primary/8 text-content-primary shadow-[inset_0_1px_0_rgba(255,255,255,0.65)]'
+                          : 'border-transparent bg-transparent text-content-secondary hover:border-line-glass/70 hover:bg-white/55 hover:text-content-primary'
                       }`}
                     >
-                      <div className="flex-1 min-w-0">
-                        <div className="truncate">
-                          {conv.title || '未命名会话'}
+                      <div
+                        className={`mt-0.5 h-2.5 w-2.5 shrink-0 rounded-full ${
+                          conv.id === currentId ? 'bg-accent-primary' : 'bg-line-glass'
+                        }`}
+                      />
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate font-medium">
+                          {getConversationDisplayTitle(conv.title)}
                         </div>
                         <div className="mt-1 text-[11px] text-content-tertiary">
                           共 {conv.messageCount} 条消息
@@ -1324,7 +1341,7 @@ export default function AiChatPage() {
                           setEditingId(conv.id)
                           setEditingTitle(conv.title ?? '')
                         }}
-                        className="shrink-0 p-1 rounded-md text-content-tertiary hover:text-content-primary hover:bg-surface-tertiary"
+                        className="shrink-0 rounded-xl p-1.5 text-content-tertiary transition-colors hover:bg-white/70 hover:text-content-primary"
                         aria-label="编辑会话标题"
                       >
                         <Pencil className="h-3.5 w-3.5" />
@@ -1339,15 +1356,25 @@ export default function AiChatPage() {
       </section>
 
       <section className="flex min-h-[60vh] flex-col xl:h-[calc(100vh-7rem)]">
-        <div className="mb-4 rounded-[2.2rem] border border-line-glass bg-[linear-gradient(135deg,rgba(255,255,255,0.94),rgba(244,247,251,0.82))] p-4 shadow-[0_20px_56px_rgba(15,23,42,0.07)]">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+        <div className={`${panelClass} mb-3 p-3.5`}>
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <div className="min-w-0">
               <div className="text-[11px] uppercase tracking-[0.3em] text-content-muted">Workspace</div>
-              <h1 className="mt-2 truncate text-2xl font-semibold tracking-[-0.04em] text-content-primary sm:text-3xl">
-                {currentConversation?.title || '未命名会话'}
-              </h1>
-              <p className="mt-2 max-w-2xl text-sm leading-6 text-content-secondary">
-                主区域只处理当前上下文，右侧用于快速创建事件和查看当前工作流状态。
+              <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                <h1 className="min-w-0 truncate text-lg font-semibold tracking-[-0.03em] text-content-primary sm:text-xl">
+                  {currentConversationDisplayTitle}
+                </h1>
+                {currentConversationIsUntitled && (
+                  <span className="inline-flex items-center rounded-full border border-accent-primary/20 bg-accent-primary/8 px-2.5 py-1 text-xs font-medium text-accent-primary">
+                    未命名
+                  </span>
+                )}
+                <span className="inline-flex items-center rounded-full border border-line-glass bg-surface-glass/56 px-2.5 py-1 text-xs font-medium text-content-secondary">
+                  {workspaceStatusLabel}
+                </span>
+              </div>
+              <p className="mt-1.5 max-w-2xl text-xs leading-5 text-content-secondary sm:text-sm">
+                只保留必要状态，把空间优先留给消息流和操作卡片。
               </p>
             </div>
 
@@ -1356,7 +1383,7 @@ export default function AiChatPage() {
                 type="button"
                 onClick={() => setUseKnowledgeBase((prev) => !prev)}
                 aria-pressed={useKnowledgeBase}
-                className={`inline-flex items-center gap-2 rounded-full border px-3 py-2 text-sm font-medium transition-colors ${
+                className={`inline-flex items-center gap-2 rounded-2xl border px-3 py-2 text-sm font-medium transition-colors ${
                   useKnowledgeBase
                     ? 'border-accent-primary/30 bg-accent-primary/10 text-accent-primary'
                     : 'border-line-glass bg-white/70 text-content-secondary hover:border-accent-primary/20 hover:text-content-primary'
@@ -1368,7 +1395,7 @@ export default function AiChatPage() {
               <button
                 type="button"
                 onClick={handleCreateConversation}
-                className="inline-flex items-center gap-2 rounded-full border border-line-glass bg-white/72 px-3 py-2 text-sm font-medium text-content-primary transition-colors hover:bg-white"
+                className={ghostActionButtonClass}
               >
                 <Plus className="h-4 w-4" />
                 新建会话
@@ -1376,27 +1403,29 @@ export default function AiChatPage() {
             </div>
           </div>
 
-          <div className="mt-4 grid gap-3 sm:grid-cols-3">
-            <div className="rounded-[1.25rem] border border-white/70 bg-white/78 px-4 py-3">
+          <div className="mt-3 flex flex-wrap gap-2">
+            <div className={`${subtlePanelClass} min-w-[122px] px-3 py-2`}>
               <div className="text-[11px] uppercase tracking-[0.24em] text-content-muted">Messages</div>
-              <div className="mt-2 text-2xl font-semibold tracking-[-0.04em] text-content-primary">
+              <div className="mt-1 text-lg font-semibold tracking-[-0.04em] text-content-primary">
                 {messages.length}
               </div>
             </div>
-            <div className="rounded-[1.25rem] border border-white/70 bg-white/78 px-4 py-3">
+            <div className={`${subtlePanelClass} min-w-[150px] px-3 py-2`}>
               <div className="text-[11px] uppercase tracking-[0.24em] text-content-muted">Status</div>
-              <div className="mt-2 text-sm font-medium text-content-primary">{workspaceStatusLabel}</div>
+              <div className="mt-1 text-sm font-medium text-content-primary">
+                {workspaceStatusLabel}
+              </div>
             </div>
-            <div className="rounded-[1.25rem] border border-white/70 bg-white/78 px-4 py-3">
+            <div className={`${subtlePanelClass} min-w-[164px] px-3 py-2`}>
               <div className="text-[11px] uppercase tracking-[0.24em] text-content-muted">Queue</div>
-              <div className="mt-2 text-sm font-medium text-content-primary">
+              <div className="mt-1 text-sm font-medium text-content-primary">
                 对话 {chatQueue.length} / 博客 {workflowQueue.length}
               </div>
             </div>
           </div>
         </div>
 
-        <div className="flex flex-1 flex-col overflow-hidden rounded-[2.2rem] border border-line-glass bg-surface-glass/90 p-4 shadow-[0_20px_56px_rgba(15,23,42,0.08)] backdrop-blur-lg md:p-5">
+        <div className={`${panelClass} flex flex-1 flex-col overflow-hidden p-4 md:p-5`}>
           {error && (
             <p className="mb-3 text-sm text-red-500" role="alert">
               {error}
@@ -1748,7 +1777,7 @@ export default function AiChatPage() {
           )}
         </div>
 
-        <div className="mt-3 rounded-[2.2rem] border border-line-glass bg-surface-glass/95 p-3 shadow-[0_18px_45px_rgba(0,0,0,0.14)] backdrop-blur-xl md:p-4">
+        <div className={`${panelClass} mt-3 p-3 md:p-4`}>
           <div className="flex flex-col gap-3">
             <div className="flex items-end gap-3">
               <button
@@ -1870,16 +1899,14 @@ export default function AiChatPage() {
       </section>
 
       <aside className="flex flex-col gap-4 xl:sticky xl:top-6 xl:h-[calc(100vh-7rem)]">
-        <div className="rounded-[2rem] border border-line-glass bg-[linear-gradient(145deg,rgba(255,255,255,0.94),rgba(245,247,252,0.82))] p-4 shadow-[0_18px_50px_rgba(15,23,42,0.06)]">
+        <div className={`${panelClass} p-3.5`}>
           <div className="flex items-start gap-3">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-accent-secondary/12 text-accent-secondary">
               <Sparkles className="h-5 w-5" />
             </div>
             <div className="min-w-0 flex-1">
               <h2 className="text-sm font-semibold text-content-primary">事件快速创建</h2>
-              <p className="mt-1 text-xs leading-5 text-content-secondary">
-                这里负责语音或文本快速入库，不再挤占会话侧栏。
-              </p>
+              <p className="mt-1 text-xs leading-5 text-content-secondary">语音或文本快速入库。</p>
             </div>
           </div>
 
@@ -1891,7 +1918,7 @@ export default function AiChatPage() {
                 setQuickEventInputType('text')
                 setQuickEventDate(e.target.value)
               }}
-              className="h-10 w-full rounded-xl border border-line-glass bg-white/76 px-3 text-sm text-content-primary focus:outline-none focus:ring-2 focus:ring-accent-primary/40"
+              className="h-10 w-full rounded-2xl border border-line-glass bg-surface-glass/62 px-3 text-sm text-content-primary focus:outline-none focus:ring-2 focus:ring-accent-primary/40"
             />
             <textarea
               value={quickEventText}
@@ -1900,10 +1927,10 @@ export default function AiChatPage() {
                 setQuickEventText(e.target.value)
               }}
               rows={5}
-              className="w-full resize-none rounded-xl border border-line-glass bg-white/76 px-3 py-2 text-sm text-content-primary placeholder:text-content-tertiary focus:outline-none focus:ring-2 focus:ring-accent-primary/40"
+              className="w-full resize-none rounded-2xl border border-line-glass bg-surface-glass/62 px-3 py-2 text-sm text-content-primary placeholder:text-content-tertiary focus:outline-none focus:ring-2 focus:ring-accent-primary/40"
               placeholder="例如：明天下午发布一篇 React Compiler 调研，再记录一个日历页面改版想法。"
             />
-            <div className="rounded-xl border border-dashed border-line-glass bg-white/62 p-2">
+            <div className="rounded-2xl border border-dashed border-line-glass bg-surface-glass/52 p-2">
               <VoiceRecorder
                 onTranscriptionComplete={handleQuickEventVoiceComplete}
                 disabled={quickEventBusy}
@@ -1914,7 +1941,7 @@ export default function AiChatPage() {
               <p className="text-xs leading-5 text-red-500">{quickEventError}</p>
             )}
             {quickEventNote && (
-              <div className="rounded-xl border border-accent-primary/20 bg-accent-primary/8 px-3 py-2 text-xs leading-5 text-content-secondary">
+              <div className="rounded-2xl border border-accent-primary/20 bg-accent-primary/8 px-3 py-2 text-xs leading-5 text-content-secondary">
                 <div>{quickEventNote}</div>
                 {quickEventJumpUrl && (
                   <button
@@ -1937,7 +1964,7 @@ export default function AiChatPage() {
                 void handleQuickEventCreate()
               }}
               disabled={quickEventBusy || !quickEventText.trim()}
-              className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-accent-secondary px-3 py-2.5 text-sm font-medium text-white transition-colors hover:bg-accent-secondary/90 disabled:cursor-not-allowed disabled:opacity-50"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-accent-secondary px-3 py-2.5 text-sm font-medium text-white transition-colors hover:bg-accent-secondary/90 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {quickEventBusy ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -1949,17 +1976,27 @@ export default function AiChatPage() {
           </div>
         </div>
 
-        <div className="rounded-[2rem] border border-line-glass bg-surface-glass/82 p-4 shadow-[0_18px_50px_rgba(15,23,42,0.06)] backdrop-blur-sm">
-          <div className="text-[11px] uppercase tracking-[0.28em] text-content-muted">Workflow</div>
+        <div className={`${panelClass} p-4`}>
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <div className="text-[11px] uppercase tracking-[0.28em] text-content-muted">
+                Workflow
+              </div>
+              <div className="mt-1 text-sm font-medium text-content-primary">工作流侧边栏</div>
+            </div>
+            <div className="rounded-full border border-accent-primary/18 bg-accent-primary/8 px-2.5 py-1 text-[11px] font-medium text-accent-primary">
+              {workspaceStatusLabel}
+            </div>
+          </div>
           <div className="mt-3 space-y-3">
-            <div className="rounded-[1.25rem] border border-line-glass bg-white/72 px-4 py-3">
+            <div className={`${subtlePanelClass} px-4 py-3`}>
               <div className="text-xs text-content-secondary">当前模式</div>
               <div className="mt-2 text-sm font-medium text-content-primary">{workspaceStatusLabel}</div>
             </div>
             <button
               type="button"
               onClick={() => router.push(`/calendar/day/${quickEventDate}`)}
-              className="inline-flex w-full items-center justify-between rounded-[1.25rem] border border-line-glass bg-white/72 px-4 py-3 text-left text-sm font-medium text-content-primary transition-colors hover:bg-white"
+              className={`${ghostActionButtonClass} w-full justify-between px-4 py-3 text-left`}
             >
               <span>打开当日事件中枢</span>
               <Sparkles className="h-4 w-4 text-accent-secondary" />
@@ -1967,7 +2004,7 @@ export default function AiChatPage() {
             <button
               type="button"
               onClick={() => router.push('/blog/editor')}
-              className="inline-flex w-full items-center justify-between rounded-[1.25rem] border border-line-glass bg-white/72 px-4 py-3 text-left text-sm font-medium text-content-primary transition-colors hover:bg-white"
+              className={`${ghostActionButtonClass} w-full justify-between px-4 py-3 text-left`}
             >
               <span>直接去写博客</span>
               <FilePenLine className="h-4 w-4 text-accent-primary" />
