@@ -264,6 +264,7 @@ export const useDashboardStore = create<DashboardState>()(
         }
         const normalizedCards = layout.cards.map((card) => ({
           ...card,
+          mobileVisible: card.mobileVisible !== false,
           createdAt: toDate(card.createdAt),
           updatedAt: toDate(card.updatedAt),
         }))

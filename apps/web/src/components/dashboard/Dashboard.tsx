@@ -163,13 +163,18 @@ export function Dashboard() {
 
   const cards = layout?.cards ?? []
 
-  const visibleCards = useMemo(
-    () => cards.filter((card) => card.visible),
-    [cards]
-  )
   const layoutMode: DashboardLayoutMode =
     viewportWidth <= MOBILE_LAYOUT_BREAKPOINT ? 'mobile' : 'desktop'
   const isStackedLayout = layoutMode !== 'desktop'
+  const visibleCards = useMemo(
+    () =>
+      cards.filter((card) => {
+        if (!card.visible) return false
+        if (layoutMode === 'mobile' && card.mobileVisible === false) return false
+        return true
+      }),
+    [cards, layoutMode]
+  )
 
   useEffect(() => {
     if (isStackedLayout && isEditMode) {

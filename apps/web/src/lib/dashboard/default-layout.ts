@@ -132,6 +132,7 @@ export function createDefaultCard(
     padding: 24,
     config: { ...defaultConfigs[type], ...config },
     visible: true,
+    mobileVisible: true,
     createdAt: now,
     updatedAt: now,
   }

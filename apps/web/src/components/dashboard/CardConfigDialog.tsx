@@ -107,6 +107,7 @@ export function CardConfigDialog({ card, open, onOpenChange }: CardConfigDialogP
   const [borderRadius, setBorderRadius] = useState(card.borderRadius ?? 40)
   const [padding, setPadding] = useState(card.padding ?? 24)
   const [config, setConfig] = useState<Record<string, any>>(card.config)
+  const [mobileVisible, setMobileVisible] = useState(card.mobileVisible !== false)
 
   const handleDimensionInput = useCallback(
     (key: 'width' | 'height', value: string) => {
@@ -141,9 +142,10 @@ export function CardConfigDialog({ card, open, onOpenChange }: CardConfigDialogP
       borderRadius,
       padding,
       config,
+      mobileVisible,
     })
     onOpenChange(false)
-  }, [card.id, dimensionInputs, borderRadius, padding, config, updateCard, onOpenChange])
+  }, [card.id, dimensionInputs, borderRadius, padding, config, mobileVisible, updateCard, onOpenChange])
 
   const handleCancel = useCallback(() => {
     setDimensionInputs({
@@ -153,6 +155,7 @@ export function CardConfigDialog({ card, open, onOpenChange }: CardConfigDialogP
     setBorderRadius(card.borderRadius ?? 40)
     setPadding(card.padding ?? 24)
     setConfig(card.config)
+    setMobileVisible(card.mobileVisible !== false)
     onOpenChange(false)
   }, [card, onOpenChange])
 
@@ -181,6 +184,19 @@ export function CardConfigDialog({ card, open, onOpenChange }: CardConfigDialogP
               <Switch
                 checked={config.hideCardContainer ?? false}
                 onCheckedChange={(checked) => setConfig({ ...config, hideCardContainer: checked })}
+              />
+            </div>
+
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <Label htmlFor="mobileVisible">移动端展示 / Show On Mobile</Label>
+                <p className="mt-0.5 text-xs text-content-muted">
+                  关闭后，此卡片在移动端首页不渲染。 When off, this card is hidden on the mobile home layout.
+                </p>
+              </div>
+              <Switch
+                checked={mobileVisible}
+                onCheckedChange={setMobileVisible}
               />
             </div>
 

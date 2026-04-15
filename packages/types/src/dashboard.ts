@@ -50,6 +50,7 @@ export interface DashboardCard {
   padding: number
   config: Record<string, any>
   visible: boolean
+  mobileVisible?: boolean
   animationPriority?: number
   createdAt: Date
   updatedAt: Date
