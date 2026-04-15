@@ -4,6 +4,9 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
+# Build native dependencies used by nodejs-whisper during production image creation.
+RUN apk add --no-cache cmake make g++ git
+
 # Use a registry mirror in restricted networks (e.g. CN servers)
 ENV NPM_CONFIG_REGISTRY=https://registry.npmmirror.com
 
@@ -23,10 +26,19 @@ RUN pnpm install --frozen-lockfile
 # Generate Prisma Client
 RUN cd apps/api && npx prisma generate
 
+# Prebuild whisper-cli for production so the first transcription request does not
+# depend on an on-demand native build inside the running container.
+RUN cd apps/api/node_modules/nodejs-whisper/cpp/whisper.cpp \
+  && cmake -B build \
+  && cmake --build build --config Release
+
 # Production stage
 FROM node:20-alpine AS runner
 
 WORKDIR /app
+
+# Runtime audio processing dependency for voice transcription.
+RUN apk add --no-cache ffmpeg libstdc++
 
 # Copy node_modules and source
 COPY --from=builder /app/node_modules ./node_modules

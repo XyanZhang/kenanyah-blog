@@ -35,6 +35,8 @@
     "db:export:custom": "bash scripts/db-export.sh --custom",
     "db:export:schema": "bash scripts/db-export.sh --schema-only",
     "db:import": "bash scripts/db-import.sh",
+    "predeploy:prod": "bash scripts/predeploy-prod-check.sh",
+    "predeploy:prod:docker": "bash scripts/predeploy-prod-check.sh --docker",
     "init": "pnpm install && pnpm docker:up && sleep 5 && pnpm db:generate && pnpm db:migrate && pnpm --filter api prisma:seed"
   },
   "devDependencies": {

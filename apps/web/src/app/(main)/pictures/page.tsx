@@ -1,9 +1,9 @@
 import type { Metadata } from 'next'
 import type { CSSProperties } from 'react'
-import { Cormorant_Garamond, Manrope } from 'next/font/google'
 import type { PhotoEntryDto } from '@blog/types'
 import { PictureStack, type PictureStackItem } from '@/components/pictures'
 import { getApiFetchUrl } from '@/lib/api-client'
+import { cormorantGaramond, manrope } from '@/lib/fonts'
 
 export const metadata: Metadata = {
   title: '图片',
@@ -21,20 +21,6 @@ type PhotoEntriesApiResponse = {
   success?: boolean
   data?: PhotoEntryDto[]
 }
-
-const cormorant = Cormorant_Garamond({
-  subsets: ['latin'],
-  weight: ['400', '500', '600', '700'],
-  variable: '--font-pictures-serif',
-  display: 'swap',
-})
-
-const manrope = Manrope({
-  subsets: ['latin'],
-  weight: ['400', '500', '600', '700'],
-  variable: '--font-pictures-sans',
-  display: 'swap',
-})
 
 async function loadPictureItems(): Promise<PictureStackItem[]> {
   const url = `${getApiFetchUrl('/pictures')}?subdir=seed`
@@ -76,7 +62,7 @@ export default async function PicturesPage() {
 
   return (
     <main
-      className={`${cormorant.variable} ${manrope.variable} min-h-screen w-full`}
+      className={`${cormorantGaramond.variable} ${manrope.variable} min-h-screen w-full`}
       style={
         {
           '--pictures-font-serif': 'var(--font-pictures-serif)',

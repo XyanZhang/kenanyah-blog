@@ -1,5 +1,4 @@
 import type { Metadata } from 'next'
-import { Plus_Jakarta_Sans, Space_Grotesk, Nunito, LXGW_WenKai_TC } from 'next/font/google'
 import { Nav } from '@/components/navigation'
 import { ScrollToTop } from '@/components/layout/ScrollToTop'
 import { ThemeProvider } from '@/components/providers/ThemeProvider'
@@ -10,33 +9,8 @@ import { ToastProvider } from '@/components/providers/ToastProvider'
 import { GlobalSearch } from '@/components/search/GlobalSearch'
 import { MusicPlayerProvider } from '@/components/music/MusicPlayerProvider'
 import { MusicPlayerGlobal } from '@/components/music/MusicPlayerGlobal'
+import { lxgwWenKaiTc, nunito, plusJakartaSans, spaceGrotesk } from '@/lib/fonts'
 import '@/styles/globals.css'
-
-const plusJakartaSans = Plus_Jakarta_Sans({
-  subsets: ['latin'],
-  variable: '--font-sans',
-  display: 'swap',
-})
-
-const spaceGrotesk = Space_Grotesk({
-  subsets: ['latin'],
-  variable: '--font-display',
-  display: 'swap',
-})
-
-const nunito = Nunito({
-  subsets: ['latin'],
-  variable: '--font-motto',
-  display: 'swap',
-  weight: ['300', '400', '500', '600', '700'],
-})
-
-const lxgwWenKai = LXGW_WenKai_TC({
-  subsets: ['latin'],
-  weight: ['300', '400', '700'],
-  variable: '--font-blog',
-  display: 'swap',
-})
 
 const themeScript = `
   try {
@@ -89,7 +63,7 @@ export default function RootLayout({
       data-color-mode="light"
       data-color-mode-preference="system"
       suppressHydrationWarning
-      className={`${plusJakartaSans.variable} ${spaceGrotesk.variable} ${nunito.variable} ${lxgwWenKai.variable}`}
+      className={`${plusJakartaSans.variable} ${spaceGrotesk.variable} ${nunito.variable} ${lxgwWenKaiTc.variable}`}
     >
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />

@@ -1,4 +1,4 @@
-/* 博客详情页字体：霞鹜文楷（LXGW WenKai），在 layout.tsx 用 next/font/google 加载 */
+/* 字体变量由 layout.tsx 注入，默认使用本地系统字体栈，避免生产构建依赖外网字体源 */
 
 @import 'tailwindcss';
 @import './themes.css';
@@ -8,8 +8,8 @@
   --font-sans: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
   --font-display: var(--font-display), ui-sans-serif, system-ui, sans-serif;
   --font-motto: var(--font-motto), 'Nunito', ui-rounded, system-ui, sans-serif;
-  /* 博客正文：霞鹜文楷（由 layout 中 next/font 注入 --font-blog，此处为 fallback） */
-  --font-blog: 'LXGW WenKai', 'LXGW WenKai TC', serif;
+  /* 博客正文：由 layout 中样式变量注入，此处保留中文 serif fallback */
+  --font-blog: 'Kaiti SC', 'STKaiti', 'KaiTi', 'Noto Serif SC', serif;
   /* Background */
   --color-bg-base: var(--theme-bg-base);
 

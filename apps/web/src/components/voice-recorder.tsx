@@ -27,7 +27,7 @@ export function VoiceRecorder({
   const [status, setStatus] = useState<RecordingStatus>('idle')
   const [duration, setDuration] = useState(0)
   const [cancelIntent, setCancelIntent] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [, setError] = useState<string | null>(null)
 
   const statusRef = useRef<RecordingStatus>('idle')
   const durationRef = useRef(0)
@@ -421,19 +421,6 @@ export function VoiceRecorder({
           : status === 'transcribing'
             ? '识别中...'
             : '按住说话'
-
-  const hintText =
-    status === 'starting'
-      ? '正在请求麦克风权限'
-      : status === 'recording'
-        ? cancelIntent
-          ? '松开将取消本次录音'
-          : '松开发送，上滑取消'
-        : status === 'uploading' || status === 'transcribing'
-          ? '识别结果会自动回填到输入框'
-          : disabled
-            ? '当前状态下不可使用语音输入'
-            : '按住录音，松开发送'
 
   const hudTitle =
     status === 'recording'
