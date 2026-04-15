@@ -11,6 +11,7 @@ import { useCardResize } from '@/hooks/useCardResize'
 import { useAlignmentRegistration } from '@/hooks/useAlignmentRegistration'
 import { useHomeCanvasStore } from '@/store/home-canvas-store'
 import { getCardDimensions, DEFAULT_BORDER_RADIUS } from '@/lib/constants/dashboard'
+import type { DashboardLayoutMode, ResolvedCardLayout } from '@/lib/dashboard/responsive-layout'
 import { CardToolbar } from './CardToolbar'
 import { CardConfigDialog } from './CardConfigDialog'
 import { ResizeHandles } from './ResizeHandles'
@@ -86,9 +87,11 @@ function CardPlaceholder() {
 interface DashboardCardProps {
   card: DashboardCardType
   animationIndex: number
+  layoutMode: DashboardLayoutMode
+  resolvedLayout: ResolvedCardLayout
 }
 
-export function DashboardCard({ card, animationIndex }: DashboardCardProps) {
+export function DashboardCard({ card, animationIndex, layoutMode, resolvedLayout }: DashboardCardProps) {
   const router = useRouter()
   const { isEditMode, selectedCardId, selectCard, updateCardSize, layout } = useDashboard()
   const [openConfigCardId, setOpenConfigCardId] = useState<string | null>(null)
@@ -96,18 +99,20 @@ export function DashboardCard({ card, animationIndex }: DashboardCardProps) {
   const baseDimensions = getCardDimensions(card.size, card.customDimensions)
   const isAutoSize = card.size === CardSize.AUTO
   const isSelected = selectedCardId === card.id
+  const isDesktopLayout = layoutMode === 'desktop'
+  const canEditCard = isDesktopLayout && isEditMode
 
   const navigateTo = card.config?.navigateTo as string | undefined
 
   const handleCardClick = useCallback(() => {
-    if (isEditMode) {
+    if (canEditCard) {
       selectCard(card.id)
       return
     }
     if (navigateTo) {
       router.push(navigateTo as Route)
     }
-  }, [isEditMode, selectCard, navigateTo, router, card.id])
+  }, [canEditCard, selectCard, navigateTo, router, card.id])
 
   // Ref to the card element for measuring bounds
   const cardRef = useRef<HTMLDivElement>(null)
@@ -134,7 +139,7 @@ export function DashboardCard({ card, animationIndex }: DashboardCardProps) {
 
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: card.id,
-    disabled: !isEditMode || isResizing,
+    disabled: !canEditCard || isResizing,
   })
 
   // Combined ref for both dnd-kit and our measurement
@@ -150,7 +155,7 @@ export function DashboardCard({ card, animationIndex }: DashboardCardProps) {
   useAlignmentRegistration({
     id: card.id,
     ref: cardRef,
-    isEditMode,
+    isEditMode: canEditCard,
     isDragging,
     isResizing,
   })
@@ -168,10 +173,23 @@ export function DashboardCard({ card, animationIndex }: DashboardCardProps) {
   // 画布坐标：card.position 为画布坐标，transform 与 positionDelta 为视口像素需除以 scale
   const position = useMemo(
     () => ({
-      x: card.position.x + (transform?.x ?? 0) / scale + positionDelta.x / scale,
-      y: card.position.y + (transform?.y ?? 0) / scale + positionDelta.y / scale,
+      x:
+        resolvedLayout.x +
+        (canEditCard ? (transform?.x ?? 0) / scale + positionDelta.x / scale : 0),
+      y:
+        resolvedLayout.y +
+        (canEditCard ? (transform?.y ?? 0) / scale + positionDelta.y / scale : 0),
     }),
-    [card.position.x, card.position.y, transform?.x, transform?.y, scale, positionDelta.x, positionDelta.y]
+    [
+      canEditCard,
+      resolvedLayout.x,
+      resolvedLayout.y,
+      transform?.x,
+      transform?.y,
+      scale,
+      positionDelta.x,
+      positionDelta.y,
+    ]
   )
 
   // Animation delay based on priority
@@ -182,12 +200,12 @@ export function DashboardCard({ card, animationIndex }: DashboardCardProps) {
       ref={combinedRef}
       style={{
         position: 'absolute',
-        width: isAutoSize ? 'fit-content' : undefined,
-        height: isAutoSize ? 'fit-content' : undefined,
-        zIndex: isDragging || isResizing ? 1000 : card.position.z,
+        width: isAutoSize && resolvedLayout.width == null ? 'fit-content' : undefined,
+        height: isAutoSize && resolvedLayout.height == null ? 'fit-content' : undefined,
+        zIndex: isDragging || isResizing ? 1000 : resolvedLayout.zIndex,
         borderRadius: hideCardContainer ? 0 : borderRadius,
         padding: hideCardContainer ? 0 : padding,
-        willChange: !isEditMode && !isDragging && !isResizing ? 'transform, width, height, opacity' : undefined,
+        willChange: !canEditCard && !isDragging && !isResizing ? 'transform, width, height, opacity' : undefined,
       }}
       initial={{
         scale: 0.93,
@@ -197,8 +215,8 @@ export function DashboardCard({ card, animationIndex }: DashboardCardProps) {
         ...(isAutoSize
           ? {}
           : {
-              width: currentDimensions.width,
-              height: currentDimensions.height,
+              width: resolvedLayout.width ?? currentDimensions.width,
+              height: resolvedLayout.height ?? currentDimensions.height,
             }),
       }}
       animate={{
@@ -209,15 +227,15 @@ export function DashboardCard({ card, animationIndex }: DashboardCardProps) {
         ...(isAutoSize
           ? {}
           : {
-              width: currentDimensions.width,
-              height: currentDimensions.height,
+              width: resolvedLayout.width ?? currentDimensions.width,
+              height: resolvedLayout.height ?? currentDimensions.height,
             }),
       }}
       transition={{
-        x: isDragging || isResizing ? CARD_INTERACTION_TRANSITION : CARD_POSITION_SPRING,
-        y: isDragging || isResizing ? CARD_INTERACTION_TRANSITION : CARD_POSITION_SPRING,
-        width: isAutoSize || isResizing ? CARD_INTERACTION_TRANSITION : CARD_SIZE_SPRING,
-        height: isAutoSize || isResizing ? CARD_INTERACTION_TRANSITION : CARD_SIZE_SPRING,
+        x: canEditCard && (isDragging || isResizing) ? CARD_INTERACTION_TRANSITION : CARD_POSITION_SPRING,
+        y: canEditCard && (isDragging || isResizing) ? CARD_INTERACTION_TRANSITION : CARD_POSITION_SPRING,
+        width: isAutoSize || (canEditCard && isResizing) ? CARD_INTERACTION_TRANSITION : CARD_SIZE_SPRING,
+        height: isAutoSize || (canEditCard && isResizing) ? CARD_INTERACTION_TRANSITION : CARD_SIZE_SPRING,
         scale: {
           ...CARD_ENTRANCE_SPRING,
           delay: hasAnimated ? 0 : animationDelay,
@@ -231,7 +249,7 @@ export function DashboardCard({ card, animationIndex }: DashboardCardProps) {
         if (!hasAnimated) setHasAnimated(true)
       }}
       whileHover={
-        !isEditMode
+        !canEditCard && isDesktopLayout
           ? {
               scale: hoverScale,
               y: position.y - hoverLift,
@@ -243,13 +261,13 @@ export function DashboardCard({ card, animationIndex }: DashboardCardProps) {
       className={`
         card group relative
         ${hideCardContainer ? '' : 'squircle bg-surface-glass border border-line-glass backdrop-blur-lg [box-shadow:0_20px_40px_-10px_rgba(0,0,0,0.1),inset_0_1px_0_rgba(255,255,255,0.7)]'}
-        ${isEditMode ? 'cursor-grab active:cursor-grabbing' : ''}
+        ${canEditCard ? 'cursor-grab active:cursor-grabbing' : ''}
         ${isSelected ? 'ring-2 ring-line-focus' : ''}
         ${!hideCardContainer && isDragging ? '[box-shadow:0_30px_50px_-15px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.7)]' : ''}
-        ${!isEditMode && navigateTo ? 'cursor-pointer' : ''}
+        ${!canEditCard && navigateTo ? 'cursor-pointer' : ''}
       `}
       onClick={handleCardClick}
-      {...(isEditMode && !isResizing ? { ...attributes, ...listeners } : {})}
+      {...(canEditCard && !isResizing ? { ...attributes, ...listeners } : {})}
     >
       <div
         className="h-full w-full overflow-hidden relative z-0"
@@ -258,11 +276,11 @@ export function DashboardCard({ card, animationIndex }: DashboardCardProps) {
         <Suspense fallback={<CardPlaceholder />}>
           <CardContent
             card={card}
-            onOpenConfig={isEditMode ? handleOpenConfig : undefined}
+            onOpenConfig={canEditCard ? handleOpenConfig : undefined}
           />
         </Suspense>
       </div>
-      {isEditMode && (
+      {canEditCard && (
         <div className="absolute right-2 top-2 z-20 pointer-events-none">
           <div className="pointer-events-auto">
             <CardToolbar cardId={card.id} onOpenConfig={handleOpenConfig} />
@@ -276,7 +294,7 @@ export function DashboardCard({ card, animationIndex }: DashboardCardProps) {
           onOpenChange={(open) => !open && setOpenConfigCardId(null)}
         />
       )}
-      {isEditMode && !isAutoSize && <ResizeHandles onResizeStart={handleResizeStart} />}
+      {canEditCard && !isAutoSize && <ResizeHandles onResizeStart={handleResizeStart} />}
     </motion.div>
   )
 }

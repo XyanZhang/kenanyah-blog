@@ -10,7 +10,11 @@ import { useDashboardStore } from '@/store/dashboard-store'
 import { useNavStore } from '@/store/nav-store'
 import { useAlignmentStore } from '@/store/alignment-store'
 import { useHomeCanvasStore } from '@/store/home-canvas-store'
-import { CANVAS_WIDTH, CANVAS_HEIGHT } from '@/lib/constants/dashboard'
+import {
+  CANVAS_WIDTH,
+  CANVAS_HEIGHT,
+  MOBILE_LAYOUT_BREAKPOINT,
+} from '@/lib/constants/dashboard'
 import { useAlignmentRegistration } from '@/hooks/useAlignmentRegistration'
 import { useDrag } from '@/hooks/useDrag'
 import { useResize } from '@/hooks/useResize'
@@ -69,7 +73,14 @@ export function Nav() {
   const isHomepage = pathname === '/'
   const targetMode = isHomepage ? 'home' : 'compact'
   const [contentMode, setContentMode] = useState<'home' | 'compact'>(targetMode)
-  const { scale, translateX, translateY, setViewportSize, hasRealViewport } = useHomeCanvasStore()
+  const {
+    scale,
+    translateX,
+    translateY,
+    setViewportSize,
+    hasRealViewport,
+    viewportWidth,
+  } = useHomeCanvasStore()
   const navRef = useRef<HTMLElement>(null)
   const navItemsRef = useRef<HTMLDivElement>(null)
   const contentModeTimerRef = useRef<number | null>(null)
@@ -126,6 +137,7 @@ export function Nav() {
   }, [setViewportSize])
 
   const isVisualHomepage = contentMode === 'home'
+  const isTopRowHomepage = isHomepage && viewportWidth <= MOBILE_LAYOUT_BREAKPOINT
 
   const visibleNavItems: NavItemType[] = useMemo(
     () =>
@@ -268,6 +280,9 @@ export function Nav() {
   const highlightedIndex =
     hoverIndex ?? visibleNavItems.findIndex((item) => item.href === pathname)
   const animateShell = isReady && !isDragging && !isResizing
+  const shellX = isTopRowHomepage ? 0 : targetX
+  const shellY = isTopRowHomepage ? 0 : targetY
+  const rowNavWidth = Math.max(0, viewportWidth - 24)
 
   useLayoutEffect(() => {
     const container = navItemsRef.current
@@ -354,8 +369,8 @@ export function Nav() {
     <motion.div
       initial={false}
       animate={{
-        x: targetX,
-        y: targetY,
+        x: shellX,
+        y: shellY,
         opacity: isReady ? 1 : 0,
         scale: isDragging ? 0.985 : 1,
       }}
@@ -367,7 +382,9 @@ export function Nav() {
         scale: isDragging ? NAV_SHELL_SPRING : NAV_TEXT_TRANSITION,
       }}
       className={cn(
-        'fixed left-0 top-0 z-50'
+        isTopRowHomepage
+          ? 'relative z-50 flex w-full justify-center px-3 pt-3'
+          : 'fixed left-0 top-0 z-50'
       )}
       style={{
         willChange: animateShell ? 'transform, opacity' : undefined,
@@ -385,12 +402,13 @@ export function Nav() {
         )}
         style={{
           display: 'flex',
-          flexDirection: isVisualHomepage ? 'column' : 'row',
-          alignItems: isVisualHomepage ? undefined : 'center',
+          flexDirection: isTopRowHomepage ? 'row' : isVisualHomepage ? 'column' : 'row',
+          alignItems: isTopRowHomepage || !isVisualHomepage ? 'center' : undefined,
           gap: '4px',
-          padding: isVisualHomepage ? '12px' : '8px 12px',
-          width: isVisualHomepage ? displaySize?.width : undefined,
-          height: isVisualHomepage ? displaySize?.height : undefined,
+          padding: isTopRowHomepage ? '8px 12px' : isVisualHomepage ? '12px' : '8px 12px',
+          width: isTopRowHomepage ? rowNavWidth : isVisualHomepage ? displaySize?.width : undefined,
+          maxWidth: isTopRowHomepage ? 720 : undefined,
+          height: isTopRowHomepage ? undefined : isVisualHomepage ? displaySize?.height : undefined,
           minWidth: isVisualHomepage ? undefined : 48,
           minHeight: 48,
           overflow: useFixedSize && !isEditMode ? 'hidden' : 'visible',
@@ -405,7 +423,11 @@ export function Nav() {
         <div
           className={cn(
             'flex shrink-0 items-center',
-            isVisualHomepage ? 'mb-2 flex-col gap-2 border-b border-line-glass pb-3' : 'border-r border-line-glass pr-1'
+            isTopRowHomepage
+              ? 'mr-2 gap-2 border-r border-line-glass pr-3'
+              : isVisualHomepage
+                ? 'mb-2 flex-col gap-2 border-b border-line-glass pb-3'
+                : 'border-r border-line-glass pr-1'
           )}
         >
           <div>
@@ -418,7 +440,7 @@ export function Nav() {
             />
           </div>
 
-          {isVisualHomepage ? (
+          {isVisualHomepage && !isTopRowHomepage ? (
             <span className="text-sm font-medium text-content-primary">Kenanyah</span>
           ) : null}
         </div>
@@ -428,7 +450,11 @@ export function Nav() {
           data-nav-items
           className={cn(
             'relative flex min-w-0 flex-1 overflow-hidden',
-            isVisualHomepage ? 'min-w-30 flex-col justify-center gap-1' : 'flex-row items-center gap-0'
+            isTopRowHomepage
+              ? 'flex-row items-center justify-start gap-0'
+              : isVisualHomepage
+                ? 'min-w-30 flex-col justify-center gap-1'
+                : 'flex-row items-center gap-0'
           )}
         >
           <motion.div
@@ -450,7 +476,7 @@ export function Nav() {
               item={item}
               isActive={pathname === item.href}
               isHighlighted={highlightedIndex === index}
-              isCompact={!isVisualHomepage}
+              isCompact={!isVisualHomepage || isTopRowHomepage}
               onMouseEnter={() => handleMouseEnter(index)}
             />
           ))}

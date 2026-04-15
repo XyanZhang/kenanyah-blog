@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef } from 'react'
+import { motion } from 'framer-motion'
 import {
   DndContext,
   DragEndEvent,
@@ -13,8 +14,21 @@ import { useDashboardStore } from '@/store/dashboard-store'
 import { useAlignmentStore } from '@/store/alignment-store'
 import { useHomeCanvasStore } from '@/store/home-canvas-store'
 import { useNavStore } from '@/store/nav-store'
-import { CANVAS_WIDTH, CANVAS_HEIGHT } from '@/lib/constants/dashboard'
+import {
+  CANVAS_WIDTH,
+  CANVAS_HEIGHT,
+  MOBILE_LAYOUT_BOTTOM_PADDING,
+  MOBILE_LAYOUT_BREAKPOINT,
+  MOBILE_LAYOUT_GAP,
+  MOBILE_LAYOUT_SIDE_PADDING,
+  MOBILE_LAYOUT_TOP_PADDING,
+} from '@/lib/constants/dashboard'
 import { getHomeConfig, putHomeConfig, syncHomeConfigToStatic } from '@/lib/home-api'
+import {
+  getDesktopResolvedCardLayout,
+  getStackedResolvedCardLayouts,
+  type DashboardLayoutMode,
+} from '@/lib/dashboard/responsive-layout'
 import { DashboardCard } from './DashboardCard'
 import { EditModeToggle } from './EditModeToggle'
 import { AddCardDialog, AddCardDialogHandle } from './AddCardButton'
@@ -25,11 +39,20 @@ export function Dashboard() {
     layout,
     isLoading,
     initializeLayout,
+    isEditMode,
+    toggleEditMode,
     updateCardPosition,
     setLayout,
   } = useDashboard()
   const { setActiveElement } = useAlignmentStore()
-  const { scale, setViewportSize, translateX, translateY, setScale } = useHomeCanvasStore()
+  const {
+    scale,
+    setViewportSize,
+    translateX,
+    translateY,
+    setScale,
+    viewportWidth,
+  } = useHomeCanvasStore()
   const { config: navConfig, setConfigFromApi } = useNavStore()
   const viewportRef = useRef<HTMLDivElement>(null)
   const isInitializedRef = useRef(false)
@@ -144,6 +167,37 @@ export function Dashboard() {
     () => cards.filter((card) => card.visible),
     [cards]
   )
+  const layoutMode: DashboardLayoutMode =
+    viewportWidth <= MOBILE_LAYOUT_BREAKPOINT ? 'mobile' : 'desktop'
+  const isStackedLayout = layoutMode !== 'desktop'
+
+  useEffect(() => {
+    if (isStackedLayout && isEditMode) {
+      toggleEditMode()
+    }
+  }, [isEditMode, isStackedLayout, toggleEditMode])
+
+  const stackedContainerWidth = useMemo(() => {
+    const availableWidth = Math.max(0, viewportWidth - MOBILE_LAYOUT_SIDE_PADDING * 2)
+    return availableWidth
+  }, [layoutMode, viewportWidth])
+
+  const stackedContainerX = useMemo(
+    () => Math.max(MOBILE_LAYOUT_SIDE_PADDING, (viewportWidth - stackedContainerWidth) / 2),
+    [stackedContainerWidth, viewportWidth]
+  )
+
+  const resolvedCardLayouts = useMemo(() => {
+    if (layoutMode !== 'desktop') {
+      return getStackedResolvedCardLayouts(visibleCards, stackedContainerWidth, MOBILE_LAYOUT_GAP)
+    }
+
+    return {
+      layouts: new Map(visibleCards.map((card) => [card.id, getDesktopResolvedCardLayout(card)])),
+      contentHeight: CANVAS_HEIGHT,
+      contentWidth: CANVAS_WIDTH,
+    }
+  }, [layoutMode, stackedContainerWidth, visibleCards])
 
   // Sort cards by animationPriority for staggered animation
   const sortedCardsForAnimation = useMemo(
@@ -161,6 +215,38 @@ export function Dashboard() {
     () => new Map(sortedCardsForAnimation.map((card, index) => [card.id, index])),
     [sortedCardsForAnimation]
   )
+
+  const canvasFrame = useMemo(() => {
+    if (layoutMode !== 'desktop') {
+      return {
+        x: stackedContainerX,
+        y: MOBILE_LAYOUT_TOP_PADDING,
+        width: resolvedCardLayouts.contentWidth,
+        height: resolvedCardLayouts.contentHeight,
+        scale: 1,
+      }
+    }
+
+    return {
+      x: translateX,
+      y: translateY,
+      width: CANVAS_WIDTH,
+      height: CANVAS_HEIGHT,
+      scale,
+    }
+  }, [
+    layoutMode,
+    resolvedCardLayouts.contentHeight,
+    resolvedCardLayouts.contentWidth,
+    scale,
+    stackedContainerX,
+    translateX,
+    translateY,
+  ])
+
+  const viewportMinHeight = isStackedLayout
+    ? resolvedCardLayouts.contentHeight + MOBILE_LAYOUT_TOP_PADDING + MOBILE_LAYOUT_BOTTOM_PADDING
+    : '100vh'
 
   if (isLoading) {
     return (
@@ -201,8 +287,8 @@ export function Dashboard() {
   return (
     <div
       ref={viewportRef}
-      className="relative h-screen w-full overflow-hidden"
-      style={{ background: 'var(--theme-bg-base)' }}
+      className={`relative w-full overflow-x-hidden ${isStackedLayout ? 'overflow-y-auto' : 'h-screen overflow-hidden'}`}
+      style={{ minHeight: viewportMinHeight, background: 'var(--theme-bg-base)' }}
     >
       {/* Nightscape bokeh light orbs with floating animation */}
       <div className="bokeh-orb bokeh-orb-1 absolute top-[8%] left-[12%] h-72 w-72 rounded-full opacity-70 blur-3xl" style={{ background: 'var(--theme-bg-orb-1)' }} />
@@ -215,37 +301,53 @@ export function Dashboard() {
       <div className="bokeh-orb bokeh-orb-8 absolute top-[60%] left-[65%] h-36 w-36 rounded-full opacity-50 blur-2xl" style={{ background: 'var(--theme-bg-orb-8)' }} />
 
       {/* 画布外容器：transform 使缩放时居中对齐，左上角为坐标原点 */}
-      <div
+      <motion.div
         className="absolute left-0 top-0"
+        initial={false}
+        animate={{
+          x: canvasFrame.x,
+          y: canvasFrame.y,
+          scale: canvasFrame.scale,
+          width: canvasFrame.width,
+          height: canvasFrame.height,
+        }}
+        transition={{
+          x: { type: 'spring', stiffness: 340, damping: 32, mass: 0.82 },
+          y: { type: 'spring', stiffness: 340, damping: 32, mass: 0.82 },
+          scale: { type: 'spring', stiffness: 300, damping: 30, mass: 0.85 },
+          width: { type: 'spring', stiffness: 260, damping: 30, mass: 0.9 },
+          height: { type: 'spring', stiffness: 260, damping: 30, mass: 0.9 },
+        }}
         style={{
-          width: CANVAS_WIDTH,
-          height: CANVAS_HEIGHT,
-          transform: `translate(${translateX}px, ${translateY}px) scale(${scale})`,
           transformOrigin: '0 0',
         }}
       >
         <DndContext
           sensors={sensors}
-          onDragEnd={handleDragEnd}
+          onDragEnd={isStackedLayout ? undefined : handleDragEnd}
         >
           <div className="relative w-full h-full" style={{ position: 'relative' }}>
             {visibleCards.map((card) => (
               <DashboardCard
                 key={card.id}
                 card={card}
+                layoutMode={layoutMode}
                 animationIndex={animationIndexMap.get(card.id) ?? 0}
+                resolvedLayout={resolvedCardLayouts.layouts.get(card.id) ?? getDesktopResolvedCardLayout(card)}
               />
             ))}
           </div>
         </DndContext>
-      </div>
+      </motion.div>
 
-      <EditModeToggle
-        onAddCard={handleAddCard}
-        onSelectLayout={handleSelectLayout}
-        onSyncToCloud={handleSyncToCloud}
-        onSyncToStatic={handleSyncToStatic}
-      />
+      {layoutMode === 'desktop' && (
+        <EditModeToggle
+          onAddCard={handleAddCard}
+          onSelectLayout={handleSelectLayout}
+          onSyncToCloud={handleSyncToCloud}
+          onSyncToStatic={handleSyncToStatic}
+        />
+      )}
       <AddCardDialog ref={addCardDialogRef} />
       <LayoutTemplatePickerDialog ref={layoutPickerDialogRef} />
     </div>

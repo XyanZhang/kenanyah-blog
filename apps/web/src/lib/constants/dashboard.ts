@@ -35,6 +35,12 @@ export const DEFAULT_LAYOUT_CONFIG = {
 
 export const STORAGE_KEY = 'dashboard-layout'
 export const LAYOUT_VERSION = 2
+export const MOBILE_LAYOUT_BREAKPOINT = 480
+export const TABLET_LAYOUT_BREAKPOINT = 1180
+export const MOBILE_LAYOUT_SIDE_PADDING = 16
+export const MOBILE_LAYOUT_TOP_PADDING = 24
+export const MOBILE_LAYOUT_BOTTOM_PADDING = 32
+export const MOBILE_LAYOUT_GAP = 16
 
 /** Home 画布尺寸，左上角为坐标原点 (0,0) */
 export const CANVAS_WIDTH = 1920
