@@ -156,9 +156,9 @@ export default function BlogEditPage() {
   return (
     <main className="min-h-[calc(100vh-80px)] w-full flex flex-col">
       <div className="flex-1 flex flex-col min-h-0 w-full">
-        <div className="max-w-5xl w-full mx-auto px-4 sm:px-6 py-8 sm:py-10 flex flex-col gap-8">
+        <div className="max-w-5xl w-full mx-auto px-4 pb-10 pt-24 sm:px-6 sm:pb-12 sm:pt-28 md:py-10 flex flex-col gap-8">
           <header className="flex flex-col gap-3">
-            <div className="flex items-center gap-3">
+            <div className="flex items-start gap-3">
               <div
                 className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-line-glass bg-surface-glass/80 text-accent-primary shadow-sm backdrop-blur-sm"
                 aria-hidden

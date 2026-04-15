@@ -69,7 +69,11 @@ export function ThemeSwitcher() {
   }
 
   return (
-    <div className="fixed bottom-6 right-6 z-50 flex flex-col items-center gap-3">
+    <div
+      className={`fixed bottom-6 right-6 z-50 flex-col items-center gap-3 ${
+        isAiChatPage ? 'hidden min-[760px]:flex' : 'flex'
+      }`}
+    >
       {/* Extra Buttons Slot */}
       {extraActions}
 

@@ -324,7 +324,7 @@ export function CalendarMonthView({ month }: { month: string }) {
   }
 
   return (
-    <main className="min-h-screen px-4 pb-16 pt-6 sm:px-6 lg:pl-24 lg:pr-8 lg:pt-8">
+    <main className="min-h-screen px-4 pb-16 pt-24 sm:px-6 sm:pt-28 lg:pl-24 lg:pr-8 lg:pt-8">
       <div className="mx-auto max-w-7xl">
         <section className="rounded-[2rem] border border-black/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.88),rgba(246,248,247,0.94))] px-4 py-4 shadow-[0_18px_50px_rgba(15,23,42,0.05)] backdrop-blur-sm sm:px-5">
           <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">

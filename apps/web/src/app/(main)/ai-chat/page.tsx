@@ -14,6 +14,8 @@ import {
   Plus,
   Keyboard,
   Mic,
+  PanelLeft,
+  X,
 } from 'lucide-react'
 import {
   listConversations,
@@ -225,6 +227,7 @@ export default function AiChatPage() {
   const [operationCardReplyDrafts, setOperationCardReplyDrafts] = useState<Record<string, string>>({})
   const [chatQueue, setChatQueue] = useState<ChatQueueItem[]>([])
   const [workflowQueue, setWorkflowQueue] = useState<WorkflowQueueItem[]>([])
+  const [mobileSessionsOpen, setMobileSessionsOpen] = useState(false)
   const bottomRef = useRef<HTMLDivElement | null>(null)
   const isComposingRef = useRef(false)
   const inputRef = useRef<HTMLTextAreaElement | null>(null)
@@ -414,9 +417,15 @@ export default function AiChatPage() {
       const conv = await createConversation()
       setConversations((prev) => [conv, ...prev])
       setCurrentId(conv.id)
+      setMobileSessionsOpen(false)
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
     }
+  }
+
+  function handleSelectConversation(conversationId: string) {
+    setCurrentId(conversationId)
+    setMobileSessionsOpen(false)
   }
 
   async function handleDeleteConversation(conversationId: string) {
@@ -1129,160 +1138,169 @@ export default function AiChatPage() {
   const currentConversationTitle = currentConversation?.title?.trim() ?? ''
   const currentConversationDisplayTitle = currentConversationTitle || '当前会话'
   const currentConversationIsUntitled = !currentConversationTitle
-  const workspaceStatusLabel = runningWorkflow
-    ? '博客工作流执行中'
-    : workflowFollowupMode
-      ? '等待补充生成要求'
-      : sending
-        ? '正在生成回答'
-        : '可继续输入'
   const panelClass =
     'rounded-[1.5rem] border border-line-glass bg-surface-glass/88 shadow-[0_18px_48px_rgba(15,23,42,0.06)] backdrop-blur-lg'
-
-  return (
-    <main className="mx-auto grid w-full max-w-[1240px] gap-4 px-4 py-6 md:py-8 xl:grid-cols-[240px_minmax(0,1fr)] 2xl:grid-cols-[252px_minmax(0,1fr)]">
-      <section className="flex min-h-[24rem] flex-col xl:sticky xl:top-6 xl:h-[calc(100vh-7rem)]">
-        <div className={`${panelClass} mb-4 p-3.5`}>
-          <div className="flex items-start gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-accent-primary/12 text-accent-primary">
-              <Bot className="h-5 w-5" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <h1 className="text-base font-semibold text-content-primary">AI 工作台</h1>
-              <p className="mt-1 text-xs leading-5 text-content-secondary">切换会话、进入当前上下文。</p>
-            </div>
+  const sessionPanel = (
+    <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+      <div className={`${panelClass} mb-4 shrink-0 p-3.5`}>
+        <div className="flex items-start gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-accent-primary/12 text-accent-primary">
+            <Bot className="h-5 w-5" />
           </div>
-          <div className="mt-4">
-            <button
-              type="button"
-              onClick={handleCreateConversation}
-              className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-accent-primary px-3 py-2.5 text-sm font-medium text-white shadow-md transition-colors hover:bg-accent-primary/90"
-            >
-              <Plus className="h-4 w-4" />
-              新建会话
-            </button>
+          <div className="min-w-0 flex-1">
+            <h1 className="text-base font-semibold text-content-primary">AI 工作台</h1>
+            <p className="mt-1 text-xs leading-5 text-content-secondary">切换会话、进入当前上下文。</p>
           </div>
         </div>
-        <div className={`${panelClass} flex flex-1 flex-col overflow-hidden p-2`}>
-          <div className="border-b border-line-glass/60 px-2 pb-3 pt-1">
-            <div className="text-[11px] uppercase tracking-[0.28em] text-content-muted">Sessions</div>
-            <div className="mt-2 text-sm text-content-secondary">
-              当前共 {conversations.length} 个会话
-            </div>
+        <div className="mt-4">
+          <button
+            type="button"
+            onClick={handleCreateConversation}
+            className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-accent-primary px-3 py-2.5 text-sm font-medium text-white shadow-md transition-colors hover:bg-accent-primary/90"
+          >
+            <Plus className="h-4 w-4" />
+            新建会话
+          </button>
+        </div>
+      </div>
+      <div className={`${panelClass} flex min-h-0 flex-1 flex-col overflow-hidden p-2`}>
+        <div className="border-b border-line-glass/60 px-2 pb-3 pt-1">
+          <div className="text-[11px] uppercase tracking-[0.28em] text-content-muted">Sessions</div>
+          <div className="mt-2 text-sm text-content-secondary">
+            当前共 {conversations.length} 个会话
           </div>
-          {loadingConversations ? (
-            <div className="flex flex-1 items-center justify-center py-8">
-              <Loader2 className="h-5 w-5 animate-spin text-content-muted" />
-            </div>
-          ) : conversations.length === 0 ? (
-            <p className="px-2 py-4 text-sm text-content-secondary">暂无会话，先发一条消息试试吧。</p>
-          ) : (
-            <ul className="mt-2 flex-1 space-y-1 overflow-y-auto">
-              {conversations.map((conv) => (
-                <li key={conv.id}>
-                  {editingId === conv.id ? (
-                    <div className="rounded-2xl border border-line-glass/70 bg-white/62 px-3 py-2">
-                      <input
-                        type="text"
-                        value={editingTitle}
-                        onChange={(e) => setEditingTitle(e.target.value.slice(0, 100))}
-                        onBlur={async () => {
-                          const title = editingTitle.trim()
-                          setEditingId(null)
-                          if (title === (conv.title ?? '')) return
-                          try {
-                            const updated = await updateConversation(conv.id, {
-                              title: title || '',
-                            })
-                            setConversations((prev) =>
-                              prev.map((c) => (c.id === conv.id ? { ...c, title: updated.title } : c))
-                            )
-                          } catch {
-                            setEditingId(conv.id)
-                            setEditingTitle(conv.title ?? '')
-                          }
-                        }}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            e.currentTarget.blur()
-                          } else if (e.key === 'Escape') {
-                            setEditingTitle(conv.title ?? '')
-                            setEditingId(null)
-                            e.currentTarget.blur()
-                          }
-                        }}
-                        className="w-full rounded-lg border border-line-glass bg-surface-glass px-2 py-1.5 text-sm text-content-primary focus:outline-none focus:ring-2 focus:ring-accent-primary/50"
-                        placeholder="会话标题"
-                        autoFocus
-                      />
-                    </div>
-                  ) : (
-                    <div
-                      role="button"
-                      tabIndex={0}
-                      onClick={() => setCurrentId(conv.id)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                          e.preventDefault()
-                          setCurrentId(conv.id)
-                        }
-                      }}
-                      className={`flex w-full items-start gap-2 rounded-2xl border px-3 py-2.5 text-left text-sm transition-all cursor-pointer ${
-                        conv.id === currentId
-                          ? 'border-accent-primary/18 bg-accent-primary/8 text-content-primary shadow-[inset_0_1px_0_rgba(255,255,255,0.65)]'
-                          : 'border-transparent bg-transparent text-content-secondary hover:border-line-glass/70 hover:bg-white/55 hover:text-content-primary'
-                      }`}
-                    >
-                      <div
-                        className={`mt-0.5 h-2.5 w-2.5 shrink-0 rounded-full ${
-                          conv.id === currentId ? 'bg-accent-primary' : 'bg-line-glass'
-                        }`}
-                      />
-                      <div className="min-w-0 flex-1">
-                        <div className="truncate font-medium">
-                          {getConversationDisplayTitle(conv.title)}
-                        </div>
-                        <div className="mt-1 text-[11px] text-content-tertiary">
-                          共 {conv.messageCount} 条消息
-                        </div>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation()
+        </div>
+        {loadingConversations ? (
+          <div className="flex flex-1 items-center justify-center py-8">
+            <Loader2 className="h-5 w-5 animate-spin text-content-muted" />
+          </div>
+        ) : conversations.length === 0 ? (
+          <p className="px-2 py-4 text-sm text-content-secondary">暂无会话，先发一条消息试试吧。</p>
+        ) : (
+          <ul
+            className="hide-scrollbar mt-2 h-full min-h-0 flex-1 space-y-1 overflow-y-auto overscroll-contain"
+            style={{ WebkitOverflowScrolling: 'touch' }}
+          >
+            {conversations.map((conv) => (
+              <li key={conv.id}>
+                {editingId === conv.id ? (
+                  <div className="rounded-2xl border border-line-glass/70 bg-white/62 px-3 py-2">
+                    <input
+                      type="text"
+                      value={editingTitle}
+                      onChange={(e) => setEditingTitle(e.target.value.slice(0, 100))}
+                      onBlur={async () => {
+                        const title = editingTitle.trim()
+                        setEditingId(null)
+                        if (title === (conv.title ?? '')) return
+                        try {
+                          const updated = await updateConversation(conv.id, {
+                            title: title || '',
+                          })
+                          setConversations((prev) =>
+                            prev.map((c) => (c.id === conv.id ? { ...c, title: updated.title } : c))
+                          )
+                        } catch {
                           setEditingId(conv.id)
                           setEditingTitle(conv.title ?? '')
-                        }}
-                        className="shrink-0 rounded-xl p-1.5 text-content-tertiary transition-colors hover:bg-white/70 hover:text-content-primary"
-                        aria-label="编辑会话标题"
-                      >
-                        <Pencil className="h-3.5 w-3.5" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          void handleDeleteConversation(conv.id)
-                        }}
-                        className="shrink-0 rounded-xl p-1.5 text-content-tertiary transition-colors hover:bg-red-50 hover:text-red-500"
-                        aria-label="删除会话"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
+                        }
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.currentTarget.blur()
+                        } else if (e.key === 'Escape') {
+                          setEditingTitle(conv.title ?? '')
+                          setEditingId(null)
+                          e.currentTarget.blur()
+                        }
+                      }}
+                      className="w-full rounded-lg border border-line-glass bg-surface-glass px-2 py-1.5 text-sm text-content-primary focus:outline-none focus:ring-2 focus:ring-accent-primary/50"
+                      placeholder="会话标题"
+                      autoFocus
+                    />
+                  </div>
+                ) : (
+                  <div
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => handleSelectConversation(conv.id)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault()
+                        handleSelectConversation(conv.id)
+                      }
+                    }}
+                    className={`flex w-full items-start gap-2 rounded-2xl border px-3 py-2.5 text-left text-sm transition-all cursor-pointer ${
+                      conv.id === currentId
+                        ? 'border-accent-primary/18 bg-accent-primary/8 text-content-primary shadow-[inset_0_1px_0_rgba(255,255,255,0.65)]'
+                        : 'border-transparent bg-transparent text-content-secondary hover:border-line-glass/70 hover:bg-white/55 hover:text-content-primary'
+                    }`}
+                  >
+                    <div
+                      className={`mt-0.5 h-2.5 w-2.5 shrink-0 rounded-full ${
+                        conv.id === currentId ? 'bg-accent-primary' : 'bg-line-glass'
+                      }`}
+                    />
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate font-medium">
+                        {getConversationDisplayTitle(conv.title)}
+                      </div>
+                      <div className="mt-1 text-[11px] text-content-tertiary">
+                        共 {conv.messageCount} 条消息
+                      </div>
                     </div>
-                  )}
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setEditingId(conv.id)
+                        setEditingTitle(conv.title ?? '')
+                      }}
+                      className="shrink-0 rounded-xl p-1.5 text-content-tertiary transition-colors hover:bg-white/70 hover:text-content-primary"
+                      aria-label="编辑会话标题"
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        void handleDeleteConversation(conv.id)
+                      }}
+                      className="shrink-0 rounded-xl p-1.5 text-content-tertiary transition-colors hover:bg-red-50 hover:text-red-500"
+                      aria-label="删除会话"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </div>
+  )
+
+  return (
+    <main className="mx-auto grid w-full max-w-[1240px] gap-4 px-4 pb-6 pt-24 sm:pt-28 md:pb-8 min-[760px]:grid-cols-[240px_minmax(0,1fr)] 2xl:grid-cols-[252px_minmax(0,1fr)]">
+      <section className="hidden min-h-[24rem] flex-col min-[760px]:sticky min-[760px]:top-6 min-[760px]:flex min-[760px]:h-[calc(100vh-7rem)]">
+        {sessionPanel}
       </section>
 
-      <section className="flex min-h-[60vh] flex-col xl:h-[calc(100vh-7rem)]">
-        <div className={`${panelClass} flex flex-1 flex-col overflow-hidden p-4 md:p-5`}>
-          <div className="mx-auto mb-4 flex w-full max-w-full flex-wrap items-start justify-between gap-3 border-b border-line-glass/60 pb-4">
-            <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-2">
+      <section className="flex min-h-[60vh] min-w-0 flex-col min-[760px]:h-[calc(100vh-7rem)]">
+        <div className={`${panelClass} flex min-w-0 flex-1 flex-col overflow-hidden p-4 md:p-5`}>
+          <div className="mx-auto mb-4 flex w-full min-w-0 max-w-full items-center justify-between gap-3 border-b border-line-glass/60 pb-4">
+            <div className="min-w-0 flex flex-1 items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setMobileSessionsOpen(true)}
+                className="inline-flex h-10 w-6 shrink-0 items-center justify-center rounded-2xl border border-line-glass bg-surface-glass/56 text-content-secondary transition-colors hover:border-accent-primary/20 hover:text-content-primary min-[760px]:hidden"
+                aria-label="打开历史会话"
+              >
+                <PanelLeft className="h-4 w-4" />
+              </button>
+              <div className="min-w-0 flex flex-wrap items-center gap-2">
                 <h1 className="min-w-0 truncate text-lg font-semibold tracking-[-0.03em] text-content-primary sm:text-xl">
                   {currentConversationDisplayTitle}
                 </h1>
@@ -1291,13 +1309,7 @@ export default function AiChatPage() {
                     未命名
                   </span>
                 )}
-                <span className="inline-flex items-center rounded-full border border-line-glass bg-surface-glass/56 px-2.5 py-1 text-xs font-medium text-content-secondary">
-                  {workspaceStatusLabel}
-                </span>
               </div>
-              <p className="mt-1.5 text-xs leading-5 text-content-secondary">
-                当前消息 {messages.length} 条，队列：对话 {chatQueue.length} / 博客 {workflowQueue.length}
-              </p>
             </div>
           </div>
           {error && (
@@ -1311,13 +1323,13 @@ export default function AiChatPage() {
             </div>
           )}
           {!loadingMessages && (
-            <div className="flex-1 overflow-y-auto pb-4 scrollbar-none">
+            <div className="hide-scrollbar min-w-0 flex-1 overflow-x-hidden overflow-y-auto pb-4">
               {messages.length === 0 ? (
                 <div className="h-full flex items-center justify-center text-sm text-content-secondary">
                   还没有消息，试着问问 AI 一个问题吧～
                 </div>
               ) : (
-                <div className="mx-auto flex w-full max-w-full flex-col gap-4 pr-1">
+                <div className="mx-auto flex w-full min-w-0 max-w-full flex-col gap-4 pr-1">
                   {messages.map((msg, index) => {
                     const operationCard =
                       msg.role === 'assistant' ? parseOperationCardContent(msg.content || '') : null
@@ -1345,10 +1357,10 @@ export default function AiChatPage() {
                     return (
                       <div
                         key={msg.id}
-                        className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                        className={`flex min-w-0 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
                       >
                         <div
-                          className={`relative max-w-[85%] rounded-2xl px-3 py-2 text-sm shadow-sm ${
+                          className={`relative min-w-0 max-w-[85%] overflow-x-hidden break-words rounded-2xl px-3 py-2 text-sm shadow-sm sm:max-w-[85%] ${
                             msg.role === 'user'
                               ? 'bg-accent-primary text-white'
                               : 'bg-surface-tertiary/90 text-content-primary'
@@ -1643,7 +1655,7 @@ export default function AiChatPage() {
                               )}
                             </div>
                           ) : (
-                            <div className="md-content max-w-none">
+                            <div className="md-content max-w-none break-words">
                               <ReactMarkdown
                                 remarkPlugins={[remarkGfm]}
                                 components={{
@@ -1664,7 +1676,9 @@ export default function AiChatPage() {
                             </div>
                           )
                         ) : (
-                          <span>{msg.content}</span>
+                          <span className="whitespace-pre-wrap break-words">
+                            {msg.content}
+                          </span>
                         )}
                       </div>
                       </div>
@@ -1677,48 +1691,9 @@ export default function AiChatPage() {
           )}
         </div>
 
-        <div className={`${panelClass} mt-3 p-3 md:p-4`}>
-          <div className="mx-auto flex w-full max-w-full flex-wrap items-center gap-2 md:flex-nowrap">
-            <button
-              type="button"
-              onClick={() => setUseKnowledgeBase((prev) => !prev)}
-              aria-pressed={useKnowledgeBase}
-              className={`inline-flex h-12 shrink-0 items-center gap-2 rounded-2xl border px-3 text-sm font-medium transition-colors ${
-                useKnowledgeBase
-                  ? 'border-accent-primary/30 bg-accent-primary/10 text-accent-primary'
-                  : 'border-line-glass bg-white/70 text-content-secondary hover:border-accent-primary/20 hover:text-content-primary'
-              }`}
-            >
-              <Database className="h-4 w-4" />
-              知识库
-            </button>
-            <div className="flex min-w-0 flex-1 items-center gap-3">
-              <button
-                type="button"
-                onClick={() => {
-                  if (inputMode === 'voice') {
-                    switchToTextInput()
-                    return
-                  }
-
-                  if (voiceToggleDisabled) {
-                    return
-                  }
-
-                  setInputMode('voice')
-                }}
-                disabled={voiceToggleDisabled}
-                className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-line-glass bg-surface-tertiary/55 text-content-secondary transition-colors hover:bg-surface-tertiary/75 hover:text-content-primary disabled:cursor-not-allowed disabled:opacity-50"
-                title={inputMode === 'voice' ? '切换到键盘输入' : '切换到语音输入'}
-                aria-label={inputMode === 'voice' ? '切换到键盘输入' : '切换到语音输入'}
-              >
-                {inputMode === 'voice' ? (
-                  <Keyboard className="h-5 w-5" />
-                ) : (
-                  <Mic className="h-5 w-5" />
-                )}
-              </button>
-
+        <div className={`${panelClass} mt-3 min-w-0 p-3 md:p-4`}>
+          <div className="mx-auto flex w-full min-w-0 max-w-full flex-col gap-3">
+            <div className="flex w-full min-w-0 items-end gap-3">
               <div className="min-w-0 flex-1">
                 {inputMode === 'voice' ? (
                   <VoiceRecorder
@@ -1729,14 +1704,14 @@ export default function AiChatPage() {
                 ) : (
                   <textarea
                     ref={inputRef}
-                    className="max-h-40 w-full resize-none overflow-y-auto rounded-2xl border border-line-glass bg-surface-tertiary/40 px-3 py-[0.8rem] text-sm leading-6 text-content-primary placeholder:text-content-tertiary focus:outline-none focus:ring-2 focus:ring-accent-primary/50"
+                    className="hide-scrollbar max-h-40 w-full resize-none overflow-y-auto rounded-2xl border border-line-glass bg-surface-tertiary/40 px-3 py-[0.8rem] text-sm leading-6 text-content-primary placeholder:text-content-tertiary focus:outline-none focus:ring-2 focus:ring-accent-primary/50"
                     rows={1}
                     placeholder={
                       runningWorkflow
                         ? '继续输入内容，按 Enter 加入队列…'
                         : workflowFollowupMode
                           ? '补充生成要求，按 Enter 继续生成，Shift+Enter 换行…'
-                        : sending
+                          : sending
                             ? '继续输入内容，按 Enter 加入队列，或点击中断并发送…'
                             : '输入你的问题，按 Enter 发送，Shift+Enter 换行…'
                     }
@@ -1754,34 +1729,121 @@ export default function AiChatPage() {
                 )}
               </div>
             </div>
-            {sending && !workflowFollowupMode && (
+
+            <div className="flex w-full min-w-0 flex-wrap items-center gap-2 sm:gap-3">
               <button
                 type="button"
-                onClick={handleInterruptAndSend}
-                disabled={!input.trim() || !canUseChatActions}
-                className="inline-flex h-12 shrink-0 items-center justify-center gap-2 rounded-2xl border border-ui-warning/35 bg-ui-warning-light px-4 text-sm font-medium text-ui-warning-text transition-colors disabled:cursor-not-allowed disabled:opacity-50 hover:bg-ui-warning/12"
+                onClick={() => setUseKnowledgeBase((prev) => !prev)}
+                aria-pressed={useKnowledgeBase}
+                className={`inline-flex h-10 shrink-0 items-center gap-2 rounded-2xl border px-3 text-sm font-medium transition-colors ${
+                  useKnowledgeBase
+                    ? 'border-accent-primary/30 bg-accent-primary/10 text-accent-primary'
+                    : 'border-line-glass bg-white/70 text-content-secondary hover:border-accent-primary/20 hover:text-content-primary'
+                }`}
               >
-                中断并发送
+                <Database className="h-4 w-4" />
+                <span className="hidden sm:inline">知识库</span>
               </button>
-            )}
-            <button
-              type="button"
-              onClick={
-                workflowFollowupMode
-                  ? handleWorkflowFollowupSend
-                  : sending
-                    ? handleQueueSend
-                    : handleSend
-              }
-              disabled={!input.trim() || !canUseChatActions || (!sending && chatQueue.length > 0)}
-              className="inline-flex h-12 shrink-0 items-center justify-center gap-2 rounded-2xl bg-accent-primary px-4 text-sm font-medium text-white shadow-md transition-colors disabled:cursor-not-allowed disabled:opacity-50 hover:bg-accent-primary/90"
-            >
-              <Send className="h-4 w-4" />
-              {/* {workflowFollowupMode ? '继续生成' : sending ? '加入队列' : '发送消息'} */}
-            </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (inputMode === 'voice') {
+                    switchToTextInput()
+                    return
+                  }
+
+                  if (voiceToggleDisabled) {
+                    return
+                  }
+
+                  setInputMode('voice')
+                }}
+                disabled={voiceToggleDisabled}
+                className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-2xl border border-line-glass bg-surface-tertiary/55 px-3 text-sm text-content-secondary transition-colors hover:bg-surface-tertiary/75 hover:text-content-primary disabled:cursor-not-allowed disabled:opacity-50"
+                title={inputMode === 'voice' ? '切换到键盘输入' : '切换到语音输入'}
+                aria-label={inputMode === 'voice' ? '切换到键盘输入' : '切换到语音输入'}
+              >
+                {inputMode === 'voice' ? (
+                  <>
+                    <Keyboard className="h-4 w-4" />
+                    <span className="hidden sm:inline">键盘</span>
+                  </>
+                ) : (
+                  <>
+                    <Mic className="h-4 w-4" />
+                    <span className="hidden sm:inline">语音</span>
+                  </>
+                )}
+              </button>
+              {sending && !workflowFollowupMode && (
+                <button
+                  type="button"
+                  onClick={handleInterruptAndSend}
+                  disabled={!input.trim() || !canUseChatActions}
+                  className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-2xl border border-ui-warning/35 bg-ui-warning-light px-3 text-sm font-medium text-ui-warning-text transition-colors disabled:cursor-not-allowed disabled:opacity-50 hover:bg-ui-warning/12"
+                >
+                  中断
+                </button>
+              )}
+
+              <button
+                type="button"
+                onClick={
+                  workflowFollowupMode
+                    ? handleWorkflowFollowupSend
+                    : sending
+                      ? handleQueueSend
+                      : handleSend
+                }
+                disabled={!input.trim() || !canUseChatActions || (!sending && chatQueue.length > 0)}
+                className="ml-auto h-12 shrink-0 items-center justify-center gap-2 rounded-2xl bg-accent-primary px-4 text-sm font-medium text-white shadow-md transition-colors disabled:cursor-not-allowed disabled:opacity-50 hover:bg-accent-primary/90"
+              >
+                <Send className="h-4 w-4" />
+                <span className="hidden sm:inline">
+                  {workflowFollowupMode ? '继续生成' : sending ? '加入队列' : '发送'}
+                </span>
+              </button>
+            </div>
           </div>
         </div>
       </section>
+
+      <div
+        className={`fixed inset-0 z-[400] min-[760px]:hidden ${
+          mobileSessionsOpen ? 'pointer-events-auto' : 'pointer-events-none'
+        }`}
+        aria-hidden={!mobileSessionsOpen}
+      >
+        <div
+          className={`absolute inset-0 bg-black/38 transition-opacity duration-300 ${
+            mobileSessionsOpen ? 'opacity-100' : 'opacity-0'
+          }`}
+          onClick={() => setMobileSessionsOpen(false)}
+        />
+        <div
+          className={`absolute inset-y-0 left-0 flex h-full min-h-0 w-full max-w-full flex-col overflow-hidden bg-surface-primary/96 p-4 backdrop-blur-xl transition-transform duration-300 ease-out ${
+            mobileSessionsOpen ? 'translate-x-0' : '-translate-x-full'
+          }`}
+        >
+          <div className="mb-4 flex items-center justify-between gap-3 border-b border-line-glass/60 pb-4 pt-2">
+            <div>
+              <p className="text-sm font-semibold text-content-primary">历史会话</p>
+              <p className="mt-1 text-xs text-content-secondary">切换会话、继续之前的上下文。</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setMobileSessionsOpen(false)}
+              className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-line-glass bg-surface-glass/70 text-content-secondary transition-colors hover:text-content-primary"
+              aria-label="关闭历史会话"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+          <div className="h-full min-h-0 flex-1 overflow-hidden">
+            {sessionPanel}
+          </div>
+        </div>
+      </div>
 
     </main>
   )

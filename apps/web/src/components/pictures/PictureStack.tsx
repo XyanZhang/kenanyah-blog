@@ -118,9 +118,9 @@ export function PictureStack({ items, className }: PictureStackProps) {
           } as CSSProperties
         }
       >
-        <div className="relative mx-auto flex w-full max-w-7xl flex-col gap-12 px-5 pb-20 pt-16 sm:px-8 lg:px-12 lg:pb-28 lg:pt-24">
+        <div className="relative mx-auto flex w-full max-w-7xl flex-col gap-10 px-4 pb-20 pt-24 sm:gap-12 sm:px-6 sm:pt-28 lg:px-12 lg:pb-28 lg:pt-24">
           <motion.header
-            className="grid gap-8 border-b pb-10 lg:grid-cols-[minmax(0,1.6fr)_minmax(280px,0.8fr)] lg:items-end"
+            className="grid gap-6 border-b pb-8 sm:gap-8 sm:pb-10 lg:grid-cols-[minmax(0,1.6fr)_minmax(280px,0.8fr)] lg:items-end"
             style={{ borderColor: 'var(--pictures-line)' }}
             initial={{ opacity: 0, y: 18 }}
             animate={{ opacity: 1, y: 0 }}
@@ -168,7 +168,7 @@ export function PictureStack({ items, className }: PictureStackProps) {
 
           {featuredItem ? (
             <motion.section
-              className="grid gap-5 lg:grid-cols-[minmax(0,1.4fr)_minmax(280px,0.72fr)] lg:items-start"
+              className="grid gap-5 sm:gap-6 lg:grid-cols-[minmax(0,1.4fr)_minmax(280px,0.72fr)] lg:items-start"
               initial={{ opacity: 0, y: 24 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.7, delay: 0.08, ease: [0.22, 1, 0.36, 1] }}
@@ -196,7 +196,7 @@ export function PictureStack({ items, className }: PictureStackProps) {
                   />
                 </div>
                 <div
-                  className="pointer-events-none absolute inset-x-0 bottom-0 px-6 pb-6 pt-16 text-[var(--theme-text-inverse)]"
+                  className="pointer-events-none absolute inset-x-0 bottom-0 px-4 pb-4 pt-12 text-[var(--theme-text-inverse)] sm:px-6 sm:pb-6 sm:pt-16"
                   style={{
                     background:
                       'linear-gradient(to top, color-mix(in srgb, var(--theme-text-primary) 68%, transparent), color-mix(in srgb, var(--theme-text-primary) 24%, transparent), transparent)',
@@ -211,7 +211,7 @@ export function PictureStack({ items, className }: PictureStackProps) {
                     Featured Frame
                   </p>
                   <p
-                    className="mt-2 text-3xl leading-none tracking-[-0.05em] sm:text-4xl"
+                    className="mt-2 text-[1.75rem] leading-none tracking-[-0.05em] sm:text-4xl"
                     style={{ fontFamily: 'var(--pictures-font-serif), Georgia, serif' }}
                   >
                     Quiet Material
@@ -220,7 +220,7 @@ export function PictureStack({ items, className }: PictureStackProps) {
               </button>
 
               <div
-                className="flex h-full flex-col justify-between gap-6 rounded-[2rem] border p-6 sm:p-8"
+                className="flex h-full flex-col justify-between gap-5 rounded-[2rem] border p-5 sm:gap-6 sm:p-8"
                 style={{
                   borderColor: 'var(--pictures-line)',
                   backgroundColor: 'var(--pictures-panel)',
@@ -232,7 +232,7 @@ export function PictureStack({ items, className }: PictureStackProps) {
                     Curator&apos;s Note
                   </p>
                   <p
-                    className="mt-4 text-3xl leading-[1.05] tracking-[-0.05em] text-[var(--pictures-ink-strong)] sm:text-4xl"
+                    className="mt-4 text-[1.9rem] leading-[1.05] tracking-[-0.05em] text-[var(--pictures-ink-strong)] sm:text-4xl"
                     style={{ fontFamily: 'var(--pictures-font-serif), Georgia, serif' }}
                   >
                     用更平静的节奏，放大图像本身的质地。
@@ -250,7 +250,7 @@ export function PictureStack({ items, className }: PictureStackProps) {
                     <span className="uppercase tracking-[0.24em] text-[0.68rem] text-[var(--pictures-muted)]">
                       Date
                     </span>
-                    <span>{formatDateLabel(featuredItem.date)}</span>
+                    <span className="text-right">{formatDateLabel(featuredItem.date)}</span>
                   </div>
                   <div className="flex items-center justify-between gap-3">
                     <span className="uppercase tracking-[0.24em] text-[0.68rem] text-[var(--pictures-muted)]">
@@ -270,7 +270,7 @@ export function PictureStack({ items, className }: PictureStackProps) {
           ) : null}
 
           <section
-            className="grid gap-6 border-t pt-8 lg:grid-cols-[220px_minmax(0,1fr)] lg:gap-10"
+            className="grid gap-6 border-t pt-8 sm:gap-8 lg:grid-cols-[220px_minmax(0,1fr)] lg:gap-10"
             style={{ borderColor: 'var(--pictures-line)' }}
           >
             <div className="lg:sticky lg:top-28 lg:self-start">
@@ -288,13 +288,13 @@ export function PictureStack({ items, className }: PictureStackProps) {
               </p>
             </div>
 
-            <div className="columns-1 gap-5 sm:columns-2 xl:columns-3">
+            <div className="columns-1 gap-4 sm:columns-2 sm:gap-5 xl:columns-3">
               {galleryItems.map((item, index) => (
                 <motion.button
                   key={item.id}
                   type="button"
                   onClick={() => openPreview(item)}
-                  className="group mb-5 block w-full break-inside-avoid overflow-hidden rounded-[1.6rem] border p-2 text-left transition-transform duration-500 ease-out hover:-translate-y-1 focus-visible:outline-none focus-visible:ring-2"
+                  className="group mb-4 block w-full break-inside-avoid overflow-hidden rounded-[1.4rem] border p-2 text-left transition-transform duration-500 ease-out hover:-translate-y-1 focus-visible:outline-none focus-visible:ring-2 sm:mb-5 sm:rounded-[1.6rem]"
                   style={{
                     borderColor: 'var(--pictures-line)',
                     backgroundColor: 'var(--pictures-panel-soft)',
@@ -323,7 +323,7 @@ export function PictureStack({ items, className }: PictureStackProps) {
                         unoptimized={item.src.startsWith('http')}
                       />
                     </div>
-                    <figcaption className="flex items-end justify-between gap-4 px-4 pb-4 pt-3 text-[var(--pictures-ink)]">
+                    <figcaption className="flex flex-col items-start gap-3 px-4 pb-4 pt-3 text-[var(--pictures-ink)] sm:flex-row sm:items-end sm:justify-between sm:gap-4">
                       <div>
                         <p className="text-[0.68rem] uppercase tracking-[0.28em] text-[var(--pictures-muted)]">
                           No.{String(index + 2).padStart(2, '0')}

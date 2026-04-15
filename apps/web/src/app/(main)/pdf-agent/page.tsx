@@ -70,9 +70,9 @@ export default function PdfAgentPage() {
   }, [parseDetail, chunkFilter])
 
   return (
-    <main className="w-full max-w-5xl mx-auto px-4 py-6 md:py-10">
+    <main className="mx-auto w-full max-w-5xl px-4 pb-10 pt-24 sm:px-6 sm:pb-12 sm:pt-28 md:py-10">
       <header className="mb-6 rounded-3xl border border-line-glass bg-surface-glass/70 backdrop-blur-sm p-5 md:p-6">
-        <div className="flex items-start justify-between gap-4">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <div className="inline-flex items-center gap-2 rounded-full bg-accent-primary/10 px-3 py-1 text-xs font-medium text-accent-primary">
               <Bot className="h-4 w-4" />
@@ -102,7 +102,7 @@ export default function PdfAgentPage() {
           </button>
         </div>
 
-        <div className="mt-5 grid grid-cols-2 md:grid-cols-4 gap-2">
+        <div className="mt-5 grid grid-cols-2 gap-2 md:grid-cols-4">
           {stepMeta.items.map((it, idx) => {
             const active = idx === stepMeta.index
             const done = idx < stepMeta.index
@@ -155,7 +155,7 @@ export default function PdfAgentPage() {
               }}
             />
 
-            <div className="flex flex-col md:flex-row items-stretch md:items-center gap-3">
+            <div className="flex flex-col gap-3 md:flex-row md:items-center">
               <button
                 type="button"
                 onClick={() => fileRef.current?.click()}
@@ -243,7 +243,7 @@ export default function PdfAgentPage() {
               ) : null}
             </p>
 
-            <div className="flex flex-col md:flex-row items-stretch md:items-center gap-3 pt-2">
+            <div className="flex flex-col gap-3 pt-2 md:flex-row md:items-center">
               <button
                 type="button"
                 onClick={() => {
@@ -394,7 +394,7 @@ export default function PdfAgentPage() {
                     className="w-full md:w-64 rounded-lg border border-line-glass bg-surface-glass/20 px-3 py-1.5 text-xs text-content-primary placeholder:text-content-muted focus:outline-hidden focus:ring-2 focus:ring-accent-primary/30"
                   />
                 </div>
-                <div className="mb-3 grid grid-cols-2 gap-2 text-xs text-content-secondary md:grid-cols-4">
+                <div className="mb-3 grid grid-cols-1 gap-2 text-xs text-content-secondary sm:grid-cols-2 md:grid-cols-4">
                   <div className="rounded-lg border border-line-glass bg-surface-glass/20 px-2 py-1">
                     min / p50 / p90 / max:
                     {` ${parseDetail.parseStats?.min ?? 0}/${parseDetail.parseStats?.p50 ?? 0}/${parseDetail.parseStats?.p90 ?? 0}/${parseDetail.parseStats?.max ?? 0}`}
@@ -439,4 +439,3 @@ export default function PdfAgentPage() {
     </main>
   )
 }
-

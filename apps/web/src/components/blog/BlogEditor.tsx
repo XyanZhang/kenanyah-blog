@@ -285,10 +285,10 @@ export function BlogEditor({ initialData, onSubmit }: BlogEditorProps) {
   }
 
   return (
-    <div className="flex flex-col gap-8 h-full">
+    <div className="flex h-full flex-col gap-6 sm:gap-8">
       <form
         onSubmit={handleSubmit}
-        className="flex flex-col gap-8 rounded-2xl border border-line-glass bg-surface-glass/60 p-6 sm:p-8 shadow-lg backdrop-blur-sm"
+        className="flex flex-col gap-6 rounded-2xl border border-line-glass bg-surface-glass/60 p-4 shadow-lg backdrop-blur-sm sm:gap-8 sm:p-8"
       >
         {/* 标题 */}
         <section className="flex flex-col gap-3">
@@ -307,9 +307,9 @@ export function BlogEditor({ initialData, onSubmit }: BlogEditorProps) {
         </section>
 
         {/* 正文 + 预览 */}
-        <section className="grid grid-cols-1 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] gap-6">
-          <div className="flex flex-col gap-4 min-h-[360px]">
-            <div className="flex items-center justify-between gap-2">
+        <section className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
+          <div className="flex min-h-[360px] flex-col gap-4">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-center gap-2">
                 <BookOpen className="h-4 w-4 text-accent-primary" aria-hidden />
                 <span className="text-sm font-medium text-content-secondary">
@@ -320,8 +320,8 @@ export function BlogEditor({ initialData, onSubmit }: BlogEditorProps) {
                 右侧实时预览
               </span>
             </div>
-            <div className="flex flex-wrap items-center gap-2 rounded-xl border border-line-primary/50 bg-surface-secondary/50 px-3 py-2.5">
-              <span className="text-xs text-content-tertiary mr-1 flex items-center gap-1">
+            <div className="flex flex-wrap items-start gap-2 rounded-xl border border-line-primary/50 bg-surface-secondary/50 px-3 py-3 sm:items-center">
+              <span className="mr-1 flex items-center gap-1 text-xs text-content-tertiary">
                 <Wand2 className="h-3.5 w-3.5 text-accent-primary" />
                 AI
               </span>
@@ -329,7 +329,7 @@ export function BlogEditor({ initialData, onSubmit }: BlogEditorProps) {
                 type="button"
                 variant="outline"
                 size="sm"
-                className="h-8 text-xs"
+                className="h-8 w-full text-xs sm:w-auto"
                 onClick={handleAiRewrite}
                 disabled={aiLoading}
               >
@@ -344,7 +344,7 @@ export function BlogEditor({ initialData, onSubmit }: BlogEditorProps) {
                 type="button"
                 variant="outline"
                 size="sm"
-                className="h-8 text-xs"
+                className="h-8 w-full text-xs sm:w-auto"
                 onClick={handleAiExpand}
                 disabled={aiLoading}
               >
@@ -359,7 +359,7 @@ export function BlogEditor({ initialData, onSubmit }: BlogEditorProps) {
                 type="button"
                 variant="outline"
                 size="sm"
-                className="h-8 text-xs"
+                className="h-8 w-full text-xs sm:w-auto"
                 onClick={handleAiShrink}
                 disabled={aiLoading}
               >
@@ -374,7 +374,7 @@ export function BlogEditor({ initialData, onSubmit }: BlogEditorProps) {
                 type="button"
                 variant="outline"
                 size="sm"
-                className="h-8 text-xs"
+                className="h-8 w-full text-xs sm:w-auto"
                 onClick={handleAiHeadings}
                 disabled={aiLoading}
               >
@@ -389,7 +389,7 @@ export function BlogEditor({ initialData, onSubmit }: BlogEditorProps) {
                 type="button"
                 variant="outline"
                 size="sm"
-                className="h-8 text-xs"
+                className="h-8 w-full text-xs sm:w-auto"
                 onClick={handleAiSummary}
                 disabled={aiLoading}
               >
@@ -400,9 +400,9 @@ export function BlogEditor({ initialData, onSubmit }: BlogEditorProps) {
                 )}
                 摘要
               </Button>
-              <div className="flex items-center gap-2 ml-auto">
+              <div className="flex w-full flex-col gap-2 pt-1 sm:ml-auto sm:w-auto sm:flex-row sm:items-center sm:pt-0">
                 <Input
-                  className="h-8 text-xs w-44"
+                  className="h-8 w-full text-xs sm:w-44"
                   placeholder="输入关键词自动生成文章"
                   value={generateKeywords}
                   onChange={(e) => setGenerateKeywords(e.target.value)}
@@ -412,7 +412,7 @@ export function BlogEditor({ initialData, onSubmit }: BlogEditorProps) {
                   type="button"
                   variant="outline"
                   size="sm"
-                  className="h-8 text-xs"
+                  className="h-8 w-full text-xs sm:w-auto"
                   onClick={handleAiGenerateArticle}
                   disabled={aiLoading}
                 >
@@ -440,7 +440,7 @@ export function BlogEditor({ initialData, onSubmit }: BlogEditorProps) {
                         type="button"
                         variant="default"
                         size="sm"
-                        className="h-8 rounded-lg"
+                        className="h-8 w-full rounded-lg sm:w-auto"
                         onClick={applyAiResult}
                       >
                         应用到正文
@@ -450,10 +450,10 @@ export function BlogEditor({ initialData, onSubmit }: BlogEditorProps) {
                 )}
               </div>
             )}
-            <div className="flex-1 min-h-[280px] rounded-xl border border-line-primary/60 bg-surface-primary/80 px-4 py-4 shadow-inner focus-within:ring-2 focus-within:ring-accent-primary/20 focus-within:border-accent-primary/40 transition-colors">
+            <div className="flex-1 min-h-[320px] rounded-xl border border-line-primary/60 bg-surface-primary/80 px-4 py-4 shadow-inner transition-colors focus-within:border-accent-primary/40 focus-within:ring-2 focus-within:ring-accent-primary/20 sm:min-h-[360px]">
               <textarea
                 ref={textareaRef}
-                className="h-full w-full border-0 bg-transparent text-sm text-content-primary resize-none focus-visible:outline-none focus-visible:ring-0 placeholder:text-content-dim"
+                className="h-full min-h-[320px] w-full resize-none border-0 bg-transparent text-sm text-content-primary placeholder:text-content-dim focus-visible:outline-none focus-visible:ring-0 sm:min-h-[360px]"
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
                 placeholder="在这里编写文章内容，支持 Markdown 语法…"
@@ -461,8 +461,8 @@ export function BlogEditor({ initialData, onSubmit }: BlogEditorProps) {
             </div>
           </div>
 
-          <div className="flex flex-col gap-4 min-h-[360px]">
-            <div className="flex items-center justify-between gap-2">
+          <div className="flex min-h-[360px] flex-col gap-4">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-center gap-2">
                 <Eye className="h-4 w-4 text-accent-primary" aria-hidden />
                 <span className="text-sm font-medium text-content-secondary">
@@ -473,7 +473,7 @@ export function BlogEditor({ initialData, onSubmit }: BlogEditorProps) {
                 实时渲染
               </span>
             </div>
-            <div className="flex-1 min-h-[280px] rounded-xl border border-line-primary/60 bg-surface-secondary/80 px-5 py-5 overflow-auto md-content-wrapper">
+            <div className="md-content-wrapper flex-1 overflow-auto rounded-xl border border-line-primary/60 bg-surface-secondary/80 px-4 py-4 sm:px-5 sm:py-5">
               <article className="md-content max-w-none">
                 {content.trim() ? (
                   <ReactMarkdown
@@ -499,7 +499,7 @@ export function BlogEditor({ initialData, onSubmit }: BlogEditorProps) {
         </section>
 
         {/* 图片 */}
-        <section className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <section className="grid grid-cols-1 gap-6 md:grid-cols-2">
           <div className="flex flex-col gap-3">
             <div className="flex items-center gap-2">
               <ImageIcon className="h-4 w-4 text-accent-primary" aria-hidden />
@@ -507,7 +507,7 @@ export function BlogEditor({ initialData, onSubmit }: BlogEditorProps) {
                 封面图片
               </label>
             </div>
-            <div className="flex items-center gap-4 rounded-xl border border-line-primary/50 bg-surface-secondary/50 px-4 py-3">
+            <div className="flex flex-col gap-3 rounded-xl border border-line-primary/50 bg-surface-secondary/50 px-4 py-3 sm:flex-row sm:items-center sm:gap-4">
               <Input
                 type="file"
                 accept="image/*"
@@ -518,7 +518,7 @@ export function BlogEditor({ initialData, onSubmit }: BlogEditorProps) {
                 type="button"
                 variant="outline"
                 size="sm"
-                className="h-8 text-xs shrink-0"
+                className="h-8 w-full shrink-0 text-xs sm:w-auto"
                 onClick={handleAiGenerateCover}
                 disabled={coverGenLoading || aiLoading}
               >
@@ -530,13 +530,13 @@ export function BlogEditor({ initialData, onSubmit }: BlogEditorProps) {
                 AI 生成封面
               </Button>
               {coverImage && (
-                <div className="relative h-16 w-24 shrink-0 rounded-lg overflow-hidden border border-line-primary/60 bg-surface-tertiary shadow-sm">
+                <div className="relative h-20 w-full overflow-hidden rounded-lg border border-line-primary/60 bg-surface-tertiary shadow-sm sm:h-16 sm:w-24 sm:shrink-0">
                   <Image
                     src={coverImage}
                     alt="封面预览"
                     fill
                     className="object-cover"
-                    sizes="96px"
+                    sizes="(max-width: 640px) 100vw, 96px"
                     unoptimized
                   />
                 </div>
@@ -562,7 +562,7 @@ export function BlogEditor({ initialData, onSubmit }: BlogEditorProps) {
               className="rounded-xl border-line-primary bg-surface-primary text-content-primary file:mr-2 file:rounded-lg file:border-0 file:bg-accent-primary/10 file:px-3 file:py-1.5 file:text-sm file:text-accent-primary file:hover:bg-accent-primary/20"
             />
             {images.length > 0 && (
-              <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 rounded-xl border border-line-primary/50 bg-surface-secondary/50 p-3">
+              <div className="grid grid-cols-2 gap-2 rounded-xl border border-line-primary/50 bg-surface-secondary/50 p-3 sm:grid-cols-4">
                 {images.map((src, index) => (
                   <div
                     key={index}
@@ -632,15 +632,20 @@ export function BlogEditor({ initialData, onSubmit }: BlogEditorProps) {
           </div>
         </section>
 
-        <div className="flex justify-end gap-3 pt-2 border-t border-line-primary/50">
-          <Button type="button" variant="outline" size="sm" className="rounded-lg">
+        <div className="flex flex-col gap-3 border-t border-line-primary/50 pt-3 sm:flex-row sm:justify-end">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="w-full rounded-lg sm:w-auto"
+          >
             保存草稿
           </Button>
           <Button
             type="submit"
             size="sm"
             disabled={isSubmitting}
-            className="rounded-lg gap-2"
+            className="w-full gap-2 rounded-lg sm:w-auto"
           >
             {isSubmitting ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -660,4 +665,3 @@ export function BlogEditor({ initialData, onSubmit }: BlogEditorProps) {
     </div>
   )
 }
-

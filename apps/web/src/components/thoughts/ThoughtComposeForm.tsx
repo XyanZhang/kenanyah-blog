@@ -169,14 +169,14 @@ export function ThoughtComposeForm(props: Props) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form onSubmit={handleSubmit} className="space-y-5 sm:space-y-6">
       {error && (
         <p className="text-sm text-ui-destructive" role="alert">
           {error}
         </p>
       )}
 
-      <div className="rounded-lg border border-line-secondary bg-surface-primary/50 p-4 space-y-3">
+      <div className="space-y-3 rounded-lg border border-line-secondary bg-surface-primary/50 p-4 sm:p-5">
         <div>
           <label
             htmlFor="thought-keywords"
@@ -198,12 +198,12 @@ export function ThoughtComposeForm(props: Props) {
           DASHSCOPE_API_KEY）。生成略放开联想（temperature 约 0.82），美化更稳（约
           0.55）。
         </p>
-        <div className="flex flex-wrap gap-2">
+        <div className="grid grid-cols-1 gap-2 sm:flex sm:flex-wrap">
           <Button
             type="button"
             variant="outline"
             size="sm"
-            className="gap-1.5"
+            className="w-full gap-1.5 sm:w-auto"
             disabled={aiBusy || !keywords.trim()}
             onClick={() => runAssist('generate')}
           >
@@ -218,7 +218,7 @@ export function ThoughtComposeForm(props: Props) {
             type="button"
             variant="outline"
             size="sm"
-            className="gap-1.5"
+            className="w-full gap-1.5 sm:w-auto"
             disabled={aiBusy || !content.trim()}
             onClick={() => runAssist('polish')}
           >
@@ -244,12 +244,12 @@ export function ThoughtComposeForm(props: Props) {
           value={content}
           onChange={(e) => setContent(e.target.value)}
           rows={12}
-          className="w-full rounded-lg border border-line-secondary bg-surface-primary px-3 py-2 text-content-primary text-[15px] leading-relaxed placeholder:text-content-tertiary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ui-primary resize-y min-h-[200px]"
+          className="min-h-[240px] w-full resize-y rounded-lg border border-line-secondary bg-surface-primary px-3 py-3 text-[15px] leading-relaxed text-content-primary placeholder:text-content-tertiary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ui-primary sm:min-h-[260px]"
           placeholder="写点什么…"
         />
       </div>
 
-      <div>
+      <div className="space-y-3">
         <label className="block text-sm font-medium text-content-secondary mb-2">
           配图（可选）
         </label>
@@ -265,7 +265,7 @@ export function ThoughtComposeForm(props: Props) {
           type="button"
           variant="outline"
           size="sm"
-          className="gap-1.5"
+          className="w-full gap-1.5 sm:w-auto"
           disabled={uploadBusy}
           onClick={() => fileInputRef.current?.click()}
         >
@@ -309,8 +309,12 @@ export function ThoughtComposeForm(props: Props) {
         )}
       </div>
 
-      <div className="flex flex-wrap gap-3 pt-2">
-        <Button type="submit" disabled={saving || aiBusy} className="gap-2">
+      <div className="flex flex-col gap-3 pt-2 sm:flex-row sm:flex-wrap">
+        <Button
+          type="submit"
+          disabled={saving || aiBusy}
+          className="w-full gap-2 sm:w-auto"
+        >
           {saving ? (
             <>
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -325,6 +329,7 @@ export function ThoughtComposeForm(props: Props) {
         <Button
           type="button"
           variant="outline"
+          className="w-full sm:w-auto"
           onClick={() => router.push('/thoughts')}
         >
           取消

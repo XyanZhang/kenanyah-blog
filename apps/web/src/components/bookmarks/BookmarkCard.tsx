@@ -50,7 +50,7 @@ export function BookmarkCard({ item, className }: BookmarkCardProps) {
       target="_blank"
       rel="noopener noreferrer"
       className={cn(
-        'group flex items-center gap-3 rounded-xl border border-line-glass/40 bg-surface-glass/25 px-3 py-2 backdrop-blur-sm transition-all duration-200',
+        'group flex items-start gap-3 rounded-2xl border border-line-glass/40 bg-surface-glass/25 px-3 py-3 backdrop-blur-sm transition-all duration-200 sm:items-center',
         'hover:bg-surface-glass/45',
         className
       )}
@@ -68,25 +68,31 @@ export function BookmarkCard({ item, className }: BookmarkCardProps) {
         )}
       </div>
 
-      <div className="min-w-0 flex flex-1 items-center gap-2">
-        <h4 className="min-w-0 shrink truncate text-sm font-medium text-content-primary group-hover:text-accent-primary transition-colors">
-          {item.title}
-        </h4>
-        <span className="text-content-dim">·</span>
-        <p className="max-w-44 truncate text-xs text-content-tertiary" title={item.url}>
-          {domain}
-        </p>
-        {item.category && (
-          <span className="shrink-0 rounded-md bg-accent-primary/10 px-1.5 py-0.5 text-[11px] font-medium text-accent-primary">
-            {item.category}
+      <div className="min-w-0 flex flex-1 flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-2">
+        <div className="min-w-0 flex-1">
+          <h4 className="truncate text-sm font-medium text-content-primary transition-colors group-hover:text-accent-primary">
+            {item.title}
+          </h4>
+          <p className="mt-1 truncate text-xs text-content-tertiary sm:hidden" title={item.url}>
+            {domain}
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <p className="hidden max-w-44 truncate text-xs text-content-tertiary sm:block" title={item.url}>
+            {domain}
+          </p>
+          {item.category && (
+            <span className="shrink-0 rounded-md bg-accent-primary/10 px-1.5 py-0.5 text-[11px] font-medium text-accent-primary">
+              {item.category}
+            </span>
+          )}
+          <span className="shrink-0 text-xs text-content-tertiary">
+            {format(new Date(item.createdAt), 'MM/dd', { locale: zhCN })}
           </span>
-        )}
-        <span className="shrink-0 text-xs text-content-tertiary">
-          {format(new Date(item.createdAt), 'MM/dd', { locale: zhCN })}
-        </span>
+        </div>
       </div>
 
-      <div className="flex shrink-0 items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+      <div className="flex shrink-0 items-center gap-0.5 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100">
         <button
           type="button"
           onClick={handleCopyUrl}

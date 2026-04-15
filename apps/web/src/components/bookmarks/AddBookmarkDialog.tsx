@@ -92,16 +92,16 @@ export function AddBookmarkDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-w-xl rounded-2xl border border-line-glass/50 bg-surface-primary/95 p-0 backdrop-blur-md">
+      <DialogContent className="max-h-[92vh] max-w-xl overflow-y-auto rounded-2xl border border-line-glass/50 bg-surface-primary/95 p-0 backdrop-blur-md sm:max-h-[88vh]">
         <DialogHeader>
-          <div className="border-b border-line-glass/40 px-6 py-5">
+          <div className="border-b border-line-glass/40 px-4 py-5 sm:px-6">
             <DialogTitle className="text-xl text-content-primary">添加收藏</DialogTitle>
             <DialogDescription className="mt-1">
               保存网页标题、链接和备注，便于后续插件同步与分类。
             </DialogDescription>
           </div>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4 px-6 py-5">
+        <form onSubmit={handleSubmit} className="space-y-4 px-4 py-5 sm:px-6">
           <div className="space-y-1.5">
             <label htmlFor="add-bookmark-title" className="mb-1.5 block text-sm font-medium text-content-secondary">
               标题 *
@@ -174,17 +174,21 @@ export function AddBookmarkDialog({
               {error}
             </p>
           )}
-          <DialogFooter className="border-t border-line-glass/40 pt-4">
+          <DialogFooter className="gap-3 border-t border-line-glass/40 pt-4">
             <Button
               type="button"
               variant="outline"
               onClick={() => handleOpenChange(false)}
               disabled={submitting}
-              className="rounded-lg"
+              className="w-full rounded-lg sm:w-auto"
             >
               取消
             </Button>
-            <Button type="submit" disabled={submitting} className="rounded-lg">
+            <Button
+              type="submit"
+              disabled={submitting}
+              className="w-full rounded-lg sm:w-auto"
+            >
               {submitting ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />

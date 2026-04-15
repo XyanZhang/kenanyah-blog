@@ -96,12 +96,12 @@ function coverShape(index: number) {
 
 export default function ProjectsPage() {
   return (
-    <main className="min-h-screen px-4 pb-16 pt-6 sm:px-6 lg:pl-24 lg:pr-8 lg:pt-8">
+    <main className="min-h-screen px-4 pb-16 pt-24 sm:px-6 sm:pt-28 lg:pl-24 lg:pr-8 lg:pt-8">
       <div className="mx-auto max-w-7xl">
-        <section className="grid gap-8 border-b border-black/8 pb-8 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-end">
+        <section className="grid gap-6 border-b border-black/8 pb-8 sm:gap-8 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-end">
           <div className="max-w-3xl">
             <p className="text-[11px] uppercase tracking-[0.34em] text-content-muted">Website Showcase</p>
-            <h1 className="mt-4 font-serif text-4xl font-medium tracking-[-0.04em] text-content-primary sm:text-5xl">
+            <h1 className="mt-4 font-serif text-[2.5rem] font-medium tracking-[-0.04em] text-content-primary sm:text-5xl">
               项目
             </h1>
             <p className="mt-5 max-w-3xl text-sm leading-7 text-content-secondary sm:text-[15px]">
@@ -109,15 +109,15 @@ export default function ProjectsPage() {
             </p>
           </div>
 
-          <div className="rounded-[2rem] border border-black/8 bg-white/68 p-5 backdrop-blur-sm">
-            <div className="flex items-end justify-between gap-4 border-b border-black/8 pb-4">
+          <div className="rounded-[2rem] border border-black/8 bg-white/68 p-5 backdrop-blur-sm sm:p-6">
+            <div className="flex flex-col gap-4 border-b border-black/8 pb-4 sm:flex-row sm:items-end sm:justify-between">
               <div>
                 <div className="text-[11px] uppercase tracking-[0.28em] text-content-muted">Website Count</div>
                 <div className="mt-3 text-3xl font-semibold tracking-[-0.05em] text-content-primary">
                   {String(websiteProjects.length).padStart(2, '0')}
                 </div>
               </div>
-              <div className="text-right text-xs leading-6 text-content-muted">
+              <div className="text-left text-xs leading-6 text-content-muted sm:text-right">
                 网站项目单独展示
                 <br />
                 工具页面已拆分
@@ -131,7 +131,7 @@ export default function ProjectsPage() {
           </div>
         </section>
 
-        <section className="mt-8 grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+        <section className="mt-8 grid gap-5 sm:gap-6 md:grid-cols-2 xl:grid-cols-3">
           {websiteProjects.map((project, index) => {
             const isPortrait = project.size === 'portrait'
 
@@ -144,7 +144,7 @@ export default function ProjectsPage() {
                 <article className="h-full overflow-hidden rounded-[2rem] bg-white/62 p-3 shadow-[0_16px_38px_rgba(15,23,42,0.05)] backdrop-blur-sm transition-[box-shadow,background-color] duration-500 ease-out group-hover:bg-white/72 group-hover:shadow-[0_24px_52px_rgba(15,23,42,0.08)]">
                   <div
                     className={`relative overflow-hidden rounded-[1.6rem] bg-gradient-to-br transition-transform duration-500 ease-out group-hover:scale-[1.015] ${project.coverPalette} ${
-                      isPortrait ? 'min-h-[30rem]' : 'min-h-[22rem]'
+                      isPortrait ? 'min-h-[24rem] sm:min-h-[30rem]' : 'min-h-[19rem] sm:min-h-[22rem]'
                     }`}
                   >
                     <div className={`absolute inset-0 transition-transform duration-700 ease-out group-hover:scale-[1.04] ${project.coverTexture}`} />
@@ -152,8 +152,8 @@ export default function ProjectsPage() {
                     {coverShape(index)}
 
                     <div
-                      className={`relative flex h-full flex-col justify-between p-6 ${
-                        isPortrait ? 'min-h-[30rem]' : 'min-h-[22rem]'
+                      className={`relative flex h-full flex-col justify-between p-5 sm:p-6 ${
+                        isPortrait ? 'min-h-[24rem] sm:min-h-[30rem]' : 'min-h-[19rem] sm:min-h-[22rem]'
                       }`}
                     >
                       <div className="flex items-start justify-between gap-4">
@@ -171,10 +171,10 @@ export default function ProjectsPage() {
                         <div className="text-[11px] uppercase tracking-[0.26em] opacity-65">
                           {project.year}
                         </div>
-                        <h2 className="mt-4 max-w-[14rem] font-serif text-3xl font-medium tracking-[-0.05em] sm:text-[2rem]">
+                        <h2 className="mt-4 max-w-[12rem] font-serif text-[1.75rem] font-medium tracking-[-0.05em] sm:max-w-[14rem] sm:text-[2rem]">
                           {project.name}
                         </h2>
-                        <p className="mt-4 max-w-[20rem] text-sm leading-7 opacity-80">
+                        <p className="mt-4 max-w-[18rem] text-sm leading-7 opacity-80 sm:max-w-[20rem]">
                           {project.description}
                         </p>
                       </div>

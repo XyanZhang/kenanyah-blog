@@ -33,7 +33,7 @@ type SortOrder = 'newest' | 'oldest'
 function BookmarksPageSkeleton() {
   return (
     <main className="min-h-[calc(100vh-80px)] w-full flex flex-col" aria-busy="true">
-      <div className="mx-auto w-full max-w-3xl px-6 py-8">
+      <div className="mx-auto w-full max-w-3xl px-4 pb-10 pt-24 sm:px-6 sm:pb-12 sm:pt-28 md:py-8">
         <header className="mb-8">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
@@ -178,9 +178,9 @@ export default function BookmarksPage() {
 
   return (
     <main className="min-h-[calc(100vh-80px)] w-full flex flex-col">
-      <div className="mx-auto w-full max-w-3xl px-6 py-8">
+      <div className="mx-auto w-full max-w-3xl px-4 pb-10 pt-24 sm:px-6 sm:pb-12 sm:pt-28 md:py-8">
         {/* Header */}
-        <header className="mb-8">
+        <header className="mb-8 rounded-[28px] border border-line-glass bg-surface-glass/30 p-5 backdrop-blur-sm sm:p-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h1 className="text-2xl font-semibold text-content-primary">收藏</h1>
@@ -247,7 +247,7 @@ export default function BookmarksPage() {
                     {cat}
                   </button>
                 ))}
-                <div className="ml-auto flex items-center gap-1">
+                <div className="flex items-center gap-1 sm:ml-auto">
                   <button
                     type="button"
                     onClick={() =>
@@ -308,7 +308,7 @@ export default function BookmarksPage() {
             </p>
           </div>
         ) : (
-          <div className="space-y-2">
+          <div className="space-y-3">
             {filteredAndSortedItems.map((item) => (
               <BookmarkCard key={item.id} item={item} />
             ))}

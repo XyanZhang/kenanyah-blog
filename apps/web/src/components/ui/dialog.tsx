@@ -85,14 +85,14 @@ function DialogContent({ children, className }: DialogContentProps) {
   }
 
   const dialogContent = (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center">
+    <div className="fixed inset-0 z-[100] flex items-end justify-center p-3 sm:items-center sm:p-6">
       <div
         className="fixed inset-0 bg-black/50"
         onClick={() => onOpenChange(false)}
       />
       <div
         className={cn(
-          'relative z-[101] w-full max-w-lg rounded-lg bg-surface-primary p-6 shadow-lg',
+          'relative z-[101] max-h-[calc(100vh-1.5rem)] w-full max-w-lg overflow-hidden rounded-2xl bg-surface-primary p-5 shadow-lg sm:max-h-[calc(100vh-3rem)] sm:p-6',
           className
         )}
         onClick={stopPropagation}
@@ -103,7 +103,7 @@ function DialogContent({ children, className }: DialogContentProps) {
         onKeyUp={stopPropagation}
       >
         <button
-          className="absolute right-4 top-4 rounded-sm opacity-70 hover:opacity-100"
+          className="absolute right-4 top-4 z-10 rounded-sm opacity-70 hover:opacity-100"
           onClick={() => onOpenChange(false)}
         >
           <X className="h-4 w-4" />
@@ -166,7 +166,7 @@ interface DialogFooterProps {
 
 function DialogFooter({ children, className }: DialogFooterProps) {
   return (
-    <div className={cn('flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2', className)}>
+    <div className={cn('flex flex-col-reverse gap-2 sm:flex-row sm:justify-end sm:gap-0 sm:space-x-2', className)}>
       {children}
     </div>
   )

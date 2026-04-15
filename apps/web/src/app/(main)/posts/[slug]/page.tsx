@@ -157,7 +157,7 @@ export default function PostPage() {
   let tocCursor = 0
 
   return (
-    <main className="min-h-[60vh] py-8 sm:py-12">
+    <main className="min-h-[60vh] pb-8 pt-24 sm:py-12">
       {/* 让正文列 + 右侧目录作为一个 1140px 布局整体居中，目录仍保持 fixed。 */}
       <div className="relative mx-auto w-full max-w-[1140px] px-4 sm:px-6 xl:px-0">
         <div
@@ -171,8 +171,8 @@ export default function PostPage() {
         <div className="w-full xl:max-w-[900px]">
           <div
             className={cn(
-              'mb-8 flex items-center',
-              authChecked && isAuthenticated ? 'justify-between' : ''
+              'mb-8 flex flex-col gap-3 sm:flex-row sm:items-center',
+              authChecked && isAuthenticated ? 'sm:justify-between' : ''
             )}
           >
             <Link
@@ -186,7 +186,7 @@ export default function PostPage() {
               <Link
                 data-skeleton="ignore"
                 href={`/blog/editor/${post.id}` as import('next').Route}
-                className="inline-flex items-center gap-2 rounded-xl border border-line-primary bg-surface-glass px-4 py-2.5 text-sm font-medium text-content-primary transition-colors hover:border-accent-primary/50 hover:bg-accent-primary/10"
+                className="inline-flex items-center gap-2 self-start rounded-xl border border-line-primary bg-surface-glass px-4 py-2.5 text-sm font-medium text-content-primary transition-colors hover:border-accent-primary/50 hover:bg-accent-primary/10"
               >
                 <Pencil className="h-4 w-4" />
                 编辑
@@ -195,7 +195,7 @@ export default function PostPage() {
           </div>
 
           <article className="font-blog w-full overflow-hidden rounded-2xl border border-line-glass bg-surface-glass/60 shadow-lg backdrop-blur-sm">
-            <header className="p-6 sm:p-8 pb-4">
+            <header className="p-5 pb-4 sm:p-8">
               <h1 className="text-2xl sm:text-3xl md:text-4xl font-semibold leading-tight text-content-primary tracking-tight">
                 {post.title}
               </h1>
@@ -231,7 +231,7 @@ export default function PostPage() {
               </div>
             )}
 
-            <div className="p-6 sm:p-8 pt-6">
+            <div className="p-5 pt-6 sm:p-8">
               <div className="md-content max-w-none">
                 <ReactMarkdown
                   remarkPlugins={[remarkGfm]}

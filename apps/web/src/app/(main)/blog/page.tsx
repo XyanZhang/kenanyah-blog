@@ -58,7 +58,7 @@ function useTodayStats() {
 function BlogPageSkeleton() {
   return (
     <main className="min-h-[calc(100vh-80px)] w-full flex flex-col" aria-busy="true">
-      <header className="shrink-0 px-6 pt-8 pb-6 flex justify-center">
+      <header className="flex shrink-0 justify-center px-4 pb-6 pt-24 sm:px-6 sm:pt-28 md:pt-8">
         <div className="w-full max-w-2xl text-left">
           <Skeleton className="h-8 w-28 rounded-2xl sm:h-9 sm:w-32" />
           <Skeleton className="mt-3 h-4 w-40 rounded-full" />
@@ -70,7 +70,7 @@ function BlogPageSkeleton() {
         </div>
       </header>
 
-      <div className="flex-1 px-6 pb-12">
+      <div className="flex-1 px-4 pb-12 sm:px-6">
         <div className="mx-auto w-full max-w-2xl">
           {[
             { yearWidth: 'w-10', itemCount: 4 },
@@ -168,20 +168,20 @@ export default function BlogPage() {
   return (
     <main className="min-h-[calc(100vh-80px)] w-full flex flex-col">
       {/* 标题 + 统计 + 当日状态：与时间线同宽居中，内容左对齐 */}
-      <header className="shrink-0 px-6 pt-8 pb-6 flex justify-center">
+      <header className="flex shrink-0 justify-center px-4 pb-6 pt-24 sm:px-6 sm:pt-28 md:pt-8">
         <div className="w-full max-w-2xl text-left">
           <h1 className="text-2xl font-semibold text-content-primary">时间线</h1>
           <p className="mt-1 text-sm text-content-muted">
             共有 {items.length} 篇，欢迎浏览
           </p>
-          <div className="mt-4 flex flex-wrap gap-x-6 gap-y-1 text-sm text-content-tertiary">
+          <div className="mt-4 flex flex-col gap-1 text-sm text-content-tertiary sm:flex-row sm:flex-wrap sm:gap-x-6 sm:gap-y-1">
             <span>今天是 {year} 年的第 {dayOfYear} 天</span>
             <span>今年已过 {yearProgress}%</span>
             <span>今天已过 {dayProgress}%</span>
           </div>
         </div>
       </header>
-      <div className="flex-1 px-6 pb-12">
+      <div className="flex-1 px-4 pb-12 sm:px-6">
         <BlogTimeline items={items} />
       </div>
     </main>

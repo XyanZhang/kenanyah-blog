@@ -30,18 +30,18 @@ function formatShortDate(iso: string): string {
 function DefaultTimelineRow({ item }: { item: BlogTimelineItem }) {
   const meta = (
     <>
-      <span className="text-content-muted text-sm tabular-nums shrink-0 w-14">
+      <span className="w-14 shrink-0 text-sm tabular-nums text-content-muted">
         {formatShortDate(item.date)}
       </span>
       {item.readTimeMinutes != null && (
-        <span className="text-content-tertiary text-sm">
+        <span className="text-sm text-content-tertiary">
           · {item.readTimeMinutes} 分钟阅读
         </span>
       )}
     </>
   )
   const title = (
-    <span className="font-medium text-content-primary group-hover:text-accent-primary transition-colors duration-200 relative inline-block">
+    <span className="relative inline-block text-base font-medium leading-6 text-content-primary transition-colors duration-200 group-hover:text-accent-primary sm:text-[15px]">
       {item.title}
       {/* 悬停时的主题色下划线 */}
       <span
@@ -57,16 +57,20 @@ function DefaultTimelineRow({ item }: { item: BlogTimelineItem }) {
     return (
       <Link
         href={href}
-        className="group flex items-center gap-4 min-w-0"
+        className="group flex min-w-0 flex-col items-start gap-1.5 sm:flex-row sm:items-center sm:gap-4"
       >
-        {meta}
+        <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+          {meta}
+        </span>
         {title}
       </Link>
     )
   }
   return (
-    <div className="flex items-center gap-4 min-w-0 text-content-primary">
-      {meta}
+    <div className="flex min-w-0 flex-col items-start gap-1.5 text-content-primary sm:flex-row sm:items-center sm:gap-4">
+      <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+        {meta}
+      </span>
       {title}
     </div>
   )
@@ -165,7 +169,7 @@ export function BlogTimeline({
                     </div>
 
                     {/* 文案列 */}
-                    <div className="pl-5 py-1.5 min-w-0">
+                    <div className="min-w-0 py-2 pl-4 sm:pl-5">
                       {renderItem
                         ? renderItem(entry, idx)
                         : <DefaultTimelineRow item={entry} />}

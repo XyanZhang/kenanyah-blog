@@ -36,12 +36,12 @@ const tools: Array<{
 
 export function ToolsPageClient() {
   return (
-    <main className="min-h-screen px-4 pb-20 pt-8 sm:px-6 lg:pl-24 lg:pr-8 lg:pt-10">
+    <main className="min-h-screen px-4 pb-20 pt-24 sm:px-6 sm:pt-28 lg:pl-24 lg:pr-8 lg:pt-10">
       <div className="mx-auto max-w-5xl">
         <section className="border-b border-black/6 pb-8">
           <div className="max-w-3xl">
             <p className="text-[11px] uppercase tracking-[0.3em] text-content-muted">Tools</p>
-            <h1 className="mt-4 text-4xl font-semibold tracking-[-0.06em] text-content-primary sm:text-5xl">
+            <h1 className="mt-4 text-[2.5rem] font-semibold tracking-[-0.06em] text-content-primary sm:text-5xl">
               在线处理工具
             </h1>
             <p className="mt-4 max-w-full text-[15px] leading-7 text-content-secondary">
@@ -67,10 +67,10 @@ export function ToolsPageClient() {
                     duration: 0.55,
                     ease: [0.22, 1, 0.36, 1],
                   }}
-                  className="rounded-[2rem] border border-white/70 bg-white/66 p-6 shadow-[0_20px_45px_rgba(15,23,42,0.06)] backdrop-blur-[18px] transition-[transform,box-shadow,background-color] duration-300 ease-out group-hover:-translate-y-0.5 group-hover:bg-white/76 group-hover:shadow-[0_28px_60px_rgba(15,23,42,0.08)] sm:p-7"
+                  className="rounded-[2rem] border border-white/70 bg-white/66 p-5 shadow-[0_20px_45px_rgba(15,23,42,0.06)] backdrop-blur-[18px] transition-[transform,box-shadow,background-color] duration-300 ease-out group-hover:-translate-y-0.5 group-hover:bg-white/76 group-hover:shadow-[0_28px_60px_rgba(15,23,42,0.08)] sm:p-7"
                 >
                   <div className="flex items-start justify-between gap-4">
-                    <div className="flex items-start gap-4">
+                    <div className="flex min-w-0 items-start gap-4">
                       <div
                         className={`inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-[1.2rem] ${
                           isPrimary
@@ -82,7 +82,7 @@ export function ToolsPageClient() {
                       </div>
 
                       <div className="min-w-0">
-                        <div className="flex flex-wrap items-center gap-2">
+                        <div className="flex flex-col items-start gap-2 sm:flex-row sm:flex-wrap sm:items-center">
                           <h2 className="text-[1.35rem] font-semibold tracking-[-0.05em] text-content-primary">
                             {tool.name}
                           </h2>

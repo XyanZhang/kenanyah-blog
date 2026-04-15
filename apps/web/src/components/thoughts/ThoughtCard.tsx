@@ -75,7 +75,7 @@ export function ThoughtCard({
           : 'grid-cols-3'
 
   return (
-    <article className="bg-card border-border rounded-xl p-4 shadow-sm">
+    <article className="rounded-2xl border border-line-glass/40 bg-card p-4 shadow-sm sm:p-5">
       <div className="flex gap-3">
         <div className="shrink-0">
           <Image
@@ -87,8 +87,8 @@ export function ThoughtCard({
           />
         </div>
         <div className="flex-1 min-w-0">
-          <div className="flex items-center justify-between gap-2 text-content-secondary">
-            <div className="flex items-center gap-2 min-w-0">
+          <div className="flex flex-col gap-2 text-content-secondary sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
               <span className="font-medium text-content-primary truncate">
                 {post.authorName}
               </span>
@@ -99,7 +99,7 @@ export function ThoughtCard({
             {canEdit && (
               <Link
                 href={`/thoughts/${post.id}/edit`}
-                className="shrink-0 inline-flex items-center gap-1 text-sm text-content-tertiary hover:text-accent-primary transition-colors"
+                className="inline-flex shrink-0 items-center gap-1 self-start text-sm text-content-tertiary transition-colors hover:text-accent-primary sm:self-auto"
               >
                 <Pencil className="h-3.5 w-3.5" />
                 编辑
@@ -138,7 +138,7 @@ export function ThoughtCard({
               ))}
             </div>
           )}
-          <div className="flex items-center gap-6 mt-4 pt-3 border-border">
+          <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-3 border-border pt-3">
             <button
               type="button"
               onClick={() => onComment(post.id)}
