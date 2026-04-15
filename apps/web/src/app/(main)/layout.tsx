@@ -14,7 +14,7 @@ export default function MainLayout({
   children: React.ReactNode
 }) {
   return (
-    <div className="relative min-h-screen pt-25">
+    <div className="relative min-h-screen">
       <PageBackground />
       {/* 飘落粒子放在背景之上、内容之下，避免被大背景遮盖；花瓣类型使用引入的粉色花瓣图 */}
       <div className="pointer-events-none fixed inset-0 z-5">

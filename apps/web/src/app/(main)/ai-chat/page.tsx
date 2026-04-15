@@ -1138,11 +1138,9 @@ export default function AiChatPage() {
         : '可继续输入'
   const panelClass =
     'rounded-[1.5rem] border border-line-glass bg-surface-glass/88 shadow-[0_18px_48px_rgba(15,23,42,0.06)] backdrop-blur-lg'
-  const ghostActionButtonClass =
-    'inline-flex items-center gap-2 rounded-2xl border border-line-glass bg-surface-glass/62 px-3 py-2 text-sm font-medium text-content-primary transition-colors hover:bg-surface-glass/78'
 
   return (
-    <main className="mx-auto grid w-full max-w-[1420px] gap-4 px-4 py-6 md:py-8 xl:grid-cols-[252px_minmax(0,1fr)] 2xl:grid-cols-[264px_minmax(0,1fr)]">
+    <main className="mx-auto grid w-full max-w-[1240px] gap-4 px-4 py-6 md:py-8 xl:grid-cols-[240px_minmax(0,1fr)] 2xl:grid-cols-[252px_minmax(0,1fr)]">
       <section className="flex min-h-[24rem] flex-col xl:sticky xl:top-6 xl:h-[calc(100vh-7rem)]">
         <div className={`${panelClass} mb-4 p-3.5`}>
           <div className="flex items-start gap-3">
@@ -1282,7 +1280,7 @@ export default function AiChatPage() {
 
       <section className="flex min-h-[60vh] flex-col xl:h-[calc(100vh-7rem)]">
         <div className={`${panelClass} flex flex-1 flex-col overflow-hidden p-4 md:p-5`}>
-          <div className="mb-4 flex flex-wrap items-start justify-between gap-3 border-b border-line-glass/60 pb-4">
+          <div className="mx-auto mb-4 flex w-full max-w-full flex-wrap items-start justify-between gap-3 border-b border-line-glass/60 pb-4">
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
                 <h1 className="min-w-0 truncate text-lg font-semibold tracking-[-0.03em] text-content-primary sm:text-xl">
@@ -1313,48 +1311,49 @@ export default function AiChatPage() {
             </div>
           )}
           {!loadingMessages && (
-            <div className="flex-1 overflow-y-auto space-y-4 pr-1 pb-4 scrollbar-none">
+            <div className="flex-1 overflow-y-auto pb-4 scrollbar-none">
               {messages.length === 0 ? (
                 <div className="h-full flex items-center justify-center text-sm text-content-secondary">
                   还没有消息，试着问问 AI 一个问题吧～
                 </div>
               ) : (
-                messages.map((msg, index) => {
-                  const operationCard =
-                    msg.role === 'assistant' ? parseOperationCardContent(msg.content || '') : null
-                  const isWorkflowFollowup =
-                    operationCard?.kind === 'followup' && operationCard.submitMode === 'workflow'
-                  const followupQuestions = isWorkflowFollowup ? operationCard.questions : []
-                  const followupSpecs = followupQuestions.map((question, questionIndex) =>
-                    buildFollowupQuestionSpec(question, questionIndex)
-                  )
-                  const isLatestResolvedAssistantMessage =
-                    msg.role === 'assistant' && index === messages.length - 1 && !msg.pending
-                  const showWorkflowFollowupActions =
-                    isWorkflowFollowup &&
-                    workflowFollowupMode &&
-                    isLatestResolvedAssistantMessage
-                  const showChatFollowupActions =
-                    operationCard?.kind === 'followup' &&
-                    operationCard.submitMode === 'chat' &&
-                    isLatestResolvedAssistantMessage
-                  const showConfirmActions =
-                    operationCard?.kind === 'confirm' && isLatestResolvedAssistantMessage
-                  const defaultReplyMessage =
-                    operationCard?.kind === 'followup' ? operationCard.defaultReplyMessage : undefined
+                <div className="mx-auto flex w-full max-w-full flex-col gap-4 pr-1">
+                  {messages.map((msg, index) => {
+                    const operationCard =
+                      msg.role === 'assistant' ? parseOperationCardContent(msg.content || '') : null
+                    const isWorkflowFollowup =
+                      operationCard?.kind === 'followup' && operationCard.submitMode === 'workflow'
+                    const followupQuestions = isWorkflowFollowup ? operationCard.questions : []
+                    const followupSpecs = followupQuestions.map((question, questionIndex) =>
+                      buildFollowupQuestionSpec(question, questionIndex)
+                    )
+                    const isLatestResolvedAssistantMessage =
+                      msg.role === 'assistant' && index === messages.length - 1 && !msg.pending
+                    const showWorkflowFollowupActions =
+                      isWorkflowFollowup &&
+                      workflowFollowupMode &&
+                      isLatestResolvedAssistantMessage
+                    const showChatFollowupActions =
+                      operationCard?.kind === 'followup' &&
+                      operationCard.submitMode === 'chat' &&
+                      isLatestResolvedAssistantMessage
+                    const showConfirmActions =
+                      operationCard?.kind === 'confirm' && isLatestResolvedAssistantMessage
+                    const defaultReplyMessage =
+                      operationCard?.kind === 'followup' ? operationCard.defaultReplyMessage : undefined
 
-                  return (
-                    <div
-                      key={msg.id}
-                      className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                    >
+                    return (
                       <div
-                        className={`relative max-w-full rounded-2xl px-3 py-2 text-sm shadow-sm ${
-                          msg.role === 'user'
-                            ? 'bg-accent-primary text-white'
-                            : 'bg-surface-tertiary/90 text-content-primary'
-                        }`}
+                        key={msg.id}
+                        className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
                       >
+                        <div
+                          className={`relative max-w-[85%] rounded-2xl px-3 py-2 text-sm shadow-sm ${
+                            msg.role === 'user'
+                              ? 'bg-accent-primary text-white'
+                              : 'bg-surface-tertiary/90 text-content-primary'
+                          }`}
+                        >
                         {msg.queued && (
                           <div className="mb-2 text-[11px] font-medium text-content-tertiary">
                             排队中
@@ -1668,9 +1667,10 @@ export default function AiChatPage() {
                           <span>{msg.content}</span>
                         )}
                       </div>
-                    </div>
-                  )
-                })
+                      </div>
+                    )
+                  })}
+                </div>
               )}
               <div ref={bottomRef} />
             </div>
@@ -1678,7 +1678,7 @@ export default function AiChatPage() {
         </div>
 
         <div className={`${panelClass} mt-3 p-3 md:p-4`}>
-          <div className="flex flex-wrap items-center gap-2 md:flex-nowrap">
+          <div className="mx-auto flex w-full max-w-full flex-wrap items-center gap-2 md:flex-nowrap">
             <button
               type="button"
               onClick={() => setUseKnowledgeBase((prev) => !prev)}
