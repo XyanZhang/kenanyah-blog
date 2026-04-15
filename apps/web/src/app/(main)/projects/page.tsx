@@ -1,16 +1,12 @@
 import type { Metadata, Route } from 'next'
 import Link from 'next/link'
 import { ArrowUpRight } from 'lucide-react'
-import type { ProjectEntryDto } from '@blog/types'
-import { getApiFetchUrl } from '@/lib/api-client'
 
 export const metadata: Metadata = {
   title: '项目',
 }
 
-export const revalidate = 60
-
-const projects: Array<{
+const websiteProjects: Array<{
   name: string
   description: string
   tags: string[]
@@ -24,41 +20,56 @@ const projects: Array<{
   size: 'portrait' | 'landscape'
 }> = [
   {
-    name: '图片格式转换',
+    name: 'Personal Blog',
     description:
-      '在浏览器中完成 PNG / JPEG / WebP 格式转换，支持裁剪、圆角和导出前预览。',
-    tags: ['Image', 'Canvas', 'Crop'],
-    href: '/projects/image-converter',
-    note: '偏轻量、直接，适合快速处理图片。',
-    category: 'Utility',
+      '一个用于写作、整理想法和展示生活内容的个人网站，包含文章、摄影、搜索和日历式记录。',
+    tags: ['Next.js', 'React', 'Content'],
+    href: '/about',
+    note: '更像一个持续生长的个人空间，而不是一次性上线的展示页。',
+    category: 'Website',
     year: '2026',
-    coverPalette: 'from-[#efe3d2] via-[#d6d7d1] to-[#8caec7]',
+    coverPalette: 'from-[#f2e4d8] via-[#d8d9d5] to-[#91b0bf]',
     coverTexture:
-      'bg-[radial-gradient(circle_at_22%_18%,rgba(255,255,255,0.86),transparent_24%),radial-gradient(circle_at_74%_72%,rgba(112,154,183,0.36),transparent_20%),linear-gradient(145deg,rgba(255,255,255,0.16),rgba(33,71,106,0.12))]',
-    textTone: 'text-[#1f2933]',
+      'bg-[radial-gradient(circle_at_18%_22%,rgba(255,255,255,0.88),transparent_22%),radial-gradient(circle_at_76%_70%,rgba(116,154,176,0.32),transparent_22%),linear-gradient(150deg,rgba(255,255,255,0.14),rgba(38,70,93,0.14))]',
+    textTone: 'text-[#22313c]',
     size: 'portrait',
   },
   {
-    name: 'PDF 解读',
+    name: 'Writing & Archive',
     description:
-      '上传 PDF 后进行解析、向量化和问答，最后生成可继续整理的 Markdown 结果。',
-    tags: ['PDF', 'RAG', 'pgvector'],
-    href: '/pdf-agent',
-    note: '偏阅读与理解，适合长文档处理场景。',
-    category: 'Reading Workflow',
+      '围绕博客、thoughts、bookmarks 和搜索建立的内容型网站结构，让记录和检索放在同一个系统里。',
+    tags: ['Archive', 'Search', 'CMS'],
+    href: '/blog',
+    note: '重点不是单篇页面，而是长期积累后的可阅读性和可查找性。',
+    category: 'Publishing',
     year: '2026',
-    coverPalette: 'from-[#25283b] via-[#59607a] to-[#d2b7a7]',
+    coverPalette: 'from-[#2d3144] via-[#59637b] to-[#d3b29f]',
     coverTexture:
-      'bg-[radial-gradient(circle_at_68%_22%,rgba(255,255,255,0.22),transparent_18%),radial-gradient(circle_at_30%_80%,rgba(255,218,188,0.2),transparent_20%),linear-gradient(140deg,rgba(16,18,28,0.14),rgba(255,255,255,0.04))]',
+      'bg-[radial-gradient(circle_at_66%_24%,rgba(255,255,255,0.2),transparent_18%),radial-gradient(circle_at_28%_78%,rgba(255,222,199,0.22),transparent_24%),linear-gradient(140deg,rgba(17,20,31,0.18),rgba(255,255,255,0.04))]',
     textTone: 'text-white',
     size: 'landscape',
   },
+  {
+    name: 'Visual Dashboard',
+    description:
+      '可视化首页与导航系统，让网站既像博客，也像一个带有个人节奏的数字桌面。',
+    tags: ['Dashboard', 'Motion', 'UI System'],
+    href: '/',
+    note: '它负责网站第一眼的气质，也把不同内容页串成一个整体。',
+    category: 'Experience',
+    year: '2026',
+    coverPalette: 'from-[#d8cab9] via-[#d5d6cf] to-[#6f8791]',
+    coverTexture:
+      'bg-[radial-gradient(circle_at_22%_20%,rgba(255,255,255,0.7),transparent_20%),radial-gradient(circle_at_74%_76%,rgba(88,118,127,0.28),transparent_24%),linear-gradient(145deg,rgba(255,255,255,0.18),rgba(24,46,55,0.1))]',
+    textTone: 'text-[#22313c]',
+    size: 'portrait',
+  },
 ]
 
-const archiveNotes = [
-  '每个项目都作为独立页面维护，适合继续扩展。',
-  '版式统一由数据驱动，新增项目时不需要重排主次结构。',
-  '封面更接近画册而不是功能卡片，便于后续继续增加视觉层次。',
+const projectNotes = [
+  '这里放的是网站型项目，重点是信息结构、内容体验和整体气质。',
+  '工具型页面会单独归档到 Tools，避免项目展示和功能入口混在一起。',
+  '后续新增网站时，只需要补充数据，不需要改页面骨架。',
 ]
 
 function coverShape(index: number) {
@@ -83,128 +94,45 @@ function coverShape(index: number) {
   return shapes[index % shapes.length]
 }
 
-type ProjectsApiResponse = {
-  success?: boolean
-  data?: ProjectEntryDto[]
-}
-
-async function loadDatabaseProjects(): Promise<ProjectEntryDto[]> {
-  try {
-    const res = await fetch(getApiFetchUrl('/projects'), { next: { revalidate: 60 } })
-    if (!res.ok) return []
-    const json = (await res.json()) as ProjectsApiResponse
-    if (!json.success || !Array.isArray(json.data)) return []
-    return json.data
-  } catch {
-    return []
-  }
-}
-
-export default async function ProjectsPage() {
-  const databaseProjects = await loadDatabaseProjects()
-
+export default function ProjectsPage() {
   return (
     <main className="min-h-screen px-4 pb-16 pt-6 sm:px-6 lg:pl-24 lg:pr-8 lg:pt-8">
       <div className="mx-auto max-w-7xl">
         <section className="grid gap-8 border-b border-black/8 pb-8 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-end">
           <div className="max-w-3xl">
-            <p className="text-[11px] uppercase tracking-[0.34em] text-content-muted">Works Index</p>
+            <p className="text-[11px] uppercase tracking-[0.34em] text-content-muted">Website Showcase</p>
             <h1 className="mt-4 font-serif text-4xl font-medium tracking-[-0.04em] text-content-primary sm:text-5xl">
-              作品
+              项目
             </h1>
             <p className="mt-5 max-w-3xl text-sm leading-7 text-content-secondary sm:text-[15px]">
-              这些页面像是一些慢慢积累下来的片段。它们各自处理不同的问题，也保留了各自该有的节奏和表情。
+              这里现在专门用来展示网站项目。它们更关注内容、结构和体验，而不是单一的小功能。
             </p>
           </div>
 
           <div className="rounded-[2rem] border border-black/8 bg-white/68 p-5 backdrop-blur-sm">
             <div className="flex items-end justify-between gap-4 border-b border-black/8 pb-4">
               <div>
-                <div className="text-[11px] uppercase tracking-[0.28em] text-content-muted">Archive Size</div>
+                <div className="text-[11px] uppercase tracking-[0.28em] text-content-muted">Website Count</div>
                 <div className="mt-3 text-3xl font-semibold tracking-[-0.05em] text-content-primary">
-                  {String(projects.length).padStart(2, '0')}
+                  {String(websiteProjects.length).padStart(2, '0')}
                 </div>
               </div>
               <div className="text-right text-xs leading-6 text-content-muted">
-                按目录扩展
+                网站项目单独展示
                 <br />
-                不依赖固定主卡
+                工具页面已拆分
               </div>
             </div>
             <div className="mt-4 space-y-3 text-sm leading-7 text-content-secondary">
-              {archiveNotes.map((note) => (
+              {projectNotes.map((note) => (
                 <p key={note}>{note}</p>
               ))}
             </div>
           </div>
         </section>
 
-        {databaseProjects.length > 0 && (
-          <section className="mt-8 rounded-[2rem] border border-black/8 bg-white/68 p-5 backdrop-blur-sm">
-            <div className="flex flex-col gap-2 border-b border-black/8 pb-4 sm:flex-row sm:items-end sm:justify-between">
-              <div>
-                <p className="text-[11px] uppercase tracking-[0.34em] text-content-muted">Database Feed</p>
-                <h2 className="mt-3 text-2xl font-semibold tracking-[-0.04em] text-content-primary">
-                  当下正在推进
-                </h2>
-              </div>
-              <p className="max-w-xl text-sm leading-7 text-content-secondary">
-                这部分来自数据库，会和日历事件流联动，适合承接 AI 快速创建和日常补记。
-              </p>
-            </div>
-
-            <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-              {databaseProjects.map((project) => (
-                <article
-                  key={project.id}
-                  className="rounded-[1.4rem] border border-black/8 bg-white/78 p-4 shadow-[0_16px_40px_rgba(15,23,42,0.05)]"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <div className="text-[11px] uppercase tracking-[0.26em] text-content-muted">
-                        {project.status}
-                      </div>
-                      <h3 className="mt-3 text-xl font-semibold tracking-[-0.04em] text-content-primary">
-                        {project.title}
-                      </h3>
-                    </div>
-                    {project.href && (
-                      <a
-                        href={project.href}
-                        className="inline-flex rounded-full border border-black/8 p-2 text-content-secondary transition-colors hover:bg-black/[0.04] hover:text-content-primary"
-                      >
-                        <ArrowUpRight className="h-4 w-4" />
-                      </a>
-                    )}
-                  </div>
-
-                  {project.description && (
-                    <p className="mt-4 text-sm leading-7 text-content-secondary">{project.description}</p>
-                  )}
-
-                  <div className="mt-5 flex flex-wrap gap-2">
-                    {project.category && (
-                      <span className="rounded-full bg-black/[0.04] px-3 py-1 text-[11px] uppercase tracking-[0.18em] text-content-secondary">
-                        {project.category}
-                      </span>
-                    )}
-                    {project.tags.map((tag) => (
-                      <span
-                        key={`${project.id}-${tag}`}
-                        className="rounded-full bg-black/[0.04] px-3 py-1 text-[11px] uppercase tracking-[0.18em] text-content-secondary"
-                      >
-                        {tag}
-                      </span>
-                    ))}
-                  </div>
-                </article>
-              ))}
-            </div>
-          </section>
-        )}
-
         <section className="mt-8 grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-          {projects.map((project, index) => {
+          {websiteProjects.map((project, index) => {
             const isPortrait = project.size === 'portrait'
 
             return (
@@ -232,7 +160,9 @@ export default async function ProjectsPage() {
                         <div className="rounded-full bg-white/42 px-3 py-1 text-[11px] uppercase tracking-[0.28em] text-content-secondary transition-colors duration-500 group-hover:bg-white/56">
                           {project.category}
                         </div>
-                        <div className={`rounded-full bg-white/30 p-3 ${project.textTone} transition-[transform,background-color] duration-500 ease-out group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:bg-white/42`}>
+                        <div
+                          className={`rounded-full bg-white/30 p-3 ${project.textTone} transition-[transform,background-color] duration-500 ease-out group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:bg-white/42`}
+                        >
                           <ArrowUpRight className="h-4 w-4" />
                         </div>
                       </div>
