@@ -256,7 +256,7 @@ export function CalendarMonthView({ month }: { month: string }) {
       setHoveredDate(null)
       setHoverCardStyle(null)
       hoverHideTimeoutRef.current = null
-    }, 3000)
+    }, 1000)
   }
 
   const getFloatingCardPosition = (element: HTMLElement): FloatingCardPosition | null => {

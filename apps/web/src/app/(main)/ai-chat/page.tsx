@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import {
@@ -10,12 +10,10 @@ import {
   Bot,
   Pencil,
   Trash2,
-  FilePenLine,
   Database,
   Plus,
   Keyboard,
   Mic,
-  Sparkles,
 } from 'lucide-react'
 import {
   listConversations,
@@ -31,7 +29,6 @@ import {
   type ChatMessage,
   type ChatStreamEvent,
 } from '@/lib/ai-chat-api'
-import { quickCreateCalendarEvent } from '@/lib/calendar-api'
 import {
   buildWorkflowFollowupOperationCardMessage,
   isWorkflowOperationCardContent,
@@ -206,19 +203,9 @@ function getConversationDisplayTitle(title?: string | null): string {
   return normalizedTitle ? normalizedTitle : '未命名'
 }
 
-function getTodayDateString() {
-  const now = new Date()
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(
-    now.getDate()
-  ).padStart(2, '0')}`
-}
-
 export default function AiChatPage() {
-  const router = useRouter()
   const searchParams = useSearchParams()
   const initialConversationId = searchParams.get('conversationId')
-  const quickDateFromQuery = searchParams.get('quickDate')
-  const todayDate = getTodayDateString()
 
   const [conversations, setConversations] = useState<ChatConversation[]>([])
   const [currentId, setCurrentId] = useState<string | null>(null)
@@ -238,13 +225,6 @@ export default function AiChatPage() {
   const [operationCardReplyDrafts, setOperationCardReplyDrafts] = useState<Record<string, string>>({})
   const [chatQueue, setChatQueue] = useState<ChatQueueItem[]>([])
   const [workflowQueue, setWorkflowQueue] = useState<WorkflowQueueItem[]>([])
-  const [quickEventText, setQuickEventText] = useState('')
-  const [quickEventDate, setQuickEventDate] = useState('')
-  const [quickEventBusy, setQuickEventBusy] = useState(false)
-  const [quickEventError, setQuickEventError] = useState<string | null>(null)
-  const [quickEventNote, setQuickEventNote] = useState<string | null>(null)
-  const [quickEventJumpUrl, setQuickEventJumpUrl] = useState<string | null>(null)
-  const [quickEventInputType, setQuickEventInputType] = useState<'text' | 'voice'>('text')
   const bottomRef = useRef<HTMLDivElement | null>(null)
   const isComposingRef = useRef(false)
   const inputRef = useRef<HTMLTextAreaElement | null>(null)
@@ -263,6 +243,16 @@ export default function AiChatPage() {
       inputRef.current?.focus()
     })
   }, [])
+
+  const syncInputHeight = useCallback(() => {
+    const element = inputRef.current
+    if (!element || inputMode !== 'text') {
+      return
+    }
+
+    element.style.height = '0px'
+    element.style.height = `${Math.min(element.scrollHeight, 160)}px`
+  }, [inputMode])
 
   const switchToTextInput = useCallback(() => {
     setInputMode('text')
@@ -290,56 +280,6 @@ export default function AiChatPage() {
     },
     [switchToTextInput]
   )
-
-  const handleQuickEventVoiceComplete = useCallback((text: string) => {
-    const normalizedText = text.trim()
-    if (!normalizedText) {
-      return
-    }
-
-    setQuickEventInputType('voice')
-    setQuickEventText((prev) => {
-      if (!prev.trim()) {
-        return normalizedText
-      }
-
-      return `${prev.trimEnd()}\n${normalizedText}`
-    })
-  }, [])
-
-  const handleQuickEventCreate = useCallback(async () => {
-    const rawText = quickEventText.trim()
-    if (!rawText) {
-      setQuickEventError('请先输入或录入要创建的事件内容')
-      return
-    }
-
-    setQuickEventBusy(true)
-    setQuickEventError(null)
-    setQuickEventNote(null)
-    try {
-      const result = await quickCreateCalendarEvent({
-        rawText,
-        defaultDate: quickEventDate || undefined,
-        sourceInputType: quickEventInputType,
-      })
-      setQuickEventNote(result.note)
-      setQuickEventJumpUrl(result.linkedEntity?.jumpUrl ?? `/calendar/day/${result.targetDate}`)
-      setQuickEventText('')
-      setQuickEventDate(result.targetDate)
-      setQuickEventInputType('text')
-    } catch (err) {
-      setQuickEventError(err instanceof Error ? err.message : '快速创建失败')
-    } finally {
-      setQuickEventBusy(false)
-    }
-  }, [quickEventDate, quickEventInputType, quickEventText])
-
-  useEffect(() => {
-    if (quickDateFromQuery && /^\d{4}-\d{2}-\d{2}$/.test(quickDateFromQuery)) {
-      setQuickEventDate(quickDateFromQuery)
-    }
-  }, [quickDateFromQuery])
 
   useEffect(() => {
     try {
@@ -465,12 +405,15 @@ export default function AiChatPage() {
     }
   }, [])
 
+  useEffect(() => {
+    syncInputHeight()
+  }, [input, inputMode, syncInputHeight])
+
   async function handleCreateConversation() {
     try {
       const conv = await createConversation()
       setConversations((prev) => [conv, ...prev])
       setCurrentId(conv.id)
-      router.push('/ai-chat')
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
     }
@@ -494,7 +437,6 @@ export default function AiChatPage() {
         setCurrentId(nextCurrentId)
         if (!nextCurrentId) {
           setMessages([])
-          router.push('/ai-chat')
         }
       }
     } catch (err) {
@@ -1018,15 +960,6 @@ export default function AiChatPage() {
     }
   }
 
-  async function handleGenerateBlog() {
-    if (workflowFollowupMode) {
-      await handleWorkflowFollowupSend()
-      return
-    }
-
-    await runWorkflowFromInput(input, '正在规划并生成博客，请稍候…')
-  }
-
   async function submitWorkflowFollowup(content: string, options?: { clearInput?: boolean }) {
     const trimmedContent = content.trim()
     if (!trimmedContent) {
@@ -1038,33 +971,6 @@ export default function AiChatPage() {
 
   async function handleWorkflowFollowupSend() {
     await submitWorkflowFollowup(input)
-  }
-
-  function handleQueueGenerateBlog() {
-    if (workflowFollowupMode) {
-      queueWorkflowFromInput(input, '已加入继续生成队列，等待当前任务结束…')
-      return
-    }
-
-    queueWorkflowFromInput(input, '已加入生成队列，等待当前任务结束…')
-  }
-
-  function handleInterruptWorkflow() {
-    if (!runningWorkflow) return
-    cancelActiveWorkflowRequest()
-  }
-
-  function handleInterruptAndContinueWorkflow() {
-    if (!runningWorkflow) return
-
-    const trimmedContent = input.trim()
-    if (trimmedContent) {
-      queueWorkflowFromInput(trimmedContent, '正在中断当前生成，并准备继续处理…', {
-        prepend: true,
-      })
-    }
-
-    cancelActiveWorkflowRequest()
   }
 
   async function handleWorkflowFollowupUseDefaults(questions: string[]) {
@@ -1219,23 +1125,6 @@ export default function AiChatPage() {
   const voiceInputDisabled = !currentId || sending || runningWorkflow
   const voiceToggleDisabled = inputMode === 'voice' ? false : voiceInputDisabled
 
-  const inputStatusText =
-    inputMode === 'voice'
-      ? voiceInputDisabled
-        ? runningWorkflow
-          ? '博客工作流执行中，语音输入暂不可用。'
-          : sending
-            ? '当前正在生成回答，语音输入暂不可用。'
-            : '当前状态下不可使用语音输入。'
-        : '按住说话，松开发送，上滑取消，识别结果会自动回填到输入框。'
-      : runningWorkflow
-        ? `正在执行博客工作流。你可以继续输入并加入生成队列${workflowQueue.length > 0 ? `，当前生成队列 ${workflowQueue.length} 条` : '。'}`
-        : workflowFollowupMode
-          ? '当前处于博客生成补充信息模式，发送后会继续走生成并入库流程。'
-        : sending
-          ? `正在生成回答。你可以继续输入并排队发送${chatQueue.length > 0 ? `，当前队列 ${chatQueue.length} 条` : ''}。`
-          : 'Enter 发送，Shift + Enter 换行。'
-
   const currentConversation = conversations.find((conv) => conv.id === currentId) ?? null
   const currentConversationTitle = currentConversation?.title?.trim() ?? ''
   const currentConversationDisplayTitle = currentConversationTitle || '当前会话'
@@ -1249,13 +1138,11 @@ export default function AiChatPage() {
         : '可继续输入'
   const panelClass =
     'rounded-[1.5rem] border border-line-glass bg-surface-glass/88 shadow-[0_18px_48px_rgba(15,23,42,0.06)] backdrop-blur-lg'
-  const subtlePanelClass =
-    'rounded-[1rem] border border-line-glass/70 bg-surface-glass/58 shadow-[inset_0_1px_0_rgba(255,255,255,0.42)]'
   const ghostActionButtonClass =
     'inline-flex items-center gap-2 rounded-2xl border border-line-glass bg-surface-glass/62 px-3 py-2 text-sm font-medium text-content-primary transition-colors hover:bg-surface-glass/78'
 
   return (
-    <main className="mx-auto grid w-full max-w-[1560px] gap-4 px-4 py-6 md:py-8 xl:grid-cols-[252px_minmax(0,1fr)_296px] 2xl:grid-cols-[264px_minmax(0,1fr)_312px]">
+    <main className="mx-auto grid w-full max-w-[1420px] gap-4 px-4 py-6 md:py-8 xl:grid-cols-[252px_minmax(0,1fr)] 2xl:grid-cols-[264px_minmax(0,1fr)]">
       <section className="flex min-h-[24rem] flex-col xl:sticky xl:top-6 xl:h-[calc(100vh-7rem)]">
         <div className={`${panelClass} mb-4 p-3.5`}>
           <div className="flex items-start gap-3">
@@ -1267,8 +1154,7 @@ export default function AiChatPage() {
               <p className="mt-1 text-xs leading-5 text-content-secondary">切换会话、进入当前上下文。</p>
             </div>
           </div>
-
-          <div className="mt-4 grid gap-2">
+          <div className="mt-4">
             <button
               type="button"
               onClick={handleCreateConversation}
@@ -1276,15 +1162,6 @@ export default function AiChatPage() {
             >
               <Plus className="h-4 w-4" />
               新建会话
-            </button>
-
-            <button
-              type="button"
-              onClick={() => router.push(`/calendar/day/${quickEventDate || todayDate}`)}
-              className={`${ghostActionButtonClass} w-full justify-center py-2.5`}
-            >
-              <Sparkles className="h-4 w-4 text-accent-secondary" />
-              查看当日中枢
             </button>
           </div>
         </div>
@@ -1404,11 +1281,10 @@ export default function AiChatPage() {
       </section>
 
       <section className="flex min-h-[60vh] flex-col xl:h-[calc(100vh-7rem)]">
-        <div className={`${panelClass} mb-3 p-3.5`}>
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div className={`${panelClass} flex flex-1 flex-col overflow-hidden p-4 md:p-5`}>
+          <div className="mb-4 flex flex-wrap items-start justify-between gap-3 border-b border-line-glass/60 pb-4">
             <div className="min-w-0">
-              <div className="text-[11px] uppercase tracking-[0.3em] text-content-muted">Workspace</div>
-              <div className="mt-1.5 flex flex-wrap items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <h1 className="min-w-0 truncate text-lg font-semibold tracking-[-0.03em] text-content-primary sm:text-xl">
                   {currentConversationDisplayTitle}
                 </h1>
@@ -1421,59 +1297,11 @@ export default function AiChatPage() {
                   {workspaceStatusLabel}
                 </span>
               </div>
-              <p className="mt-1.5 max-w-2xl text-xs leading-5 text-content-secondary sm:text-sm">
-                只保留必要状态，把空间优先留给消息流和操作卡片。
+              <p className="mt-1.5 text-xs leading-5 text-content-secondary">
+                当前消息 {messages.length} 条，队列：对话 {chatQueue.length} / 博客 {workflowQueue.length}
               </p>
             </div>
-
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={() => setUseKnowledgeBase((prev) => !prev)}
-                aria-pressed={useKnowledgeBase}
-                className={`inline-flex items-center gap-2 rounded-2xl border px-3 py-2 text-sm font-medium transition-colors ${
-                  useKnowledgeBase
-                    ? 'border-accent-primary/30 bg-accent-primary/10 text-accent-primary'
-                    : 'border-line-glass bg-white/70 text-content-secondary hover:border-accent-primary/20 hover:text-content-primary'
-                }`}
-              >
-                <Database className="h-4 w-4" />
-                {useKnowledgeBase ? '知识库已开启' : '知识库已关闭'}
-              </button>
-              <button
-                type="button"
-                onClick={handleCreateConversation}
-                className={ghostActionButtonClass}
-              >
-                <Plus className="h-4 w-4" />
-                新建会话
-              </button>
-            </div>
           </div>
-
-          <div className="mt-3 flex flex-wrap gap-2">
-            <div className={`${subtlePanelClass} min-w-[122px] px-3 py-2`}>
-              <div className="text-[11px] uppercase tracking-[0.24em] text-content-muted">Messages</div>
-              <div className="mt-1 text-lg font-semibold tracking-[-0.04em] text-content-primary">
-                {messages.length}
-              </div>
-            </div>
-            <div className={`${subtlePanelClass} min-w-[150px] px-3 py-2`}>
-              <div className="text-[11px] uppercase tracking-[0.24em] text-content-muted">Status</div>
-              <div className="mt-1 text-sm font-medium text-content-primary">
-                {workspaceStatusLabel}
-              </div>
-            </div>
-            <div className={`${subtlePanelClass} min-w-[164px] px-3 py-2`}>
-              <div className="text-[11px] uppercase tracking-[0.24em] text-content-muted">Queue</div>
-              <div className="mt-1 text-sm font-medium text-content-primary">
-                对话 {chatQueue.length} / 博客 {workflowQueue.length}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className={`${panelClass} flex flex-1 flex-col overflow-hidden p-4 md:p-5`}>
           {error && (
             <p className="mb-3 text-sm text-red-500" role="alert">
               {error}
@@ -1850,8 +1678,21 @@ export default function AiChatPage() {
         </div>
 
         <div className={`${panelClass} mt-3 p-3 md:p-4`}>
-          <div className="flex flex-col gap-3">
-            <div className="flex items-end gap-3">
+          <div className="flex flex-wrap items-center gap-2 md:flex-nowrap">
+            <button
+              type="button"
+              onClick={() => setUseKnowledgeBase((prev) => !prev)}
+              aria-pressed={useKnowledgeBase}
+              className={`inline-flex h-12 shrink-0 items-center gap-2 rounded-2xl border px-3 text-sm font-medium transition-colors ${
+                useKnowledgeBase
+                  ? 'border-accent-primary/30 bg-accent-primary/10 text-accent-primary'
+                  : 'border-line-glass bg-white/70 text-content-secondary hover:border-accent-primary/20 hover:text-content-primary'
+              }`}
+            >
+              <Database className="h-4 w-4" />
+              知识库
+            </button>
+            <div className="flex min-w-0 flex-1 items-center gap-3">
               <button
                 type="button"
                 onClick={() => {
@@ -1888,14 +1729,14 @@ export default function AiChatPage() {
                 ) : (
                   <textarea
                     ref={inputRef}
-                    className="w-full resize-none rounded-2xl border border-line-glass bg-surface-tertiary/40 px-3 py-3 text-sm text-content-primary placeholder:text-content-tertiary focus:outline-none focus:ring-2 focus:ring-accent-primary/50"
-                    rows={3}
+                    className="max-h-40 w-full resize-none overflow-y-auto rounded-2xl border border-line-glass bg-surface-tertiary/40 px-3 py-[0.8rem] text-sm leading-6 text-content-primary placeholder:text-content-tertiary focus:outline-none focus:ring-2 focus:ring-accent-primary/50"
+                    rows={1}
                     placeholder={
                       runningWorkflow
-                        ? '继续输入博客要求，按 Enter 加入生成队列，或点击中断当前任务…'
+                        ? '继续输入内容，按 Enter 加入队列…'
                         : workflowFollowupMode
                           ? '补充生成要求，按 Enter 继续生成，Shift+Enter 换行…'
-                          : sending
+                        : sending
                             ? '继续输入内容，按 Enter 加入队列，或点击中断并发送…'
                             : '输入你的问题，按 Enter 发送，Shift+Enter 换行…'
                     }
@@ -1913,184 +1754,35 @@ export default function AiChatPage() {
                 )}
               </div>
             </div>
-            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-              <div className="text-xs text-content-tertiary">{inputStatusText}</div>
-              <div className="flex gap-2 md:justify-end">
-                <button
-                  type="button"
-                  onClick={runningWorkflow ? handleQueueGenerateBlog : handleGenerateBlog}
-                  disabled={!input.trim() || !canUseWorkflowActions || (!runningWorkflow && workflowQueue.length > 0)}
-                  className="inline-flex h-10 flex-1 items-center justify-center gap-2 rounded-2xl border border-accent-primary/35 bg-accent-primary/6 px-4 text-sm font-medium text-accent-primary transition-colors disabled:cursor-not-allowed disabled:opacity-50 hover:bg-accent-primary/12 md:flex-none"
-                >
-                  <FilePenLine className="h-4 w-4" />
-                  {runningWorkflow ? '加入生成队列' : workflowFollowupMode ? '继续生成' : '生成博客'}
-                </button>
-                {runningWorkflow && (
-                  <button
-                    type="button"
-                    onClick={input.trim() ? handleInterruptAndContinueWorkflow : handleInterruptWorkflow}
-                    disabled={!currentId}
-                    className="inline-flex h-10 flex-1 items-center justify-center gap-2 rounded-2xl border border-ui-warning/35 bg-ui-warning-light px-4 text-sm font-medium text-ui-warning-text transition-colors disabled:cursor-not-allowed disabled:opacity-50 hover:bg-ui-warning/12 md:flex-none"
-                  >
-                    {input.trim() ? '中断并继续生成' : '中断生成'}
-                  </button>
-                )}
-                {sending && !workflowFollowupMode && (
-                  <button
-                    type="button"
-                    onClick={handleInterruptAndSend}
-                    disabled={!input.trim() || !canUseChatActions}
-                    className="inline-flex h-10 flex-1 items-center justify-center gap-2 rounded-2xl border border-ui-warning/35 bg-ui-warning-light px-4 text-sm font-medium text-ui-warning-text transition-colors disabled:cursor-not-allowed disabled:opacity-50 hover:bg-ui-warning/12 md:flex-none"
-                  >
-                    中断并发送
-                  </button>
-                )}
-                <button
-                  type="button"
-                  onClick={
-                    workflowFollowupMode
-                      ? handleWorkflowFollowupSend
-                      : sending
-                        ? handleQueueSend
-                        : handleSend
-                  }
-                  disabled={!input.trim() || !canUseChatActions || (!sending && chatQueue.length > 0)}
-                  className="inline-flex h-10 flex-1 items-center justify-center gap-2 rounded-2xl bg-accent-primary px-4 text-sm font-medium text-white shadow-md transition-colors disabled:cursor-not-allowed disabled:opacity-50 hover:bg-accent-primary/90 md:flex-none"
-                >
-                  {sending ? (
-                    <Send className="h-4 w-4" />
-                  ) : (
-                    <Send className="h-4 w-4" />
-                  )}
-                  {workflowFollowupMode ? '继续生成' : sending ? '加入队列' : '发送消息'}
-                </button>
-              </div>
-            </div>
+            {sending && !workflowFollowupMode && (
+              <button
+                type="button"
+                onClick={handleInterruptAndSend}
+                disabled={!input.trim() || !canUseChatActions}
+                className="inline-flex h-12 shrink-0 items-center justify-center gap-2 rounded-2xl border border-ui-warning/35 bg-ui-warning-light px-4 text-sm font-medium text-ui-warning-text transition-colors disabled:cursor-not-allowed disabled:opacity-50 hover:bg-ui-warning/12"
+              >
+                中断并发送
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={
+                workflowFollowupMode
+                  ? handleWorkflowFollowupSend
+                  : sending
+                    ? handleQueueSend
+                    : handleSend
+              }
+              disabled={!input.trim() || !canUseChatActions || (!sending && chatQueue.length > 0)}
+              className="inline-flex h-12 shrink-0 items-center justify-center gap-2 rounded-2xl bg-accent-primary px-4 text-sm font-medium text-white shadow-md transition-colors disabled:cursor-not-allowed disabled:opacity-50 hover:bg-accent-primary/90"
+            >
+              <Send className="h-4 w-4" />
+              {/* {workflowFollowupMode ? '继续生成' : sending ? '加入队列' : '发送消息'} */}
+            </button>
           </div>
         </div>
       </section>
 
-      <aside className="flex flex-col gap-4 xl:sticky xl:top-6 xl:h-[calc(100vh-7rem)]">
-        <div className={`${panelClass} p-3.5`}>
-          <div className="flex items-start gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-accent-secondary/12 text-accent-secondary">
-              <Sparkles className="h-5 w-5" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <h2 className="text-sm font-semibold text-content-primary">事件快速创建</h2>
-              <p className="mt-1 text-xs leading-5 text-content-secondary">
-                文本里写了日期就按文本解析；没写日期时，才使用下面这个兜底日期。
-              </p>
-            </div>
-          </div>
-
-          <div className="mt-4 space-y-3">
-            <input
-              type="date"
-              value={quickEventDate}
-              onChange={(e) => {
-                setQuickEventInputType('text')
-                setQuickEventDate(e.target.value)
-              }}
-              className="h-10 w-full rounded-2xl border border-line-glass bg-surface-glass/62 px-3 text-sm text-content-primary focus:outline-none focus:ring-2 focus:ring-accent-primary/40"
-            />
-            <p className="text-[11px] leading-5 text-content-tertiary">
-              {quickEventDate
-                ? `当前兜底日期：${quickEventDate}`
-                : '当前未设置兜底日期，若文本里也没写日期，系统会按今天处理。'}
-            </p>
-            <textarea
-              value={quickEventText}
-              onChange={(e) => {
-                setQuickEventInputType('text')
-                setQuickEventText(e.target.value)
-              }}
-              rows={5}
-              className="w-full resize-none rounded-2xl border border-line-glass bg-surface-glass/62 px-3 py-2 text-sm text-content-primary placeholder:text-content-tertiary focus:outline-none focus:ring-2 focus:ring-accent-primary/40"
-              placeholder="例如：4 月 18 日下午发布一篇 React Compiler 调研，再记录一个日历页面改版想法。"
-            />
-            <div className="rounded-2xl border border-dashed border-line-glass bg-surface-glass/52 p-2">
-              <VoiceRecorder
-                onTranscriptionComplete={handleQuickEventVoiceComplete}
-                disabled={quickEventBusy}
-                maxDuration={60}
-              />
-            </div>
-            {quickEventError && (
-              <p className="text-xs leading-5 text-red-500">{quickEventError}</p>
-            )}
-            {quickEventNote && (
-              <div className="rounded-2xl border border-accent-primary/20 bg-accent-primary/8 px-3 py-2 text-xs leading-5 text-content-secondary">
-                <div>{quickEventNote}</div>
-                {quickEventJumpUrl && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (typeof window !== 'undefined') {
-                        window.location.assign(quickEventJumpUrl)
-                      }
-                    }}
-                    className="mt-2 text-accent-primary transition-colors hover:text-accent-primary/80"
-                  >
-                    打开对应页面
-                  </button>
-                )}
-              </div>
-            )}
-            <button
-              type="button"
-              onClick={() => {
-                void handleQuickEventCreate()
-              }}
-              disabled={quickEventBusy || !quickEventText.trim()}
-              className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-accent-secondary px-3 py-2.5 text-sm font-medium text-white transition-colors hover:bg-accent-secondary/90 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {quickEventBusy ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Sparkles className="h-4 w-4" />
-              )}
-              创建并写入日历
-            </button>
-          </div>
-        </div>
-
-        <div className={`${panelClass} p-4`}>
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <div className="text-[11px] uppercase tracking-[0.28em] text-content-muted">
-                Workflow
-              </div>
-              <div className="mt-1 text-sm font-medium text-content-primary">工作流侧边栏</div>
-            </div>
-            <div className="rounded-full border border-accent-primary/18 bg-accent-primary/8 px-2.5 py-1 text-[11px] font-medium text-accent-primary">
-              {workspaceStatusLabel}
-            </div>
-          </div>
-          <div className="mt-3 space-y-3">
-            <div className={`${subtlePanelClass} px-4 py-3`}>
-              <div className="text-xs text-content-secondary">当前模式</div>
-              <div className="mt-2 text-sm font-medium text-content-primary">{workspaceStatusLabel}</div>
-            </div>
-            <button
-              type="button"
-              onClick={() => router.push(`/calendar/day/${quickEventDate || todayDate}`)}
-              className={`${ghostActionButtonClass} w-full justify-between px-4 py-3 text-left`}
-            >
-              <span>打开当日事件中枢</span>
-              <Sparkles className="h-4 w-4 text-accent-secondary" />
-            </button>
-            <button
-              type="button"
-              onClick={() => router.push('/blog/editor')}
-              className={`${ghostActionButtonClass} w-full justify-between px-4 py-3 text-left`}
-            >
-              <span>直接去写博客</span>
-              <FilePenLine className="h-4 w-4 text-accent-primary" />
-            </button>
-          </div>
-        </div>
-      </aside>
     </main>
   )
 }

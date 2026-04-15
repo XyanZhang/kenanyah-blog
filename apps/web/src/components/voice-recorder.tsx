@@ -527,7 +527,7 @@ export function VoiceRecorder({
         {buttonLabel}
       </button>
 
-      <div className="flex items-center justify-between px-1 text-[11px] text-content-tertiary">
+      {/* <div className="flex items-center justify-between px-1 text-[11px] text-content-tertiary">
         <span>{hintText}</span>
         <span
           className={cn(
@@ -539,9 +539,9 @@ export function VoiceRecorder({
             ? formatDuration(duration)
             : `最长 ${formatDuration(maxDuration)}`}
         </span>
-      </div>
+      </div> */}
 
-      {error && <div className="px-1 text-xs text-red-500">{error}</div>}
+      {/* {error && <div className="px-1 text-xs text-red-500">{error}</div>} */}
     </div>
   )
 }
