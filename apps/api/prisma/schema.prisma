@@ -289,6 +289,17 @@ model PostEmbedding {
   @@map("post_embeddings")
 }
 
+model ConversationEmbedding {
+  id             String   @id
+  conversationId String   @map("conversation_id")
+  content        String   @db.Text
+  embedding      Unsupported("vector")
+  updatedAt      DateTime @default(now()) @map("updated_at")
+
+  @@index([conversationId], map: "idx_conversation_embeddings_conversation_id")
+  @@map("conversation_embeddings")
+}
+
 model PdfDocument {
   id        String   @id @default(cuid())
   userId    String?  @map("user_id")
