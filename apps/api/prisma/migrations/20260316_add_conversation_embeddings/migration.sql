@@ -8,4 +8,3 @@ CREATE TABLE IF NOT EXISTS conversation_embeddings (
 
 CREATE INDEX IF NOT EXISTS idx_conversation_embeddings_conversation_id
   ON conversation_embeddings(conversation_id);
-
