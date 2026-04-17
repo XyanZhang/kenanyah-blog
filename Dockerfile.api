@@ -58,5 +58,5 @@ WORKDIR /app/apps/api
 
 EXPOSE 3001
 
-# Start: run migration then API (use tsx for ESM)
-CMD ["sh", "-c", "npx prisma migrate deploy && exec npx tsx src/index.ts"]
+# Start API only. Production migrations run via a dedicated one-off task.
+CMD ["sh", "-c", "exec npx tsx src/index.ts"]

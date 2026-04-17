@@ -56,6 +56,7 @@ backups/
 # 本地构建导出的镜像 tar（build-save 生成，上传服务器用）
 blog-images.tar
 *.images.tar
+*.release.env
 
 # Deploy script with server path（复制 scp-deploy.sh.example 为 scp-deploy.sh 后编辑，不提交）
 scripts/scp-deploy.sh

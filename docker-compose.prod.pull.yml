@@ -25,6 +25,19 @@ services:
     networks:
       - blog-network
 
+  migrate:
+    profiles: ['ops']
+    image: ${DOCKER_IMAGE_API:?DOCKER_IMAGE_API is required for migrate}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://${DB_USER:-blog_user}:${DB_PASSWORD}@postgres:5432/${DB_NAME:-blog_prod}?schema=public
+    command: ['npx', 'prisma', 'migrate', 'deploy']
+    networks:
+      - blog-network
+
   api:
     image: ${DOCKER_IMAGE_API:?DOCKER_IMAGE_API is required for pull deploy}
     container_name: blog-api-prod
@@ -72,6 +85,69 @@ services:
       VERIFICATION_CODE_RESEND_COOLDOWN_SECONDS: ${VERIFICATION_CODE_RESEND_COOLDOWN_SECONDS:-60}
     volumes:
       - ./apps/api/uploads:/app/apps/api/uploads
+    healthcheck:
+      test: ['CMD', 'node', '-e', "require('http').get('http://127.0.0.1:3001/api/health',r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    networks:
+      - blog-network
+
+  api-green:
+    profiles: ['green']
+    image: ${DOCKER_IMAGE_API:?DOCKER_IMAGE_API is required for pull deploy}
+    container_name: blog-api-green
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    expose:
+      - '3001'
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      DATABASE_URL: postgresql://${DB_USER:-blog_user}:${DB_PASSWORD}@postgres:5432/${DB_NAME:-blog_prod}?schema=public
+      JWT_SECRET: ${JWT_SECRET:?JWT secret required}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?JWT refresh secret required}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
+      JWT_REFRESH_EXPIRES_IN: ${JWT_REFRESH_EXPIRES_IN:-7d}
+      CORS_ORIGIN: ${HOST:-https://www.xyan.store}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI:-}
+      GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID:-}
+      GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET:-}
+      GITHUB_REDIRECT_URI: ${GITHUB_REDIRECT_URI:-}
+      OPENAI_BASE_URL: ${OPENAI_BASE_URL:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_MODEL: ${OPENAI_MODEL:-}
+      EMBEDDINGS_BASE_URL: ${EMBEDDINGS_BASE_URL:-}
+      EMBEDDINGS_API_KEY: ${EMBEDDINGS_API_KEY:-}
+      EMBEDDINGS_MODEL_NAME: ${EMBEDDINGS_MODEL_NAME:-}
+      DASHSCOPE_BASE_URL: ${DASHSCOPE_BASE_URL:-}
+      DASHSCOPE_API_KEY: ${DASHSCOPE_API_KEY:-}
+      DASHSCOPE_MODEL_NAME: ${DASHSCOPE_MODEL_NAME:-}
+      UPLOAD_DIR: /app/apps/api/uploads
+      UPLOAD_BASE_URL: ${HOST:-https://www.xyan.store}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_SECURE: ${SMTP_SECURE:-false}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      SMTP_FROM: ${SMTP_FROM:-}
+      VERIFICATION_CODE_LENGTH: ${VERIFICATION_CODE_LENGTH:-6}
+      VERIFICATION_CODE_EXPIRY_MINUTES: ${VERIFICATION_CODE_EXPIRY_MINUTES:-10}
+      VERIFICATION_CODE_MAX_ATTEMPTS: ${VERIFICATION_CODE_MAX_ATTEMPTS:-5}
+      VERIFICATION_CODE_RESEND_COOLDOWN_SECONDS: ${VERIFICATION_CODE_RESEND_COOLDOWN_SECONDS:-60}
+    volumes:
+      - ./apps/api/uploads:/app/apps/api/uploads
+    healthcheck:
+      test: ['CMD', 'node', '-e', "require('http').get('http://127.0.0.1:3001/api/health',r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
     networks:
       - blog-network
 
@@ -80,7 +156,8 @@ services:
     container_name: blog-web-prod
     restart: unless-stopped
     depends_on:
-      - api
+      api:
+        condition: service_healthy
     expose:
       - '3000'
     environment:
@@ -89,6 +166,37 @@ services:
       NEXT_PUBLIC_API_URL: ${HOST:-https://www.xyan.store}/api
       NEXT_PUBLIC_APP_URL: ${HOST:-https://www.xyan.store}
       NEXT_PUBLIC_APP_NAME: ${NEXT_PUBLIC_APP_NAME:-Blog}
+    healthcheck:
+      test: ['CMD', 'node', '-e', "require('http').get('http://127.0.0.1:3000/login',r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    networks:
+      - blog-network
+
+  web-green:
+    profiles: ['green']
+    image: ${DOCKER_IMAGE_WEB:?DOCKER_IMAGE_WEB is required for pull deploy}
+    container_name: blog-web-green
+    restart: unless-stopped
+    depends_on:
+      api-green:
+        condition: service_healthy
+    expose:
+      - '3000'
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      NEXT_PUBLIC_API_URL: ${HOST:-https://www.xyan.store}/api
+      NEXT_PUBLIC_APP_URL: ${HOST:-https://www.xyan.store}
+      NEXT_PUBLIC_APP_NAME: ${NEXT_PUBLIC_APP_NAME:-Blog}
+    healthcheck:
+      test: ['CMD', 'node', '-e', "require('http').get('http://127.0.0.1:3000/login',r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
     networks:
       - blog-network
 
@@ -97,13 +205,20 @@ services:
     container_name: blog-nginx
     restart: unless-stopped
     depends_on:
-      - web
-      - api
+      api:
+        condition: service_healthy
+      web:
+        condition: service_healthy
     ports:
       - '80:80'
       - '443:443'
+    environment:
+      NGINX_ENVSUBST_OUTPUT_DIR: /etc/nginx
+      NGINX_ENVSUBST_FILTER: API_UPSTREAM|WEB_UPSTREAM
+      API_UPSTREAM: ${API_UPSTREAM:-api:3001}
+      WEB_UPSTREAM: ${WEB_UPSTREAM:-web:3000}
     volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/nginx.conf.template:/etc/nginx/templates/nginx.conf.template:ro
       - ./nginx/ssl:/etc/nginx/ssl:ro
       - ./nginx/certbot:/var/www/certbot:ro
     networks:
