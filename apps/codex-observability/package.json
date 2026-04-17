@@ -1,0 +1,9 @@
+{
+  "name": "codex-observability",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "index": "node ./src/index.js index",
+    "query": "node ./src/index.js query"
+  }
+}

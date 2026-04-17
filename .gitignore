@@ -66,3 +66,4 @@ scripts/scp-deploy.sh
 .cache/
 
 .pnpm-store/
+.codex-runtime/
