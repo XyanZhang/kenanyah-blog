@@ -342,6 +342,65 @@ function buildDirectResponsePlan(intent: Awaited<ReturnType<typeof runIntentReco
   }
 }
 
+function shouldUseDirectKnowledgeSearch(availableTools: ChatToolName[]): boolean {
+  return availableTools.length > 0 && availableTools.every((tool) => tool === 'knowledge_base_search')
+}
+
+function buildKnowledgeSearchQuery(input: {
+  latestUserMessage: string
+  plan: Awaited<ReturnType<typeof runTaskPlanningAgent>>
+}): string {
+  const latestMessage = input.latestUserMessage.replace(/\s+/g, ' ').trim()
+  const toolHint = input.plan.toolHint.replace(/\s+/g, ' ').trim()
+
+  if (!toolHint) {
+    return latestMessage.slice(0, 200)
+  }
+
+  if (latestMessage.includes(toolHint)) {
+    return latestMessage.slice(0, 200)
+  }
+
+  return `${latestMessage} ${toolHint}`.slice(0, 200)
+}
+
+function buildDirectKnowledgeToolCalls(input: {
+  latestUserMessage: string
+  intent: Awaited<ReturnType<typeof runIntentRecognitionAgent>>
+  plan: Awaited<ReturnType<typeof runTaskPlanningAgent>>
+  skill: ResolvedChatAppSkill
+}): ChatToolCall[] {
+  const shouldUseKnowledgeBase =
+    input.skill.id === 'knowledge_context' ||
+    (input.skill.id === 'implementation_advice' && input.intent.shouldUseKnowledgeBase) ||
+    input.intent.shouldUseKnowledgeBase
+
+  if (!shouldUseKnowledgeBase) {
+    return []
+  }
+
+  const query = buildKnowledgeSearchQuery({
+    latestUserMessage: input.latestUserMessage,
+    plan: input.plan,
+  })
+
+  if (!query) {
+    return []
+  }
+
+  return [
+    {
+      tool: 'knowledge_base_search',
+      query,
+      limit: input.skill.id === 'implementation_advice' ? 4 : 6,
+      reason:
+        input.skill.id === 'implementation_advice'
+          ? '补充与当前实施问题相关的本地上下文'
+          : '补充与当前问题相关的本地知识上下文',
+    },
+  ]
+}
+
 async function* streamQueuedEvents<T extends ChatMultiAgentStreamEvent>(
   queue: AsyncQueue<T>
 ): AsyncGenerator<T, void, undefined> {
@@ -594,15 +653,29 @@ export async function* runChatMultiAgentOrchestrator(
       }
 
       const toolStartedAt = Date.now()
-      const toolPlan = await runToolRoutingAgent({
-        conversationText,
-        latestUserMessage: input.latestUserMessage,
-        intent,
-        plan: resolvedPlan,
-        availableTools,
-        skillPrompt: skill.prompts.toolRouting,
-        signal: input.signal,
-      })
+      const toolPlan = shouldUseDirectKnowledgeSearch(availableTools)
+        ? (() => {
+            const directToolCalls = buildDirectKnowledgeToolCalls({
+              latestUserMessage: input.latestUserMessage,
+              intent,
+              plan: resolvedPlan,
+              skill,
+            })
+
+            return {
+              shouldUseTools: directToolCalls.length > 0,
+              toolCalls: directToolCalls,
+            }
+          })()
+        : await runToolRoutingAgent({
+            conversationText,
+            latestUserMessage: input.latestUserMessage,
+            intent,
+            plan: resolvedPlan,
+            availableTools,
+            skillPrompt: skill.prompts.toolRouting,
+            signal: input.signal,
+          })
       throwIfAborted(input.signal)
 
       if (toolPlan.shouldUseTools && toolPlan.toolCalls.length > 0) {

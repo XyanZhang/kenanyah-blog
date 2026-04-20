@@ -80,8 +80,8 @@ export async function executeChatToolCalls(
   toolCalls: ChatToolCall[],
   signal?: AbortSignal
 ): Promise<ChatToolExecutionResult[]> {
-  const results: ChatToolExecutionResult[] = []
   const seen = new Set<string>()
+  const uniqueToolCalls: Extract<ChatToolCall, { tool: 'knowledge_base_search' }>[] = []
 
   for (const toolCall of toolCalls.filter(isKnowledgeBaseToolCall)) {
     const cacheKey = `${toolCall.tool}:${toolCall.query.trim().toLowerCase()}`
@@ -89,8 +89,8 @@ export async function executeChatToolCalls(
       continue
     }
     seen.add(cacheKey)
-    results.push(await executeChatToolCall(toolCall, signal))
+    uniqueToolCalls.push(toolCall)
   }
 
-  return results
+  return Promise.all(uniqueToolCalls.map((toolCall) => executeChatToolCall(toolCall, signal)))
 }
