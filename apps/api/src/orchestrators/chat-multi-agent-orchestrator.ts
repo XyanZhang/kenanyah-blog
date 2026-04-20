@@ -9,6 +9,7 @@ import {
 } from '../agents/chat-coordinator-agents'
 import { resolveChatAppSkill, type ResolvedChatAppSkill } from '../agents/chat-app-skills'
 import { throwIfAborted } from '../lib/abort'
+import { logger } from '../lib/logger'
 import { streamChat } from '../lib/llm'
 import {
   formatBlogWorkflowResultMessage,
@@ -26,32 +27,18 @@ import {
 import { buildFollowupOperationCardMessage } from '../lib/operation-card'
 
 export type ChatAgentStage = 'intent' | 'plan' | 'tool' | 'workflow' | 'respond'
+export type ChatUserFacingStatus =
+  | 'thinking'
+  | 'searching'
+  | 'organizing'
+  | 'creating'
+  | 'responding'
 
 export type ChatMultiAgentStreamEvent =
   | {
-      type: 'stage'
-      stage: ChatAgentStage
+      type: 'status'
+      status: ChatUserFacingStatus
       label: string
-    }
-  | {
-      type: 'skill_phase'
-      skill: 'calendar_planning'
-      phase: 'draft' | 'confirm' | 'create' | 'advise'
-      label: string
-    }
-  | {
-      type: 'tool_call'
-      tool: ChatToolName
-      label: string
-      reason: string
-      query?: string
-      limit?: number
-    }
-  | {
-      type: 'tool_result'
-      tool: ChatToolName
-      summary: string
-      hitCount?: number
     }
   | {
       type: 'followup'
@@ -133,7 +120,8 @@ function logChatStageTimings(input: ChatMultiAgentInput, options: {
   totalMs: number
   status: 'completed' | 'aborted' | 'failed'
 }): void {
-  console.info('[chat-orchestrator][timing]', {
+  logger.info({
+    msg: 'chat.orchestrator.timing',
     conversationId: input.conversationId,
     userId: input.userId,
     route: options.route,
@@ -147,6 +135,30 @@ function logChatStageTimings(input: ChatMultiAgentInput, options: {
   })
 }
 
+function getUserStatusLabel(status: ChatUserFacingStatus): string {
+  if (status === 'thinking') {
+    return '我在理解你的问题'
+  }
+
+  if (status === 'searching') {
+    return '我在查找相关内容'
+  }
+
+  if (status === 'organizing') {
+    return '我在整理最合适的答案'
+  }
+
+  if (status === 'creating') {
+    return '我在准备内容'
+  }
+
+  return '我正在回复你'
+}
+
+function inferToolStatus(toolCall: ChatToolCall): ChatUserFacingStatus {
+  return toolCall.tool === 'knowledge_base_search' ? 'searching' : 'organizing'
+}
+
 function buildFollowupMessage(questions: string[]): string {
   return buildFollowupOperationCardMessage({
     scope: 'chat',
@@ -157,101 +169,6 @@ function buildFollowupMessage(questions: string[]): string {
     submitLabel: '发送补充信息',
     inputPlaceholder: '直接填写你要补充的内容',
   })
-}
-
-function buildToolCallLabel(tool: ChatToolName, options?: {
-  query?: string
-  postQuery?: string
-}): string {
-  if (tool === 'knowledge_base_search') {
-    return `正在调用本地知识库检索：${options?.query || '当前问题'}`
-  }
-
-  if (tool === 'publish_post') {
-    return options?.postQuery
-      ? `正在查找并发布文章：${options.postQuery}`
-      : '正在查找并发布最近的草稿文章…'
-  }
-
-  if (tool === 'update_post') {
-    return options?.postQuery
-      ? `正在查找并更新文章：${options.postQuery}`
-      : '正在查找并更新最近的文章…'
-  }
-
-  if (tool === 'delete_post') {
-    return options?.postQuery
-      ? `正在查找并删除文章：${options.postQuery}`
-      : '正在准备删除文章…'
-  }
-
-  if (tool === 'get_post_detail') {
-    return options?.postQuery
-      ? `正在读取文章详情：${options.postQuery}`
-      : '正在读取最近文章详情…'
-  }
-
-  if (tool === 'list_drafts') {
-    return options?.query
-      ? `正在查询相关草稿：${options.query}`
-      : '正在列出当前草稿…'
-  }
-
-  if (tool === 'create_calendar_event') {
-    return '正在创建日程安排并写入日历…'
-  }
-
-  if (tool === 'create_thought') {
-    return '正在创建一条思考记录…'
-  }
-
-  if (tool === 'save_bookmark_from_url') {
-    return '正在创建收藏记录…'
-  }
-
-  if (tool === 'list_bookmarks') {
-    return options?.query
-      ? `正在查询收藏：${options.query}`
-      : '正在列出收藏列表…'
-  }
-
-  if (tool === 'search_thoughts') {
-    return options?.query
-      ? `正在搜索思考库：${options.query}`
-      : '正在搜索思考库…'
-  }
-
-  if (tool === 'answer_thoughts') {
-    return options?.query
-      ? `正在基于思考库回答：${options.query}`
-      : '正在基于思考库生成回答…'
-  }
-
-  return '正在执行工具…'
-}
-
-function getBusinessToolCallLabel(
-  toolCall: Exclude<ChatToolCall, { tool: 'knowledge_base_search' }>
-): string {
-  if (
-    toolCall.tool === 'publish_post' ||
-    toolCall.tool === 'update_post' ||
-    toolCall.tool === 'delete_post' ||
-    toolCall.tool === 'get_post_detail'
-  ) {
-    return buildToolCallLabel(toolCall.tool, { postQuery: toolCall.postQuery })
-  }
-
-  if (
-    toolCall.tool === 'list_drafts' ||
-    toolCall.tool === 'list_bookmarks' ||
-    toolCall.tool === 'search_thoughts' ||
-    toolCall.tool === 'answer_thoughts'
-  ) {
-    return buildToolCallLabel(toolCall.tool, { query: toolCall.query })
-  }
-
-  return buildToolCallLabel(toolCall.tool)
 }
 
 function isBusinessToolCall(
@@ -420,16 +337,43 @@ export async function* runChatMultiAgentOrchestrator(
   const stageTimings = createEmptyStageTimingMap()
   let executionRoute: ChatExecutionRoute | 'unknown' = 'unknown'
   let completed = false
+  let currentUserStatus: ChatUserFacingStatus | null = null
+  const diagnosticsLogger = logger.child({
+    scope: 'chat-orchestrator',
+    conversationId: input.conversationId,
+    userId: input.userId,
+  })
+
+  const emitStatus = async function* (
+    status: ChatUserFacingStatus,
+    internalStage: ChatAgentStage,
+    extras?: Record<string, unknown>
+  ): AsyncGenerator<ChatMultiAgentStreamEvent, void, undefined> {
+    diagnosticsLogger.info({
+      msg: 'chat.status',
+      internalStage,
+      userStatus: status,
+      route: executionRoute,
+      ...extras,
+    })
+
+    if (currentUserStatus === status) {
+      return
+    }
+
+    currentUserStatus = status
+    yield {
+      type: 'status',
+      status,
+      label: getUserStatusLabel(status),
+    }
+  }
 
   try {
     throwIfAborted(input.signal)
     const conversationText = formatConversationForPrompt(input.messages, 24)
 
-    yield {
-      type: 'stage',
-      stage: 'intent',
-      label: '正在识别用户意图…',
-    }
+    yield* emitStatus('thinking', 'intent')
     const intentStartedAt = Date.now()
     const intent = await runIntentRecognitionAgent({
       conversationText,
@@ -446,13 +390,20 @@ export async function* runChatMultiAgentOrchestrator(
       useKnowledgeBase: input.useKnowledgeBase,
     })
     executionRoute = skill.route
+    diagnosticsLogger.info({
+      msg: 'chat.intent.resolved',
+      route: executionRoute,
+      intent: intent.intent,
+      skillId: skill.id,
+      shouldUseKnowledgeBase: intent.shouldUseKnowledgeBase,
+      needPlanning: intent.needPlanning,
+      needsFollowup: intent.needsFollowup,
+    })
 
     if (executionRoute === 'blog_workflow') {
-      yield {
-        type: 'stage',
-        stage: 'workflow',
-        label: `已匹配技能「${skill.label}」，正在切换到博客工作流…`,
-      }
+      yield* emitStatus('creating', 'workflow', {
+        skillId: skill.id,
+      })
 
       const workflowStartedAt = Date.now()
       const queue = createAsyncQueue<ChatMultiAgentStreamEvent>()
@@ -469,11 +420,13 @@ export async function* runChatMultiAgentOrchestrator(
         persistAssistantMessage: false,
         signal: input.signal,
         onEvent: (event) => {
-          queue.push({
-            type: 'stage',
-            stage: 'workflow',
-            label: event.content,
+          diagnosticsLogger.info({
+            msg: 'chat.workflow.status',
+            internalStage: 'workflow',
+            workflowStage: event.stage,
+            userStatus: event.status,
           })
+          queue.push(event)
         },
       })
         .then((result) => {
@@ -509,11 +462,9 @@ export async function* runChatMultiAgentOrchestrator(
     }
 
     if (executionRoute === 'tool') {
-      yield {
-        type: 'stage',
-        stage: 'tool',
-        label: `已匹配技能「${skill.label}」，正在准备执行工具…`,
-      }
+      yield* emitStatus('organizing', 'tool', {
+        skillId: skill.id,
+      })
 
       const toolStartedAt = Date.now()
       const toolCall = await runBusinessToolAgent({
@@ -546,12 +497,17 @@ export async function* runChatMultiAgentOrchestrator(
         return
       }
 
-      yield {
-        type: 'tool_call',
-        tool: toolCall.tool,
-        label: getBusinessToolCallLabel(toolCall),
-        reason: toolCall.reason,
-      }
+      diagnosticsLogger.info({
+        msg: 'chat.tool.call',
+        internalStage: 'tool',
+        userStatus: inferToolStatus(toolCall),
+        toolName: toolCall.tool,
+        toolReason: toolCall.reason,
+      })
+      yield* emitStatus(inferToolStatus(toolCall), 'tool', {
+        skillId: skill.id,
+        toolName: toolCall.tool,
+      })
 
       const result = await executeBusinessTool(toolCall, {
         userId: input.userId,
@@ -569,14 +525,12 @@ export async function* runChatMultiAgentOrchestrator(
         result.tool === 'create_calendar_event' &&
         Array.isArray(result.skillPhases)
       ) {
-        for (const phaseEvent of result.skillPhases) {
-          yield {
-            type: 'skill_phase',
-            skill: 'calendar_planning',
-            phase: phaseEvent.phase,
-            label: phaseEvent.label,
-          }
-        }
+        diagnosticsLogger.info({
+          msg: 'chat.tool.skill_phases',
+          internalStage: 'tool',
+          skillId: skill.id,
+          phaseCount: result.skillPhases.length,
+        })
       }
 
       if (result.status === 'need_more_info' && result.followupQuestions?.length) {
@@ -586,11 +540,14 @@ export async function* runChatMultiAgentOrchestrator(
         }
       }
 
-      yield {
-        type: 'tool_result',
-        tool: result.tool,
+      diagnosticsLogger.info({
+        msg: 'chat.tool.result',
+        internalStage: 'tool',
+        skillId: skill.id,
+        toolName: result.tool,
         summary: result.summary,
-      }
+        resultStatus: 'status' in result ? result.status : undefined,
+      })
       yield {
         type: 'content',
         content:
@@ -605,11 +562,9 @@ export async function* runChatMultiAgentOrchestrator(
     let resolvedPlan = buildDirectResponsePlan(intent)
 
     if (intent.needPlanning || intent.needsFollowup) {
-      yield {
-        type: 'stage',
-        stage: 'plan',
-        label: `已匹配技能「${skill.label}」，正在拆解任务并判断是否需要追问…`,
-      }
+      yield* emitStatus('thinking', 'plan', {
+        skillId: skill.id,
+      })
       const planStartedAt = Date.now()
       resolvedPlan = await runTaskPlanningAgent({
         conversationText,
@@ -646,11 +601,9 @@ export async function* runChatMultiAgentOrchestrator(
     let toolResults: ChatToolExecutionResult[] = []
 
     if (availableTools.length > 0) {
-      yield {
-        type: 'stage',
-        stage: 'tool',
-        label: `已匹配技能「${skill.label}」，正在评估是否需要调用工具…`,
-      }
+      yield* emitStatus('thinking', 'tool', {
+        skillId: skill.id,
+      })
 
       const toolStartedAt = Date.now()
       const toolPlan = shouldUseDirectKnowledgeSearch(availableTools)
@@ -679,47 +632,52 @@ export async function* runChatMultiAgentOrchestrator(
       throwIfAborted(input.signal)
 
       if (toolPlan.shouldUseTools && toolPlan.toolCalls.length > 0) {
-        for (const toolCall of toolPlan.toolCalls.slice(0, 2)) {
-          yield {
-            type: 'tool_call',
-            tool: toolCall.tool,
-            label:
-              toolCall.tool === 'knowledge_base_search'
-                ? buildToolCallLabel(toolCall.tool, { query: toolCall.query })
-                : buildToolCallLabel(toolCall.tool),
-            reason: toolCall.reason,
-            ...(toolCall.tool === 'knowledge_base_search'
-              ? {
-                  query: toolCall.query,
-                  limit: toolCall.limit,
-                }
-              : {}),
-          }
+        const toolCalls = toolPlan.toolCalls.slice(0, 2)
+        for (const toolCall of toolCalls) {
+          diagnosticsLogger.info({
+            msg: 'chat.tool.call',
+            internalStage: 'tool',
+            skillId: skill.id,
+            userStatus: inferToolStatus(toolCall),
+            toolName: toolCall.tool,
+            toolReason: toolCall.reason,
+            query: 'query' in toolCall ? toolCall.query : undefined,
+            limit: 'limit' in toolCall ? toolCall.limit : undefined,
+          })
         }
 
-        toolResults = await executeChatToolCalls(toolPlan.toolCalls.slice(0, 2), input.signal)
+        yield* emitStatus('searching', 'tool', {
+          skillId: skill.id,
+          toolCount: toolCalls.length,
+        })
+
+        toolResults = await executeChatToolCalls(toolCalls, input.signal)
         throwIfAborted(input.signal)
 
         for (const result of toolResults) {
-          yield {
-            type: 'tool_result',
-            tool: result.tool,
-            summary:
-              result.hitCount > 0
-                ? `本地知识库已返回 ${result.hitCount} 条相关结果。`
-                : '本地知识库未检索到直接相关内容。',
+          diagnosticsLogger.info({
+            msg: 'chat.tool.result',
+            internalStage: 'tool',
+            skillId: skill.id,
+            userStatus: 'searching',
+            toolName: result.tool,
+            query: result.query,
             hitCount: result.hitCount,
-          }
+            limit: result.limit,
+          })
         }
+
+        yield* emitStatus('organizing', 'tool', {
+          skillId: skill.id,
+          resultCount: toolResults.length,
+        })
       }
       stageTimings.tool += Date.now() - toolStartedAt
     }
 
-    yield {
-      type: 'stage',
-      stage: 'respond',
-      label: '正在生成最终回答…',
-    }
+    yield* emitStatus('responding', 'respond', {
+      skillId: skill.id,
+    })
 
     const responseUserPrompt = buildResponderUserPrompt({
       conversationText,

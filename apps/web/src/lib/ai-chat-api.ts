@@ -31,54 +31,21 @@ export interface ChatConversationDetail {
   messages: ChatMessage[]
 }
 
-export type ChatAgentStage = 'intent' | 'plan' | 'tool' | 'workflow' | 'respond'
+export type ChatUserFacingStatus =
+  | 'thinking'
+  | 'searching'
+  | 'organizing'
+  | 'creating'
+  | 'responding'
+
+export type ChatStatusMode = 'chat' | 'workflow'
 
 export type ChatStreamEvent =
   | { type: 'start' }
-  | { type: 'stage'; stage: ChatAgentStage; label: string }
   | {
-      type: 'skill_phase'
-      skill: 'calendar_planning'
-      phase: 'draft' | 'confirm' | 'create' | 'advise'
+      type: 'status'
+      status: ChatUserFacingStatus
       label: string
-    }
-  | {
-      type: 'tool_call'
-      tool:
-        | 'knowledge_base_search'
-        | 'publish_post'
-        | 'update_post'
-        | 'delete_post'
-        | 'get_post_detail'
-        | 'list_drafts'
-        | 'create_calendar_event'
-        | 'create_thought'
-        | 'save_bookmark_from_url'
-        | 'list_bookmarks'
-        | 'search_thoughts'
-        | 'answer_thoughts'
-      label: string
-      reason: string
-      query?: string
-      limit?: number
-    }
-  | {
-      type: 'tool_result'
-      tool:
-        | 'knowledge_base_search'
-        | 'publish_post'
-        | 'update_post'
-        | 'delete_post'
-        | 'get_post_detail'
-        | 'list_drafts'
-        | 'create_calendar_event'
-        | 'create_thought'
-        | 'save_bookmark_from_url'
-        | 'list_bookmarks'
-        | 'search_thoughts'
-        | 'answer_thoughts'
-      summary: string
-      hitCount?: number
     }
   | { type: 'followup'; questions: string[] }
   | { type: 'content'; content: string }
@@ -99,13 +66,44 @@ export type BlogWorkflowResult =
       postUrl: string
     }
 
-export type BlogWorkflowStage = 'plan' | 'ask_followup' | 'write' | 'edit' | 'save'
-
 export type BlogWorkflowStreamEvent =
   | { type: 'start' }
-  | { type: 'stage'; stage: BlogWorkflowStage; content: string }
+  | {
+      type: 'status'
+      stage: 'plan' | 'ask_followup' | 'write' | 'edit' | 'save'
+      status: ChatUserFacingStatus
+      label: string
+    }
   | { type: 'result'; result: BlogWorkflowResult }
   | { type: 'cancelled' }
+
+export type ChatProgressState = {
+  mode: ChatStatusMode
+  status: ChatUserFacingStatus
+  label: string
+}
+
+export function toChatProgressState(
+  event: ChatStreamEvent | BlogWorkflowStreamEvent
+): ChatProgressState | null {
+  if (event.type !== 'status') {
+    return null
+  }
+
+  if ('stage' in event) {
+    return {
+      mode: 'workflow',
+      status: event.status,
+      label: event.label,
+    }
+  }
+
+  return {
+    mode: 'chat',
+    status: event.status,
+    label: event.label,
+  }
+}
 
 type ApiResponse<T> = {
   success: boolean

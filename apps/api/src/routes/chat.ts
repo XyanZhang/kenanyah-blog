@@ -7,6 +7,7 @@ import { rateLimit } from '../middleware/rate-limit'
 import { isAbortError } from '../lib/abort'
 import { indexConversation } from '../lib/semantic-search'
 import { runChatMultiAgentOrchestrator } from '../orchestrators/chat-multi-agent-orchestrator'
+import { logger } from '../lib/logger'
 
 type ChatVariables = {
   user: { userId: string; role: string }
@@ -275,7 +276,7 @@ chat.post('/conversations/:id/messages/stream', async (c) => {
           },
         })
         indexConversation(id).catch((err) =>
-          console.error('[semantic-search] index conversation failed:', err)
+          logger.warn({ err, conversationId: id }, 'chat.semantic_search.index_conversation_failed')
         )
       }
 
@@ -286,6 +287,14 @@ chat.post('/conversations/:id/messages/stream', async (c) => {
       }
 
       const message = err instanceof Error ? err.message : 'AI 服务暂时不可用'
+      logger.error(
+        {
+          err,
+          conversationId: id,
+          userId: user.userId,
+        },
+        'chat.stream.failed'
+      )
       await stream.writeSSE({ data: JSON.stringify({ error: message }) })
     } finally {
       try {

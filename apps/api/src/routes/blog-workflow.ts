@@ -6,6 +6,7 @@ import { rateLimit } from '../middleware/rate-limit'
 import { createAbortError, isAbortError } from '../lib/abort'
 import { runBlogReactOrchestrator } from '../orchestrators/blog-react-orchestrator'
 import { env } from '../env'
+import { logger } from '../lib/logger'
 
 type WorkflowVariables = {
   user: { userId: string; role: string }
@@ -68,7 +69,14 @@ workflow.post('/run', async (c) => {
       data: result,
     })
   } catch (error) {
-    console.error('[blog-workflow] run failed:', error)
+    logger.error(
+      {
+        err: error,
+        conversationId: parsed.data.conversationId,
+        userId: user.userId,
+      },
+      'blog_workflow.run.failed'
+    )
     return c.json(
       {
         success: false,
@@ -146,7 +154,14 @@ workflow.post('/run/stream', async (c) => {
         return
       }
 
-      console.error('[blog-workflow] stream run failed:', error)
+      logger.error(
+        {
+          err: error,
+          conversationId: parsed.data.conversationId,
+          userId: user.userId,
+        },
+        'blog_workflow.stream.failed'
+      )
 
       try {
         await stream.writeSSE({

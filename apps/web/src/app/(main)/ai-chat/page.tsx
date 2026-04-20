@@ -25,12 +25,14 @@ import {
   getConversation,
   streamChatMessage,
   streamBlogWorkflow,
+  toChatProgressState,
   updateConversation,
   type BlogWorkflowResult,
+  type ChatProgressState,
   type ChatConversation,
   type ChatMessage,
-  type ChatStreamEvent,
 } from '@/lib/ai-chat-api'
+import { AgentStatusCard } from '@/components/chat/AgentStatusCard'
 import {
   buildWorkflowFollowupOperationCardMessage,
   isWorkflowOperationCardContent,
@@ -44,6 +46,7 @@ type UiMessage = ChatMessage & {
   pending?: boolean
   queued?: boolean
   interrupted?: boolean
+  progress?: ChatProgressState | null
 }
 
 type ChatQueueItem = {
@@ -158,30 +161,6 @@ function isAbortError(error: unknown): boolean {
     (error instanceof DOMException && error.name === 'AbortError') ||
     (error instanceof Error && error.name === 'AbortError')
   )
-}
-
-function getChatEventStatusLabel(event: ChatStreamEvent): string | null {
-  if (event.type === 'stage') {
-    return event.label
-  }
-
-  if (event.type === 'skill_phase') {
-    return event.label
-  }
-
-  if (event.type === 'tool_call') {
-    return event.label
-  }
-
-  if (event.type === 'tool_result') {
-    return event.summary
-  }
-
-  if (event.type === 'followup') {
-    return '正在整理操作卡片…'
-  }
-
-  return null
 }
 
 function getOperationActionButtonClass(style?: OperationCardAction['style']): string {
@@ -477,6 +456,7 @@ export default function AiChatPage() {
       createdAt: new Date().toISOString(),
       pending: true,
       queued: Boolean(assistantContent),
+      progress: null,
     }
 
     setMessages((prev) => [...prev, userMsg, assistantMsg])
@@ -509,6 +489,7 @@ export default function AiChatPage() {
             pending: true,
             queued: false,
             interrupted: false,
+            progress: null,
           }
         }
 
@@ -521,7 +502,7 @@ export default function AiChatPage() {
     setMessages((prev) =>
       prev.map((message) =>
         message.id === job.userMsgId || message.id === job.assistantMsgId
-          ? { ...message, pending: false, queued: false }
+          ? { ...message, pending: false, queued: false, progress: null }
           : message
       )
     )
@@ -548,6 +529,7 @@ export default function AiChatPage() {
             pending: false,
             queued: false,
             interrupted: true,
+            progress: null,
           }
         }
 
@@ -572,7 +554,6 @@ export default function AiChatPage() {
 
     const controller = new AbortController()
     activeChatAbortRef.current = controller
-    const stageHistory: string[] = []
     let receivedContent = false
     let finalAssistantContent = ''
 
@@ -589,6 +570,11 @@ export default function AiChatPage() {
               m.id === job.assistantMsgId
                 ? {
                     ...m,
+                    progress: {
+                      mode: 'chat',
+                      status: 'responding',
+                      label: '我正在回复你',
+                    },
                     content: isFirstChunk ? chunk : (m.content ?? '') + chunk,
                   }
                 : m
@@ -602,22 +588,35 @@ export default function AiChatPage() {
           useKnowledgeBase: job.useKnowledgeBase,
           signal: controller.signal,
           onEvent: (event) => {
-            const statusLabel = getChatEventStatusLabel(event)
-            if (!statusLabel || receivedContent) {
+            const progress = toChatProgressState(event)
+            if (!progress || receivedContent) {
               return
             }
 
-            stageHistory.push(statusLabel)
             setMessages((prev) =>
               prev.map((message) =>
                 message.id === job.assistantMsgId
-                  ? { ...message, content: stageHistory.join('\n') }
+                  ? { ...message, progress }
                   : message
               )
             )
           },
         }
       )
+      if (!finalAssistantContent.trim()) {
+        finalAssistantContent = '我整理好了，但这次没有生成可展示内容。你可以换个问法，或者补充更多细节。'
+        setMessages((prev) =>
+          prev.map((message) =>
+            message.id === job.assistantMsgId
+              ? {
+                  ...message,
+                  content: finalAssistantContent,
+                  progress: null,
+                }
+              : message
+          )
+        )
+      }
       finishChatJob(job)
       setWorkflowFollowupMode(isWorkflowFollowupMessage(finalAssistantContent))
       listConversations()
@@ -723,6 +722,7 @@ export default function AiChatPage() {
       createdAt: new Date().toISOString(),
       pending: true,
       queued,
+      progress: null,
     }
 
     setMessages((prev) => [...prev, userMsg, assistantMsg])
@@ -751,10 +751,11 @@ export default function AiChatPage() {
         if (message.id === job.assistantMsgId) {
           return {
             ...message,
-            content: message.content || '正在开始博客生成…',
+            content: '',
             pending: true,
             queued: false,
             interrupted: false,
+            progress: null,
           }
         }
 
@@ -781,6 +782,7 @@ export default function AiChatPage() {
             pending: false,
             queued: false,
             interrupted: false,
+            progress: null,
           }
         }
 
@@ -810,6 +812,7 @@ export default function AiChatPage() {
             pending: false,
             queued: false,
             interrupted: true,
+            progress: null,
           }
         }
 
@@ -843,7 +846,6 @@ export default function AiChatPage() {
 
     const controller = new AbortController()
     activeWorkflowAbortRef.current = controller
-    const statusHistory: string[] = []
     let finalResult: BlogWorkflowResult | null = null
 
     try {
@@ -855,15 +857,15 @@ export default function AiChatPage() {
         },
         {
           onEvent: (event) => {
-            if (event.type !== 'stage') {
+            const progress = toChatProgressState(event)
+            if (!progress) {
               return
             }
 
-            statusHistory.push(event.content)
             setMessages((prev) =>
               prev.map((message) =>
                 message.id === job.assistantMsgId
-                  ? { ...message, content: statusHistory.join('\n\n') }
+                  ? { ...message, progress }
                   : message
               )
             )
@@ -1376,6 +1378,13 @@ export default function AiChatPage() {
                             已中断
                           </div>
                         )}
+                        {msg.role === 'assistant' && msg.progress && msg.pending && (
+                          <AgentStatusCard
+                            mode={msg.progress.mode}
+                            status={msg.progress.status}
+                            label={msg.progress.label}
+                          />
+                        )}
                         {msg.role === 'assistant' ? (
                           operationCard ? (
                             <div
@@ -1671,7 +1680,7 @@ export default function AiChatPage() {
                                   ),
                                 }}
                               >
-                                {msg.content || (msg.pending ? '思考中…' : '')}
+                                {msg.content || ''}
                               </ReactMarkdown>
                             </div>
                           )

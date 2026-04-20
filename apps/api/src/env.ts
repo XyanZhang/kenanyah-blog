@@ -69,6 +69,7 @@ const envSchema = z.object({
     .url()
     .optional(), // 访问 URL 前缀，默认 http://localhost:${PORT}；OSS 时填 CDN 域名
   LOG_LEVEL: z.enum(['trace', 'debug', 'info', 'warn', 'error', 'fatal']).optional(),
+  LOG_FILE_PATH: z.string().optional(),
   // SMTP 邮件服务配置
   SMTP_HOST: z.string().min(1).optional(),
   SMTP_PORT: z.string().default('587'),

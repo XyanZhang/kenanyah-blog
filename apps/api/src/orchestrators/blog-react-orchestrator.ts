@@ -12,6 +12,7 @@ import {
 } from '../tools/session-tools'
 import { createAndMaybePublishPost } from '../tools/post-tools'
 import { buildWorkflowFollowupOperationCardMessage } from '../lib/operation-card'
+import { logger } from '../lib/logger'
 
 type BlogWorkflowInput = {
   conversationId: string
@@ -26,13 +27,19 @@ type BlogWorkflowInput = {
 }
 
 export type BlogWorkflowStage = 'plan' | 'ask_followup' | 'write' | 'edit' | 'save'
+export type BlogWorkflowUserFacingStatus =
+  | 'thinking'
+  | 'organizing'
+  | 'creating'
+  | 'responding'
 
 type WorkflowAction = BlogWorkflowStage
 
 export type BlogWorkflowStreamEvent = {
-  type: 'stage'
+  type: 'status'
   stage: BlogWorkflowStage
-  content: string
+  status: BlogWorkflowUserFacingStatus
+  label: string
 }
 
 export type BlogWorkflowResult =
@@ -80,12 +87,14 @@ export function formatBlogWorkflowResultMessage(result: BlogWorkflowResult): str
 async function emitWorkflowStage(
   input: BlogWorkflowInput,
   stage: BlogWorkflowStage,
-  content: string
+  status: BlogWorkflowUserFacingStatus,
+  label: string
 ) {
   await input.onEvent?.({
-    type: 'stage',
+    type: 'status',
     stage,
-    content,
+    status,
+    label,
   })
 }
 
@@ -117,12 +126,22 @@ export async function runBlogReactOrchestrator(input: BlogWorkflowInput): Promis
   let loop = 0
   const maxLoop = 5
   let planResult: Awaited<ReturnType<typeof runPlannerAgent>> | null = null
+  const diagnosticsLogger = logger.child({
+    scope: 'blog-workflow',
+    conversationId: input.conversationId,
+    userId: input.userId,
+  })
 
   while (loop < maxLoop) {
     loop += 1
 
     if (action === 'plan') {
-      await emitWorkflowStage(input, 'plan', '正在分析需求并规划文章方向…')
+      diagnosticsLogger.info({
+        msg: 'blog.workflow.status',
+        internalStage: 'plan',
+        userStatus: 'thinking',
+      })
+      await emitWorkflowStage(input, 'plan', 'thinking', '我在理解你的需求')
       throwIfAborted(input.signal)
       planResult = await runPlannerAgent(conversationText, input.signal)
       throwIfAborted(input.signal)
@@ -131,7 +150,12 @@ export async function runBlogReactOrchestrator(input: BlogWorkflowInput): Promis
     }
 
     if (action === 'ask_followup') {
-      await emitWorkflowStage(input, 'ask_followup', '缺少关键信息，正在整理补充问题…')
+      diagnosticsLogger.info({
+        msg: 'blog.workflow.status',
+        internalStage: 'ask_followup',
+        userStatus: 'organizing',
+      })
+      await emitWorkflowStage(input, 'ask_followup', 'organizing', '我在整理还需要你补充的信息')
       throwIfAborted(input.signal)
       const followupQuestions =
         planResult?.followupQuestions?.filter(Boolean).slice(0, 3) ?? ['你希望文章聚焦什么主题？']
@@ -151,7 +175,12 @@ export async function runBlogReactOrchestrator(input: BlogWorkflowInput): Promis
     }
 
     if (action === 'write') {
-      await emitWorkflowStage(input, 'write', '正在撰写博客草稿…')
+      diagnosticsLogger.info({
+        msg: 'blog.workflow.status',
+        internalStage: 'write',
+        userStatus: 'creating',
+      })
+      await emitWorkflowStage(input, 'write', 'creating', '我在生成内容草稿')
       throwIfAborted(input.signal)
       draft = await runWriterAgent(conversationText, planResult!, input.signal)
       throwIfAborted(input.signal)
@@ -160,7 +189,12 @@ export async function runBlogReactOrchestrator(input: BlogWorkflowInput): Promis
     }
 
     if (action === 'edit') {
-      await emitWorkflowStage(input, 'edit', '正在润色文章结构与表达…')
+      diagnosticsLogger.info({
+        msg: 'blog.workflow.status',
+        internalStage: 'edit',
+        userStatus: 'organizing',
+      })
+      await emitWorkflowStage(input, 'edit', 'organizing', '我在整理结构和表达')
       throwIfAborted(input.signal)
       draft = await runEditorAgent(draft!, input.signal)
       throwIfAborted(input.signal)
@@ -169,11 +203,13 @@ export async function runBlogReactOrchestrator(input: BlogWorkflowInput): Promis
     }
 
     if (action === 'save') {
-      await emitWorkflowStage(
-        input,
-        'save',
-        input.publishDirectly ? '正在保存并发布文章…' : '正在保存文章草稿…'
-      )
+      diagnosticsLogger.info({
+        msg: 'blog.workflow.status',
+        internalStage: 'save',
+        userStatus: 'responding',
+        publishDirectly: input.publishDirectly,
+      })
+      await emitWorkflowStage(input, 'save', 'responding', '我在准备最终结果')
       throwIfAborted(input.signal)
       const post = await createAndMaybePublishPost({
         authorId: input.userId,
