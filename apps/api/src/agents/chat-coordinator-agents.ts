@@ -77,6 +77,7 @@ const deletePostToolCallSchema = z.object({
 const getPostDetailToolCallSchema = z.object({
   tool: z.literal('get_post_detail'),
   postQuery: z.string().trim().max(200).catch(''),
+  selectionMode: z.enum(['match_query', 'latest', 'previous', 'next']).catch('match_query'),
   includeContent: z.boolean().catch(true),
   reason: z.string().trim().max(160).catch(''),
 })
@@ -221,6 +222,24 @@ function looksLikeGenericDraftListRequest(latestUserMessage: string): boolean {
 function looksLikeGenericBookmarkListRequest(latestUserMessage: string): boolean {
   const text = normalizeMessageText(latestUserMessage)
   return /^(?:帮我|请)?(?:列出|看看|查看|展示)?(?:一下)?(?:我的)?(?:收藏|书签)(?:列表)?$/.test(text)
+}
+
+function detectPostDetailSelectionMode(latestUserMessage: string): 'match_query' | 'latest' | 'previous' | 'next' {
+  const text = normalizeMessageText(latestUserMessage)
+
+  if (/(?:上一篇|前一篇|上篇|上一条文章|前一条文章)/.test(text)) {
+    return 'previous'
+  }
+
+  if (/(?:下一篇|后一篇|下篇|下一条文章|后一条文章)/.test(text)) {
+    return 'next'
+  }
+
+  if (/(?:最新(?:的)?(?:一篇|那篇)?文章|最近(?:的)?(?:一篇|那篇)?文章|最新文章)/.test(text)) {
+    return 'latest'
+  }
+
+  return 'match_query'
 }
 
 function looksLikeCalendarEventRequest(latestUserMessage: string): boolean {
@@ -562,6 +581,7 @@ function getFallbackBusinessToolCall(intent: ChatIntentRecognition, latestUserMe
     return {
       tool: 'get_post_detail',
       postQuery: latestUserMessage.slice(0, 200),
+      selectionMode: detectPostDetailSelectionMode(latestUserMessage),
       includeContent: true,
       reason: '用户要求查看文章详情',
     }
@@ -687,7 +707,7 @@ export async function runBusinessToolAgent(input: {
     '- publish_post: 字段 tool, postQuery, strategy, reason。strategy 只允许 latest_draft 或 match_query。',
     '- update_post: 字段 tool, postQuery, title, excerpt, content, appendContent, publishAction, reason。publishAction 只允许 keep, publish, unpublish。',
     '- delete_post: 字段 tool, postQuery, reason。',
-    '- get_post_detail: 字段 tool, postQuery, includeContent, reason。',
+    '- get_post_detail: 字段 tool, postQuery, selectionMode, includeContent, reason。selectionMode 只允许 match_query, latest, previous, next。',
     '- list_drafts: 字段 tool, query, limit, reason。',
     '- create_calendar_event: 字段 tool, rawText, defaultDate, reason。用于把用户的原始安排写入日历/日程系统；它还会自动推断是普通事件、博客草稿、想法、项目或照片事项。',
     '- create_thought: 字段 tool, content, reason。',
@@ -701,6 +721,10 @@ export async function runBusinessToolAgent(input: {
     'save_bookmark_from_url 的 url 必须来自用户输入或上下文，不要虚构链接。',
     'update_post 至少应提供 postQuery 或让系统可以默认选择最近草稿；同时尽量抽取用户真正要改动的字段。',
     'delete_post 是危险操作，应尽量提取明确的文章标识；如果没有足够信息，postQuery 留空，由执行层追问。',
+    '当用户说“最新一篇文章/最新文章/最近一篇”时，get_post_detail 应返回 selectionMode=latest。',
+    '当用户说“上一篇/前一篇/上篇”时，get_post_detail 应返回 selectionMode=previous。',
+    '当用户说“下一篇/后一篇/下篇”时，get_post_detail 应返回 selectionMode=next。',
+    '只有当用户给出明确标题、slug、id 或其他明确标识时，get_post_detail 才使用 selectionMode=match_query，并尽量提取到 postQuery。',
     '如果最近助手已经给出待删除文章并要求二次确认，而用户这次是在明确确认删除，仍返回 delete_post；postQuery 尽量提取那篇文章的 id、slug 或标题。',
     `当前允许的工具：${input.availableTools.join(', ') || '无'}`,
     input.skillPrompt?.trim() || '',

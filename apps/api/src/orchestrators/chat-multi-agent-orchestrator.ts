@@ -19,7 +19,10 @@ import {
   executeChatToolCalls,
   type ChatToolExecutionResult,
 } from '../tools/chat-agent-tools'
-import { executeBusinessTool } from '../tools/business-agent-tools'
+import {
+  buildPostNavigationStateMessage,
+  executeBusinessTool,
+} from '../tools/business-agent-tools'
 import {
   formatConversationForPrompt,
   type ConversationMessage,
@@ -46,6 +49,11 @@ export type ChatMultiAgentStreamEvent =
     }
   | {
       type: 'content'
+      content: string
+    }
+  | {
+      type: 'state'
+      role: 'system'
       content: string
     }
 
@@ -548,6 +556,13 @@ export async function* runChatMultiAgentOrchestrator(
         summary: result.summary,
         resultStatus: 'status' in result ? result.status : undefined,
       })
+      if (result.tool === 'get_post_detail' && result.status === 'found' && result.post?.id) {
+        yield {
+          type: 'state',
+          role: 'system',
+          content: buildPostNavigationStateMessage(result.post.id),
+        }
+      }
       yield {
         type: 'content',
         content:

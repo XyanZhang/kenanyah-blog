@@ -157,7 +157,12 @@ chat.get('/conversations/:id', async (c) => {
   }
 
   const messages = await prisma.chatMessage.findMany({
-    where: { conversationId: id },
+    where: {
+      conversationId: id,
+      role: {
+        not: 'system',
+      },
+    },
     orderBy: { createdAt: 'asc' },
   })
 
@@ -235,6 +240,7 @@ chat.post('/conversations/:id/messages/stream', async (c) => {
       : recentHistory
 
   let fullAssistant = ''
+  const pendingSystemMessages: string[] = []
   const requestSignal = c.req.raw.signal
 
   return streamSSE(c, async (stream) => {
@@ -254,6 +260,10 @@ chat.post('/conversations/:id/messages/stream', async (c) => {
         useKnowledgeBase,
         signal: requestSignal,
       })) {
+        if (event.type === 'state') {
+          pendingSystemMessages.push(event.content)
+          continue
+        }
         if (event.type === 'content') {
           fullAssistant += event.content
         }
@@ -275,6 +285,15 @@ chat.post('/conversations/:id/messages/stream', async (c) => {
             lastMessageAt: new Date(),
           },
         })
+        if (pendingSystemMessages.length > 0) {
+          await prisma.chatMessage.createMany({
+            data: pendingSystemMessages.map((content) => ({
+              conversationId: id,
+              role: 'system',
+              content,
+            })),
+          })
+        }
         indexConversation(id).catch((err) =>
           logger.warn({ err, conversationId: id }, 'chat.semantic_search.index_conversation_failed')
         )

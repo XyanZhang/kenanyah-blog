@@ -27,7 +27,7 @@ export function buildPostIndexText(post: PostForIndex): string {
 
 export function buildConversationIndexText(conv: ConversationForIndex): string {
   const title = conv.title ?? 'AI 对话'
-  const recentMessages = conv.messages.slice(-10)
+  const recentMessages = conv.messages.filter((message) => message.role !== 'system').slice(-10)
   const body = recentMessages
     .map((m) => (m.role === 'user' ? `用户：${m.content}` : `助手：${m.content}`))
     .join('\n')

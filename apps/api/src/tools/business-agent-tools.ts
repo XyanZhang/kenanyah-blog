@@ -272,6 +272,20 @@ function normalizeMessageText(value: string): string {
   return value.replace(/\s+/g, ' ').trim()
 }
 
+const POST_NAVIGATION_STATE_PREFIX = 'POST_NAVIGATION_STATE:'
+
+type PostNavigationState = {
+  lastShownPostId: string
+  ordering: 'updatedAt_desc'
+}
+
+type PostSelectionBoundary = 'empty' | 'missing_anchor' | 'no_previous' | 'no_next' | null
+
+type PostSelectionResolution = {
+  post: Awaited<ReturnType<typeof prisma.post.findFirst>> | null
+  boundary: PostSelectionBoundary
+}
+
 function isExplicitDeleteConfirmation(latestUserMessage: string): boolean {
   const text = normalizeMessageText(latestUserMessage)
   return /^(确认删除|确定删除|确认删掉|确定删掉|确认移除|确定移除)(?:[:：\s].*|$)/.test(text)
@@ -404,6 +418,114 @@ async function findUserPost(input: {
     },
     orderBy: { updatedAt: 'desc' },
   })
+}
+
+async function listRecentUserPosts(input: {
+  userId: string
+  signal?: AbortSignal
+}) {
+  throwIfAborted(input.signal)
+  return prisma.post.findMany({
+    where: {
+      authorId: input.userId,
+    },
+    orderBy: [{ updatedAt: 'desc' }, { createdAt: 'desc' }, { id: 'desc' }],
+  })
+}
+
+function extractLatestPostNavigationState(conversationText: string): PostNavigationState | null {
+  const matches = [
+    ...conversationText.matchAll(new RegExp(`${POST_NAVIGATION_STATE_PREFIX}(\\{[^\\n]+\\})`, 'g')),
+  ]
+  const raw = matches[matches.length - 1]?.[1]
+  if (!raw) {
+    return null
+  }
+
+  try {
+    const parsed = JSON.parse(raw) as PostNavigationState
+    if (!parsed?.lastShownPostId) {
+      return null
+    }
+    return parsed
+  } catch {
+    return null
+  }
+}
+
+export function buildPostNavigationStateMessage(postId: string): string {
+  return `${POST_NAVIGATION_STATE_PREFIX}${JSON.stringify({
+    lastShownPostId: postId,
+    ordering: 'updatedAt_desc',
+  } satisfies PostNavigationState)}`
+}
+
+async function resolvePostBySelectionMode(input: {
+  toolCall: GetPostDetailToolCall
+  userId: string
+  conversationText: string
+  signal?: AbortSignal
+}): Promise<PostSelectionResolution> {
+  if (input.toolCall.selectionMode === 'match_query') {
+    const post = await findUserPost({
+      userId: input.userId,
+      postQuery: input.toolCall.postQuery,
+      preferDraft: false,
+      signal: input.signal,
+    })
+    return {
+      post,
+      boundary: null,
+    }
+  }
+
+  const orderedPosts = await listRecentUserPosts({
+    userId: input.userId,
+    signal: input.signal,
+  })
+
+  if (orderedPosts.length === 0) {
+    return {
+      post: null,
+      boundary: 'empty' as const,
+    }
+  }
+
+  if (input.toolCall.selectionMode === 'latest') {
+    return {
+      post: orderedPosts[0] ?? null,
+      boundary: null,
+    }
+  }
+
+  const navigationState = extractLatestPostNavigationState(input.conversationText)
+  if (!navigationState?.lastShownPostId) {
+    return {
+      post: null,
+      boundary: 'missing_anchor' as const,
+    }
+  }
+
+  const anchorIndex = orderedPosts.findIndex((post) => post.id === navigationState.lastShownPostId)
+  if (anchorIndex === -1) {
+    return {
+      post: null,
+      boundary: 'missing_anchor' as const,
+    }
+  }
+
+  const targetIndex =
+    input.toolCall.selectionMode === 'previous' ? anchorIndex + 1 : anchorIndex - 1
+  const targetPost = orderedPosts[targetIndex] ?? null
+
+  return {
+    post: targetPost,
+    boundary: targetPost
+      ? null
+      : input.toolCall.selectionMode === 'previous'
+        ? ('no_previous' as const)
+        : ('no_next' as const),
+  }
 }
 
 async function ensureUniqueSlugForPost(title: string, currentPostId: string): Promise<string> {
@@ -1317,21 +1439,30 @@ async function executeGetPostDetailTool(
   input: {
     userId: string
     siteBaseUrl: string
+    conversationText: string
     signal?: AbortSignal
   }
 ): Promise<BusinessToolExecutionResult> {
-  const post = await findUserPost({
+  const resolution = await resolvePostBySelectionMode({
+    toolCall,
     userId: input.userId,
-    postQuery: toolCall.postQuery,
-    preferDraft: false,
+    conversationText: input.conversationText,
     signal: input.signal,
   })
   throwIfAborted(input.signal)
+  const post = resolution.post
 
   if (!post) {
-    const summary = toolCall.postQuery.trim()
-      ? '我没有找到这篇文章。你可以提供更明确的标题、slug 或 id。'
-      : '我没有找到可查看的文章。'
+    const summary =
+      resolution.boundary === 'missing_anchor'
+        ? '我还没有明确的上一篇/下一篇参考文章。你可以先让我展示一篇文章，再继续翻看上一篇或下一篇。'
+        : resolution.boundary === 'no_previous'
+          ? '这已经是更早的一篇文章了，没有再往前的上一篇。'
+          : resolution.boundary === 'no_next'
+            ? '这已经是最新的一篇文章了，没有再往后的下一篇。'
+            : toolCall.postQuery.trim()
+              ? '我没有找到这篇文章。你可以提供更明确的标题、slug 或 id。'
+              : '我没有找到可查看的文章。'
     return {
       tool: 'get_post_detail',
       status: 'not_found',
@@ -1340,7 +1471,10 @@ async function executeGetPostDetailTool(
         scope: 'tool',
         title: '查看文章详情前还需要确认目标文章',
         description: summary,
-        questions: ['请告诉我文章标题、slug 或 id。'],
+        questions:
+          resolution.boundary === 'missing_anchor'
+            ? ['你可以先让我展示最新一篇文章，或者直接告诉我文章标题、slug 或 id。']
+            : ['请告诉我文章标题、slug 或 id。'],
         submitMode: 'chat',
         submitLabel: '发送文章标识',
         inputPlaceholder: '例如：查看 slug 为 multi-agent-chat 的文章',
