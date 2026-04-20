@@ -64,6 +64,7 @@ const updatePostToolCallSchema = z.object({
   excerpt: z.string().trim().max(500).catch(''),
   content: z.string().trim().max(30000).catch(''),
   appendContent: z.string().trim().max(10000).catch(''),
+  editInstruction: z.string().trim().max(4000).catch(''),
   publishAction: z.enum(['keep', 'publish', 'unpublish']).catch('keep'),
   reason: z.string().trim().max(160).catch(''),
 })
@@ -224,6 +225,94 @@ function looksLikeGenericBookmarkListRequest(latestUserMessage: string): boolean
   return /^(?:帮我|请)?(?:列出|看看|查看|展示)?(?:一下)?(?:我的)?(?:收藏|书签)(?:列表)?$/.test(text)
 }
 
+function hasPendingPostUpdateFollowup(conversationText: string): boolean {
+  return (
+    conversationText.includes('更新文章前还需要补充修改内容') ||
+    conversationText.includes('请告诉我这次具体要改哪些字段') ||
+    conversationText.includes('你想修改标题、摘要、正文，还是发布状态')
+  )
+}
+
+function looksLikeUpdatePostRequest(latestUserMessage: string): boolean {
+  const text = normalizeMessageText(latestUserMessage)
+  return (
+    /(?:修改|改一下|改成|改为|调整|润色|优化|补充|追加|扩写|缩写|缩短|重写|精简|完善).*(?:文章|博客|博文|标题|摘要|正文|内容|结尾|开头)/.test(
+      text
+    ) ||
+    /(?:把|将).*(?:标题|摘要|正文|内容|结尾|开头).*(?:改|调整|润色|优化|补充|追加|扩写|缩写|重写)/.test(
+      text
+    ) ||
+    /^(?:标题|摘要|正文|内容|结尾|开头).*(?:改|调整|润色|优化|补充|追加|扩写|缩写|重写)/.test(text)
+  )
+}
+
+function extractPostQueryFromUpdateRequest(latestUserMessage: string): string {
+  const text = normalizeMessageText(latestUserMessage)
+  const quotedMatch =
+    text.match(/《([^》]+)》/) ||
+    text.match(/“([^”]+)”/) ||
+    text.match(/"([^"]+)"/) ||
+    text.match(/'([^']+)'/)
+
+  if (quotedMatch?.[1]?.trim()) {
+    return quotedMatch[1].trim()
+  }
+
+  const idMatch = text.match(/\bcm[a-z0-9]{6,}\b/i)
+  if (idMatch?.[0]) {
+    return idMatch[0]
+  }
+
+  return ''
+}
+
+function extractStructuredUpdateFields(latestUserMessage: string): {
+  title: string
+  excerpt: string
+  content: string
+  appendContent: string
+  editInstruction: string
+  publishAction: 'keep' | 'publish' | 'unpublish'
+} {
+  const text = latestUserMessage.trim()
+  const normalized = normalizeMessageText(text)
+
+  const titleMatch = normalized.match(/(?:标题)(?:改为|改成|换成|叫做|叫|写成|设为|变成)[:：\s]*(.+)$/)
+  const excerptMatch = text.match(/(?:摘要|简介|导语)(?:改为|改成|换成|写成|设为|变成)[:：\s]*([\s\S]+)$/)
+  const contentMatch = text.match(/(?:正文|全文|内容)(?:改为|改成|替换为|更新为)[:：\s]*([\s\S]+)$/)
+  const appendMatch = text.match(
+    /(?:(?:在)?(?:正文末尾|文末|结尾|最后)(?:追加|补充|加上)|追加(?:一段)?|补充(?:一段)?|新增(?:一段)?)(?:[:：\s]*)([\s\S]+)$/
+  )
+
+  let publishAction: 'keep' | 'publish' | 'unpublish' = 'keep'
+  if (/(?:发布|上线|公开这篇文章)/.test(normalized)) {
+    publishAction = 'publish'
+  } else if (/(?:下线|取消发布|撤回发布|转为草稿)/.test(normalized)) {
+    publishAction = 'unpublish'
+  }
+
+  const title = titleMatch?.[1]?.trim() || ''
+  const excerpt = excerptMatch?.[1]?.trim() || ''
+  const content = contentMatch?.[1]?.trim() || ''
+  const appendContent = appendMatch?.[1]?.trim() || ''
+
+  const hasDirectFields =
+    Boolean(title) || Boolean(excerpt) || Boolean(content) || Boolean(appendContent)
+  const editInstruction =
+    hasDirectFields || publishAction !== 'keep' || !normalized
+      ? ''
+      : latestUserMessage.trim().slice(0, 4000)
+
+  return {
+    title,
+    excerpt,
+    content,
+    appendContent,
+    editInstruction,
+    publishAction,
+  }
+}
+
 function detectPostDetailSelectionMode(latestUserMessage: string): 'match_query' | 'latest' | 'previous' | 'next' {
   const text = normalizeMessageText(latestUserMessage)
 
@@ -324,6 +413,13 @@ export async function runIntentRecognitionAgent(input: {
 
   if (looksLikeDeleteRequest(input.latestUserMessage)) {
     return buildFastIntentRecognition('delete_post', '删除文章')
+  }
+
+  if (
+    hasPendingPostUpdateFollowup(input.conversationText) ||
+    looksLikeUpdatePostRequest(input.latestUserMessage)
+  ) {
+    return buildFastIntentRecognition('update_post', '修改现有文章')
   }
 
   if (looksLikeGenericDraftListRequest(input.latestUserMessage)) {
@@ -557,14 +653,16 @@ function getFallbackBusinessToolCall(intent: ChatIntentRecognition, latestUserMe
   }
 
   if (intent.intent === 'update_post') {
+    const structuredFields = extractStructuredUpdateFields(latestUserMessage)
     return {
       tool: 'update_post',
-      postQuery: latestUserMessage.slice(0, 200),
-      title: '',
-      excerpt: '',
-      content: '',
-      appendContent: '',
-      publishAction: 'keep',
+      postQuery: extractPostQueryFromUpdateRequest(latestUserMessage),
+      title: structuredFields.title,
+      excerpt: structuredFields.excerpt,
+      content: structuredFields.content,
+      appendContent: structuredFields.appendContent,
+      editInstruction: structuredFields.editInstruction,
+      publishAction: structuredFields.publishAction,
       reason: '用户要求修改现有文章',
     }
   }
@@ -705,7 +803,7 @@ export async function runBusinessToolAgent(input: {
     '只允许返回一个工具调用对象，不要返回数组。',
     '可用工具如下：',
     '- publish_post: 字段 tool, postQuery, strategy, reason。strategy 只允许 latest_draft 或 match_query。',
-    '- update_post: 字段 tool, postQuery, title, excerpt, content, appendContent, publishAction, reason。publishAction 只允许 keep, publish, unpublish。',
+    '- update_post: 字段 tool, postQuery, title, excerpt, content, appendContent, editInstruction, publishAction, reason。publishAction 只允许 keep, publish, unpublish。',
     '- delete_post: 字段 tool, postQuery, reason。',
     '- get_post_detail: 字段 tool, postQuery, selectionMode, includeContent, reason。selectionMode 只允许 match_query, latest, previous, next。',
     '- list_drafts: 字段 tool, query, limit, reason。',
@@ -720,6 +818,8 @@ export async function runBusinessToolAgent(input: {
     'create_calendar_event 的 rawText 应尽量保留用户原始表达，方便下游解析日期、类型和标题；如果上下文里已经给了明确日期，也可以写入 defaultDate（YYYY-MM-DD）。',
     'save_bookmark_from_url 的 url 必须来自用户输入或上下文，不要虚构链接。',
     'update_post 至少应提供 postQuery 或让系统可以默认选择最近草稿；同时尽量抽取用户真正要改动的字段。',
+    '如果用户给的是自然语言修改要求，例如“把结尾改得更有力量”“润色一下摘要”，而不是直接给出最终文案，请把原话放进 editInstruction。',
+    '如果对话刚刚在追问文章修改内容，用户这次补充的短句通常仍然是 update_post，不要误判成普通聊天。',
     'delete_post 是危险操作，应尽量提取明确的文章标识；如果没有足够信息，postQuery 留空，由执行层追问。',
     '当用户说“最新一篇文章/最新文章/最近一篇”时，get_post_detail 应返回 selectionMode=latest。',
     '当用户说“上一篇/前一篇/上篇”时，get_post_detail 应返回 selectionMode=previous。',

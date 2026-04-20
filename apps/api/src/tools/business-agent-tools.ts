@@ -70,6 +70,13 @@ const scheduleContextSchema = z.object({
   clarificationQuestion: z.string().trim().max(160).catch(''),
 })
 
+const postEditInstructionResultSchema = z.object({
+  title: z.string().trim().max(200).optional().catch(undefined),
+  excerpt: z.string().trim().max(500).optional().catch(undefined),
+  content: z.string().trim().max(30000).optional().catch(undefined),
+  publishAction: z.enum(['keep', 'publish', 'unpublish']).optional().catch(undefined),
+})
+
 type CalendarSchedulePlan = z.infer<typeof calendarSchedulePlanSchema>
 type ScheduleContextExtraction = z.infer<typeof scheduleContextSchema>
 type PendingCalendarSchedulePlan = {
@@ -257,6 +264,104 @@ function buildPostUrl(siteBaseUrl: string, slugOrId: string): string {
 
 function buildPostEditUrl(siteBaseUrl: string, id: string): string {
   return `${siteBaseUrl.replace(/\/+$/, '')}/blog/editor/${id}`
+}
+
+function detectLikelyPostEditTargets(editInstruction: string): Array<'title' | 'excerpt' | 'content' | 'publishAction'> {
+  const text = normalizeMessageText(editInstruction)
+  const targets = new Set<'title' | 'excerpt' | 'content' | 'publishAction'>()
+
+  if (/(?:标题|题目)/.test(text)) {
+    targets.add('title')
+  }
+
+  if (/(?:摘要|简介|导语)/.test(text)) {
+    targets.add('excerpt')
+  }
+
+  if (/(?:正文|全文|内容|段落|结尾|结论|开头|语气|风格|措辞|结构|扩写|缩写|润色|精简|改写|重写|补充|追加)/.test(text)) {
+    targets.add('content')
+  }
+
+  if (/(?:发布|上线|公开|下线|撤回发布|取消发布|转为草稿)/.test(text)) {
+    targets.add('publishAction')
+  }
+
+  return [...targets]
+}
+
+async function resolvePostEditsFromInstruction(input: {
+  post: Awaited<ReturnType<typeof prisma.post.findFirst>>
+  editInstruction: string
+  signal?: AbortSignal
+}): Promise<{
+  title?: string
+  excerpt?: string
+  content?: string
+  publishAction?: 'keep' | 'publish' | 'unpublish'
+} | null> {
+  const post = input.post
+  if (!post) {
+    return null
+  }
+
+  const targets = detectLikelyPostEditTargets(input.editInstruction)
+  const raw = await invokeChat(
+    JSON.stringify(
+      {
+        instruction: input.editInstruction,
+        detectedTargets: targets,
+        post: {
+          title: post.title,
+          excerpt: post.excerpt || '',
+          content: post.content,
+          published: post.published,
+        },
+      },
+      null,
+      2
+    ),
+    [
+      '你是文章编辑助手。',
+      '任务：根据用户的修改要求，返回需要更新的文章字段。',
+      '严格输出 JSON，不要输出额外解释。',
+      '只修改用户明确要求的字段；不要顺手改其他字段。',
+      '如果用户要求润色、精简、扩写、重写正文、修改结尾或开头，请返回完整的 content。',
+      '如果用户要求修改标题，请返回 title。',
+      '如果用户要求修改摘要，请返回 excerpt。',
+      '如果用户要求发布状态变化，请返回 publishAction，值只能是 keep、publish、unpublish。',
+      '未修改的字段不要返回，或返回空值。',
+      '保留 Markdown 结构和原文事实，除非用户明确要求改变。',
+    ].join('\n'),
+    {
+      model: 'default',
+      temperature: 0.2,
+      signal: input.signal,
+    }
+  )
+  throwIfAborted(input.signal)
+
+  const jsonText = extractJsonObject(raw)
+  if (!jsonText) {
+    return null
+  }
+
+  try {
+    const parsed = JSON.parse(jsonText)
+    const result = postEditInstructionResultSchema.safeParse(parsed)
+    if (!result.success) {
+      return null
+    }
+
+    const data = result.data
+    return {
+      title: data.title?.trim() || undefined,
+      excerpt: data.excerpt?.trim() || undefined,
+      content: data.content?.trim() || undefined,
+      publishAction: data.publishAction,
+    }
+  } catch {
+    return null
+  }
 }
 
 function isLikelyHttpUrl(value: string): boolean {
@@ -1240,11 +1345,23 @@ async function executeUpdatePostTool(
   const nextExcerpt = toolCall.excerpt.trim()
   const nextContent = toolCall.content.trim()
   const appendContent = toolCall.appendContent.trim()
+  const editInstruction = ('editInstruction' in toolCall ? toolCall.editInstruction : '').trim()
+  const instructionEdits = !nextTitle && !nextExcerpt && !nextContent && !appendContent && editInstruction
+    ? await resolvePostEditsFromInstruction({
+        post,
+        editInstruction,
+        signal: input.signal,
+      })
+    : null
   const hasFieldChanges =
     Boolean(nextTitle) ||
     Boolean(nextExcerpt) ||
     Boolean(nextContent) ||
     Boolean(appendContent) ||
+    Boolean(instructionEdits?.title) ||
+    Boolean(instructionEdits?.excerpt) ||
+    Boolean(instructionEdits?.content) ||
+    (instructionEdits?.publishAction && instructionEdits.publishAction !== 'keep') ||
     toolCall.publishAction !== 'keep'
 
   if (!hasFieldChanges) {
@@ -1274,32 +1391,39 @@ async function executeUpdatePostTool(
     publishedAt?: Date | null
   } = {}
   const changedFields: string[] = []
+  const resolvedTitle = nextTitle || instructionEdits?.title || ''
+  const resolvedExcerpt = nextExcerpt || instructionEdits?.excerpt || ''
+  const resolvedContent = nextContent || instructionEdits?.content || ''
+  const resolvedPublishAction =
+    toolCall.publishAction !== 'keep'
+      ? toolCall.publishAction
+      : instructionEdits?.publishAction || 'keep'
 
-  if (nextTitle) {
-    updateData.title = nextTitle
-    updateData.slug = await ensureUniqueSlugForPost(nextTitle, post.id)
+  if (resolvedTitle) {
+    updateData.title = resolvedTitle
+    updateData.slug = await ensureUniqueSlugForPost(resolvedTitle, post.id)
     changedFields.push('标题')
   }
 
-  if (nextExcerpt) {
-    updateData.excerpt = nextExcerpt
+  if (resolvedExcerpt) {
+    updateData.excerpt = resolvedExcerpt
     changedFields.push('摘要')
   }
 
-  if (nextContent || appendContent) {
-    let content = nextContent || post.content
+  if (resolvedContent || appendContent) {
+    let content = resolvedContent || post.content
     if (appendContent) {
       content = `${content.trim()}\n\n${appendContent}`.trim()
     }
     updateData.content = content
-    changedFields.push(nextContent ? '正文' : '追加正文')
+    changedFields.push(resolvedContent ? '正文' : '追加正文')
   }
 
-  if (toolCall.publishAction === 'publish') {
+  if (resolvedPublishAction === 'publish') {
     updateData.published = true
     updateData.publishedAt = post.publishedAt ?? new Date()
     changedFields.push('发布状态')
-  } else if (toolCall.publishAction === 'unpublish') {
+  } else if (resolvedPublishAction === 'unpublish') {
     updateData.published = false
     updateData.publishedAt = null
     changedFields.push('下线状态')
