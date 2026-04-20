@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { ArrowUp } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import type { TocHeading } from '@/lib/heading'
+import { scrollToHeadingById, type TocHeading } from '@/lib/heading'
 
 export interface PostAsideProps {
   headings: TocHeading[]
@@ -95,11 +95,7 @@ export function PostAside({ headings }: PostAsideProps) {
 
   const navigateToHeading = (id: string) => (event: React.MouseEvent<HTMLAnchorElement>) => {
     event.preventDefault()
-    const target = document.getElementById(id)
-    if (!target) return
-    const offset = 110
-    const y = target.getBoundingClientRect().top + window.scrollY - offset
-    window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' })
+    if (!scrollToHeadingById(id, { behavior: 'smooth' })) return
     window.history.replaceState(null, '', `#${id}`)
   }
 
@@ -189,4 +185,3 @@ export function PostAside({ headings }: PostAsideProps) {
     </div>
   )
 }
-

@@ -13,7 +13,12 @@ import { getApiErrorMessage } from '@/lib/api-error'
 import { useAuthSession } from '@/hooks/useAuthSession'
 import { cn } from '@/lib/utils'
 import { buildDynamicImageUrl, isStaticsSource } from '@/lib/image-service'
-import { collectTocFromMarkdown, slugifyHeading } from '@/lib/heading'
+import {
+  collectTocFromMarkdown,
+  createHeadingIdGenerator,
+  scrollToHeadingById,
+  slugifyHeading,
+} from '@/lib/heading'
 import { PostAside } from '@/components/posts/PostAside'
 import PostDetailSkeletonGenerated from '@/components/skeletons/generated/PostDetailSkeletonGenerated'
 
@@ -129,6 +134,52 @@ export default function PostPage() {
     }
   }, [slug])
 
+  useEffect(() => {
+    if (!post) return
+
+    let cancelled = false
+    let attempts = 0
+    let timer: number | null = null
+
+    const scrollFromHash = (behavior: ScrollBehavior = 'auto') => {
+      const rawHash = window.location.hash
+      if (!rawHash || rawHash.length <= 1) return
+
+      const id = decodeURIComponent(rawHash.slice(1))
+
+      const tryScroll = () => {
+        if (cancelled) return
+        const found = scrollToHeadingById(id, { behavior })
+        if (found || attempts >= 8) return
+
+        attempts += 1
+        timer = window.setTimeout(tryScroll, 120)
+      }
+
+      attempts = 0
+      tryScroll()
+    }
+
+    const handleHashChange = () => {
+      if (timer != null) {
+        window.clearTimeout(timer)
+        timer = null
+      }
+      scrollFromHash('smooth')
+    }
+
+    scrollFromHash('auto')
+    window.addEventListener('hashchange', handleHashChange)
+
+    return () => {
+      cancelled = true
+      if (timer != null) {
+        window.clearTimeout(timer)
+      }
+      window.removeEventListener('hashchange', handleHashChange)
+    }
+  }, [post])
+
   if (loading) {
     return <PostDetailSkeletonGenerated />
   }
@@ -154,7 +205,7 @@ export default function PostPage() {
 
   const date = post.publishedAt ?? post.createdAt
   const tocHeadings = collectTocFromMarkdown(post.content)
-  let tocCursor = 0
+  const nextHeadingId = createHeadingIdGenerator()
 
   return (
     <main className="min-h-[60vh] pb-8 pt-24 sm:py-12">
@@ -241,11 +292,8 @@ export default function PostPage() {
                       return <h1 {...props}>{children}</h1>
                     },
                     h2: ({ node: _node, children, ...props }) => {
-                      const heading = tocHeadings[tocCursor]
                       const text = toPlainText(children).trim()
-                      const fallback = slugifyHeading(text) || 'section'
-                      const id = heading?.depth === 2 ? heading.id : fallback
-                      tocCursor += 1
+                      const id = text ? nextHeadingId(text) : slugifyHeading(text) || 'section'
                       return (
                         <h2 {...props} id={id}>
                           {children}
@@ -253,11 +301,8 @@ export default function PostPage() {
                       )
                     },
                     h3: ({ node: _node, children, ...props }) => {
-                      const heading = tocHeadings[tocCursor]
                       const text = toPlainText(children).trim()
-                      const fallback = slugifyHeading(text) || 'section'
-                      const id = heading?.depth === 3 ? heading.id : fallback
-                      tocCursor += 1
+                      const id = text ? nextHeadingId(text) : slugifyHeading(text) || 'section'
                       return (
                         <h3 {...props} id={id}>
                           {children}
