@@ -1,0 +1,48 @@
+import { z } from 'zod'
+
+export const adminLoginSchema = z.object({
+  email: z.string().email('请输入有效邮箱'),
+  password: z.string().min(6, '密码至少 6 位'),
+})
+
+export const adminPostQuerySchema = z.object({
+  page: z.coerce.number().int().positive().default(1),
+  limit: z.coerce.number().int().positive().max(100).default(10),
+  search: z.string().max(100).optional(),
+  published: z.enum(['true', 'false', 'all']).default('all'),
+  featured: z.enum(['true', 'false', 'all']).default('all'),
+})
+
+export const adminPostUpdateSchema = z.object({
+  title: z.string().min(1).max(200).optional(),
+  content: z.string().min(1).optional(),
+  excerpt: z.string().max(500).nullable().optional(),
+  coverImage: z.string().url().nullable().optional(),
+  published: z.boolean().optional(),
+  publishedAt: z.string().datetime().nullable().optional(),
+  isFeatured: z.boolean().optional(),
+  categoryIds: z.array(z.string().cuid()).optional(),
+  tagIds: z.array(z.string().cuid()).optional(),
+})
+
+export const adminCommentQuerySchema = z.object({
+  page: z.coerce.number().int().positive().default(1),
+  limit: z.coerce.number().int().positive().max(100).default(10),
+  approved: z.enum(['true', 'false', 'all']).default('all'),
+  search: z.string().max(100).optional(),
+})
+
+export const adminCommentModerationSchema = z.object({
+  approved: z.boolean(),
+})
+
+export const adminMediaQuerySchema = z.object({
+  subdir: z.string().max(64).optional(),
+})
+
+export type AdminLoginInput = z.infer<typeof adminLoginSchema>
+export type AdminPostQueryInput = z.infer<typeof adminPostQuerySchema>
+export type AdminPostUpdateInput = z.infer<typeof adminPostUpdateSchema>
+export type AdminCommentQueryInput = z.infer<typeof adminCommentQuerySchema>
+export type AdminCommentModerationInput = z.infer<typeof adminCommentModerationSchema>
+export type AdminMediaQueryInput = z.infer<typeof adminMediaQuerySchema>

@@ -1,0 +1,120 @@
+@import "tailwindcss";
+@import url("https://fonts.googleapis.com/css2?family=Fira+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap");
+
+:root {
+  color-scheme: light;
+  font-family: "Fira Sans", "Segoe UI", sans-serif;
+  --bg: #f7f5f2;
+  --bg-elevated: #fcfbf8;
+  --bg-muted: #efeae3;
+  --surface: rgba(252, 251, 248, 0.92);
+  --surface-strong: #ffffff;
+  --border: rgba(31, 24, 19, 0.12);
+  --border-strong: rgba(31, 24, 19, 0.22);
+  --text: #15110e;
+  --text-soft: #65584d;
+  --text-muted: #87786d;
+  --accent: #e63f78;
+  --accent-strong: #c62961;
+  --accent-soft: rgba(230, 63, 120, 0.12);
+  --success: #1d7a55;
+  --success-soft: rgba(29, 122, 85, 0.12);
+  --warning: #996c09;
+  --warning-soft: rgba(153, 108, 9, 0.12);
+  --danger: #bb2948;
+  --danger-soft: rgba(187, 41, 72, 0.12);
+  --shadow: 0 18px 50px -32px rgba(34, 24, 12, 0.28);
+}
+
+[data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #12100f;
+  --bg-elevated: #181513;
+  --bg-muted: #211c19;
+  --surface: rgba(23, 20, 18, 0.92);
+  --surface-strong: #1d1917;
+  --border: rgba(255, 245, 236, 0.09);
+  --border-strong: rgba(255, 245, 236, 0.18);
+  --text: #f5efe8;
+  --text-soft: #c9bfb4;
+  --text-muted: #9e9185;
+  --accent: #ff5f93;
+  --accent-strong: #ff7ba7;
+  --accent-soft: rgba(255, 95, 147, 0.15);
+  --success: #68c59d;
+  --success-soft: rgba(104, 197, 157, 0.16);
+  --warning: #ebb456;
+  --warning-soft: rgba(235, 180, 86, 0.16);
+  --danger: #f1738f;
+  --danger-soft: rgba(241, 115, 143, 0.16);
+  --shadow: 0 24px 60px -36px rgba(0, 0, 0, 0.6);
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background:
+    radial-gradient(circle at top left, rgba(230, 63, 120, 0.08), transparent 28%),
+    radial-gradient(circle at bottom right, rgba(22, 104, 166, 0.08), transparent 28%),
+    var(--bg);
+  color: var(--text);
+  overflow: hidden;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+button,
+input,
+select {
+  font: inherit;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+::selection {
+  background: var(--accent-soft);
+}
+
+.admin-panel {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.admin-table th {
+  color: var(--text-muted);
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.admin-table td {
+  color: var(--text-soft);
+}
+
+.admin-sticky {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  background: color-mix(in srgb, var(--bg) 86%, transparent);
+  backdrop-filter: blur(10px);
+}
+
+@media (max-width: 1023px) {
+  body {
+    overflow: auto;
+  }
+}

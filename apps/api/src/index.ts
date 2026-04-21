@@ -29,6 +29,7 @@ import thoughts from './routes/thoughts'
 import blogWorkflow from './routes/blog-workflow'
 import voice from './routes/voice'
 import projects from './routes/projects'
+import admin from './routes/admin'
 
 // 根应用：/uploads 在根路径（图片等静态资源无需 /api 前缀），/api 下为接口
 const root = new Hono()
@@ -81,6 +82,7 @@ app.get('/', (c) => {
         blogWorkflow: '/blog-workflow',
         voice: '/voice',
         projects: '/projects',
+        admin: '/admin',
       },
     },
   })
@@ -105,6 +107,7 @@ app.route('/thoughts', thoughts)
 app.route('/blog-workflow', blogWorkflow)
 app.route('/voice', voice)
 app.route('/projects', projects)
+app.route('/admin', admin)
 
 root.route('/api', app)
 

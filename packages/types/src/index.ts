@@ -70,6 +70,18 @@ export type {
   TokenPair,
 } from './auth'
 
+export { AdminRole } from './admin'
+export type {
+  AdminUser,
+  AdminDashboardStats,
+  AdminRecentPost,
+  AdminDashboardData,
+  AdminPostListItem,
+  AdminCommentItem,
+  AdminTaxonomyItem,
+  AdminMediaItem,
+} from './admin'
+
 // Dashboard types
 export { CardSize, CardType } from './dashboard'
 export type {

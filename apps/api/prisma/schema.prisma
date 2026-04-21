@@ -13,6 +13,10 @@ enum UserRole {
   MODERATOR
 }
 
+enum AdminRole {
+  ADMIN
+}
+
 enum AuthProvider {
   local
   google
@@ -67,6 +71,22 @@ model User {
   @@index([email])
   @@index([username])
   @@map("users")
+}
+
+model AdminUser {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  passwordHash String
+  name         String?
+  role         AdminRole @default(ADMIN)
+  isActive     Boolean   @default(true)
+  lastLoginAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([email])
+  @@index([isActive])
+  @@map("admin_users")
 }
 
 model VerificationCode {

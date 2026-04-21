@@ -10,7 +10,7 @@ const prisma = new PrismaClient({ adapter })
 async function main() {
   console.log('Starting database seed...')
 
-  // Create admin user
+  // Create site admin user
   const adminPasswordHash = await bcrypt.hash('admin123', 10)
   const admin = await prisma.user.upsert({
     where: { email: 'admin@blog.com' },
@@ -26,6 +26,21 @@ async function main() {
   })
 
   console.log('Created admin user:', admin.username)
+
+  const adminPortalPasswordHash = await bcrypt.hash('admin123', 10)
+  const adminPortalUser = await prisma.adminUser.upsert({
+    where: { email: 'admin@admin.com' },
+    update: {},
+    create: {
+      email: 'admin@admin.com',
+      passwordHash: adminPortalPasswordHash,
+      name: 'Admin Portal',
+      role: 'ADMIN',
+      isActive: true,
+    },
+  })
+
+  console.log('Created admin portal user:', adminPortalUser.email)
 
   // Create regular user
   const userPasswordHash = await bcrypt.hash('user123', 10)

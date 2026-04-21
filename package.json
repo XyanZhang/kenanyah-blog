@@ -6,6 +6,7 @@
   "scripts": {
     "dev:db": "docker-compose -f docker-compose.test.yml --env-file .env.test up -d postgres",
     "dev:blog": "turbo run dev --filter=web",
+    "dev:admin": "turbo run dev --filter=admin",
     "dev:api": "turbo run dev --filter=@blog/api",
     "dev": "turbo run dev",
     "build": "turbo run build",

@@ -52,12 +52,18 @@ log_info "Type-checking Web..."
 rm -rf apps/web/.next
 pnpm --filter web exec tsc --noEmit
 
+log_info "Type-checking Admin..."
+pnpm --filter admin exec tsc --noEmit
+
 log_info "Building Web locally to catch Next.js production build errors early..."
 pnpm --filter web build
 
+log_info "Building Admin locally to catch production build errors early..."
+pnpm --filter admin build
+
 if [ "$RUN_DOCKER_BUILD" = true ]; then
-  log_warn "Running Docker production build verification for api and web..."
-  docker compose -f docker-compose.prod.yml --env-file "$ENV_FILE" build api web
+  log_warn "Running Docker production build verification for api, web, and admin..."
+  docker compose -f docker-compose.prod.yml --env-file "$ENV_FILE" build api web admin
 fi
 
 echo ""
