@@ -21,23 +21,55 @@ export interface AdminDashboardStats {
   tagCount: number
 }
 
-export interface AdminRecentPost {
+export interface AdminDashboardKpis extends AdminDashboardStats {}
+
+export interface AdminDashboardTrendPoint {
+  date: string
+  label: string
+  createdPosts: number
+  publishedPosts: number
+  draftPosts: number
+}
+
+export interface AdminDashboardModerationSummary {
+  pending: number
+  approved: number
+}
+
+export interface AdminDashboardDistributionItem {
   id: string
+  label: string
+  value: number
+  slug?: string
+}
+
+export type AdminDashboardActivityType = 'post_updated' | 'comment_pending' | 'comment_approved'
+
+export interface AdminDashboardActivityItem {
+  id: string
+  type: AdminDashboardActivityType
   title: string
-  slug: string
-  published: boolean
-  isFeatured: boolean
-  updatedAt: Date
-  author: {
-    id: string
-    username: string
-    name: string | null
-  }
+  description: string
+  timestamp: Date
+  href?: string
+}
+
+export interface AdminDashboardActionItem {
+  id: string
+  label: string
+  value: number
+  tone: 'default' | 'success' | 'warning'
+  description: string
 }
 
 export interface AdminDashboardData {
-  stats: AdminDashboardStats
-  recentPosts: AdminRecentPost[]
+  kpis: AdminDashboardKpis
+  publishingTrend: AdminDashboardTrendPoint[]
+  publishingBreakdown: AdminDashboardTrendPoint[]
+  commentModeration: AdminDashboardModerationSummary
+  categoryDistribution: AdminDashboardDistributionItem[]
+  recentActivity: AdminDashboardActivityItem[]
+  actionItems: AdminDashboardActionItem[]
 }
 
 export interface AdminPostListItem {
