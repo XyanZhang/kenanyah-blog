@@ -342,9 +342,31 @@ function looksLikeCalendarEventRequest(latestUserMessage: string): boolean {
   )
 }
 
+function looksLikeTravelPlanningRequest(latestUserMessage: string): boolean {
+  const text = normalizeMessageText(latestUserMessage)
+  const hasTravelKeyword =
+    /(?:出行|旅行|旅游|行程|攻略|路线|自驾|自由行|度假|trip|travel)/i.test(text)
+  const hasPlanningSignal =
+    /(?:规划|计划|安排|推荐|整理|设计|制定|怎么去|怎么玩|怎么安排|路线|攻略|几天|天)/.test(
+      text
+    ) ||
+    /(?:\d+\s*天|\d+\s*晚|周末|假期|假日)/.test(text) ||
+    /(?:从|到|至|飞往|去).*(?:玩|旅游|旅行|出行)/.test(text)
+
+  return hasTravelKeyword && hasPlanningSignal
+}
+
 function looksLikeCalendarPlanAction(latestUserMessage: string): boolean {
   const text = normalizeMessageText(latestUserMessage)
   return /^(?:确认创建日程计划|取消创建日程计划)(?:\s+.+)?$/.test(text)
+}
+
+function hasPendingBlogWorkflowFollowup(conversationText: string): boolean {
+  return (
+    conversationText.includes('【OPERATION_CARD】') &&
+    conversationText.includes('"scope":"workflow"') &&
+    conversationText.includes('"submitMode":"workflow"')
+  )
 }
 
 function buildFastIntentRecognition(intent: ChatIntentName, summary: string): ChatIntentRecognition {
@@ -438,6 +460,12 @@ export async function runIntentRecognitionAgent(input: {
     return buildFastIntentRecognition('create_calendar_event', '创建日程安排')
   }
 
+  if (looksLikeTravelPlanningRequest(input.latestUserMessage)) {
+    return buildFastIntentRecognition('create_calendar_event', '规划旅行或多日行程')
+  }
+
+  const hasBlogWorkflowFollowup = hasPendingBlogWorkflowFollowup(input.conversationText)
+
   const systemPrompt = [
     '你是多 Agent 协作聊天系统中的 Intent Agent。',
     '职责：识别用户当前意图、总结目标，并判断是否缺少关键上下文。',
@@ -459,9 +487,12 @@ export async function runIntentRecognitionAgent(input: {
     '如果用户要查看收藏列表，归类为 list_bookmarks。',
     '如果用户要在思考库里查找、搜索、回忆过往想法，归类为 search_thoughts。',
     '如果用户要基于思考库直接回答一个问题，归类为 answer_thoughts。',
+    '如果用户在规划旅行、旅游、出行、路线、攻略、多天行程，即使最终结果像一份文案，也优先归类为 create_calendar_event，而不是 write_blog。',
     '如果本轮允许使用本地知识库，且用户问题明显依赖本地博客/历史对话/PDF 资料，shouldUseKnowledgeBase 设为 true。',
     '只有当用户明确表达“直接发布”“立即发布”“上线”这类意图时，publishDirectly 才设为 true。',
-    '如果最近对话已经在博客生成补充信息上下文里，用户的新补充消息仍应归类为 write_blog。',
+    hasBlogWorkflowFollowup
+      ? '最近对话里存在博客工作流补充信息卡片。只有当用户这次明显是在继续回答这些补充问题时，才归类为 write_blog；如果用户发起了一个新的独立请求，例如旅行规划、日程安排、收藏管理，就按新请求分类。'
+      : '',
   ].join('\n')
 
   const userPrompt = JSON.stringify(
