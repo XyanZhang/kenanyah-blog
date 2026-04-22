@@ -15,7 +15,11 @@ export function MainPageFrame({
   return (
     <div
       data-inner-nav-mode={navMode}
-      className="relative min-h-screen pt-[var(--page-top-safe-area-mobile)] md:pt-[var(--page-top-safe-area-desktop)] md:pl-[var(--page-left-safe-area-desktop)]"
+      className={
+        isImmersive
+          ? 'relative h-screen overflow-hidden'
+          : 'relative min-h-screen pt-[var(--page-top-safe-area-mobile)] md:pt-[var(--page-top-safe-area-desktop)] md:pl-[var(--page-left-safe-area-desktop)]'
+      }
       style={
         {
           '--page-top-safe-area-mobile': `${isImmersive ? INNER_NAV_SAFE_AREAS.immersiveTop : INNER_NAV_SAFE_AREAS.mobileTop}px`,
@@ -28,4 +32,3 @@ export function MainPageFrame({
     </div>
   )
 }
-

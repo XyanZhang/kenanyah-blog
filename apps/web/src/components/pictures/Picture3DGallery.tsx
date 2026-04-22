@@ -136,7 +136,7 @@ function PictureFrame({
 
     plateRef.current.position.z = THREE.MathUtils.lerp(
       plateRef.current.position.z,
-      isHovered || isActive ? 0.125 : 0.105,
+      isHovered || isActive ? 0.16 : 0.145,
       0.12
     )
   })
@@ -162,7 +162,7 @@ function PictureFrame({
             <meshStandardMaterial color="#f4efe6" roughness={0.92} metalness={0.02} />
           </mesh>
 
-          <mesh ref={plateRef} position={[0, 0, 0.105]}>
+          <mesh ref={plateRef} position={[0, 0, 0.145]}>
             <planeGeometry args={[2.76, 3.82]} />
             <meshStandardMaterial
               map={texture}
@@ -181,12 +181,6 @@ function PictureFrame({
             />
           </mesh>
 
-          {(isHovered || isActive) && (
-            <mesh position={[0, 0, -0.08]}>
-              <planeGeometry args={[3.95, 5.1]} />
-              <meshBasicMaterial color="#c48a46" transparent opacity={isActive ? 0.18 : 0.1} />
-            </mesh>
-          )}
         </group>
       </Float>
     </group>
@@ -264,7 +258,7 @@ function CameraRig({
   controlsRef: React.RefObject<OrbitControlsHandle | null>
 }) {
   const { camera } = useThree()
-  const targetPositionRef = useRef(new THREE.Vector3(0, 1.8, 15.6))
+  const targetPositionRef = useRef(new THREE.Vector3(0, 2.1, 17.8))
   const targetLookAtRef = useRef(new THREE.Vector3(0, 0, 0))
   const isAnimatingRef = useRef(false)
 
@@ -332,15 +326,15 @@ function Gallery3D({
     <>
       <color attach="background" args={['#120f0d']} />
       <fog attach="fog" args={['#120f0d', 12, 32]} />
-      <ambientLight intensity={0.8} />
-      <directionalLight position={[5, 8, 6]} intensity={1.8} color="#fff3df" />
-      <pointLight position={[-8, -2, -6]} intensity={1.1} color="#6d88a8" />
-      <pointLight position={[7, 2, -4]} intensity={1.2} color="#d59a53" />
+      <ambientLight intensity={1.05} />
+      <directionalLight position={[5, 8, 6]} intensity={2.25} color="#fff3df" />
+      <pointLight position={[-8, -2, -6]} intensity={1.35} color="#6d88a8" />
+      <pointLight position={[7, 2, -4]} intensity={1.5} color="#d59a53" />
       <spotLight
         position={[0, 9, 2]}
         angle={0.52}
         penumbra={0.55}
-        intensity={22}
+        intensity={28}
         distance={30}
         color="#f0d6ae"
       />
@@ -405,7 +399,7 @@ interface GalleryOverlayProps {
 
 function GalleryOverlay({ count, activeImage }: GalleryOverlayProps) {
   return (
-    <div className="pointer-events-none absolute inset-0 flex flex-col justify-between overflow-hidden px-4 py-5 sm:px-6 sm:py-6 lg:px-10 lg:py-8">
+    <div className="pointer-events-none absolute inset-0 flex flex-col justify-between overflow-hidden px-4 pb-5 pt-20 sm:px-6 sm:pb-6 sm:pt-24 md:pl-32 md:pr-8 md:pt-10 lg:px-10 lg:pb-8 lg:pt-10 xl:pl-36">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(221,187,140,0.2),transparent_30%),linear-gradient(180deg,rgba(8,7,6,0.22),rgba(8,7,6,0.6)_58%,rgba(8,7,6,0.82))]" />
 
       <motion.div
@@ -443,7 +437,7 @@ function GalleryOverlay({ count, activeImage }: GalleryOverlayProps) {
         </div>
       </motion.div>
 
-      <div className="pointer-events-auto relative grid gap-4 lg:grid-cols-[minmax(0,1fr)_340px] lg:items-end">
+      <div className="pointer-events-auto relative mt-6 grid gap-4 lg:grid-cols-[minmax(0,1fr)_340px] lg:items-end">
         <motion.div
           initial={{ opacity: 0, y: 22 }}
           animate={{ opacity: 1, y: 0 }}
@@ -610,7 +604,7 @@ export default function Picture3DGallery({ images, className }: Picture3DGallery
 
       <Suspense fallback={null}>
         <Canvas
-          camera={{ position: [0, 1.8, 15.6], fov: 52 }}
+          camera={{ position: [0, 2.1, 17.8], fov: 50 }}
           gl={{ antialias: true, alpha: true }}
           dpr={[1, 1.8]}
           className="absolute inset-0"
