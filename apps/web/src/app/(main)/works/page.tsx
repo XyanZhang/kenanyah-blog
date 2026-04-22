@@ -71,7 +71,7 @@ export default function WorksPage() {
             <Link
               key={work.name}
               href={work.href}
-              className="group block cursor-pointer focus:outline-hidden focus:ring-2 focus:ring-accent-primary/35"
+              className="group block cursor-pointer outline-none"
             >
               <article className="rounded-[2rem] border border-white/70 bg-white/66 p-5 shadow-[0_20px_45px_rgba(15,23,42,0.06)] backdrop-blur-[18px] transition-[transform,box-shadow,background-color] duration-300 ease-out group-hover:-translate-y-0.5 group-hover:bg-white/76 group-hover:shadow-[0_28px_60px_rgba(15,23,42,0.08)] sm:p-7">
                 <div className="flex items-start justify-between gap-4">

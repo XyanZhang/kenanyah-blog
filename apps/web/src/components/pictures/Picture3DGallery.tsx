@@ -223,32 +223,32 @@ function GalleryFloor() {
     <group position={[0, -3.15, 0]}>
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.08, 0]}>
         <circleGeometry args={[14.5, 120]} />
-        <meshStandardMaterial color="#100d0b" roughness={0.98} metalness={0.03} />
+        <meshStandardMaterial color="#15100d" roughness={0.98} metalness={0.03} />
       </mesh>
 
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.035, 0]}>
         <circleGeometry args={[10.6, 120]} />
-        <meshStandardMaterial color="#171210" roughness={0.9} metalness={0.06} />
+        <meshStandardMaterial color="#1d1613" roughness={0.9} metalness={0.06} />
       </mesh>
 
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.008, 0]}>
         <circleGeometry args={[8.2, 120]} />
-        <meshBasicMaterial color="#e2c08f" transparent opacity={0.055} />
+        <meshBasicMaterial color="#e8c99d" transparent opacity={0.085} />
       </mesh>
 
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]}>
         <ringGeometry args={[5.1, 5.7, 120]} />
-        <meshBasicMaterial color="#ecd0a6" transparent opacity={0.16} />
+        <meshBasicMaterial color="#f1d7af" transparent opacity={0.22} />
       </mesh>
 
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.022, 0]}>
         <ringGeometry args={[8.8, 9.05, 120]} />
-        <meshBasicMaterial color="#a78457" transparent opacity={0.11} />
+        <meshBasicMaterial color="#b58e5d" transparent opacity={0.145} />
       </mesh>
 
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.03, 0]}>
         <circleGeometry args={[2.15, 96]} />
-        <meshBasicMaterial color="#f0d8b2" transparent opacity={0.08} />
+        <meshBasicMaterial color="#f6dfbd" transparent opacity={0.12} />
       </mesh>
     </group>
   )
@@ -340,19 +340,19 @@ function Gallery3D({
 
   return (
     <>
-      <color attach="background" args={['#120f0d']} />
-      <fog attach="fog" args={['#120f0d', 12, 32]} />
-      <ambientLight intensity={1.05} />
-      <directionalLight position={[5, 8, 6]} intensity={2.25} color="#fff3df" />
-      <pointLight position={[-8, -2, -6]} intensity={1.35} color="#6d88a8" />
-      <pointLight position={[7, 2, -4]} intensity={1.5} color="#d59a53" />
+      <color attach="background" args={['#17120f']} />
+      <fog attach="fog" args={['#17120f', 14, 34]} />
+      <ambientLight intensity={1.32} color="#f9efe2" />
+      <directionalLight position={[5, 8, 6]} intensity={2.8} color="#fff4e2" />
+      <pointLight position={[-8, -2, -6]} intensity={1.55} color="#8198b4" />
+      <pointLight position={[7, 2, -4]} intensity={1.82} color="#dda45f" />
       <spotLight
         position={[0, 9, 2]}
         angle={0.52}
         penumbra={0.55}
-        intensity={28}
-        distance={30}
-        color="#f0d6ae"
+        intensity={34}
+        distance={34}
+        color="#f4dcba"
       />
       <Stars />
       <GalleryFloor />
@@ -418,7 +418,7 @@ interface GalleryOverlayProps {
 function GalleryOverlay({ count, activeImage }: GalleryOverlayProps) {
   return (
     <div className="pointer-events-none absolute inset-0 flex flex-col justify-between overflow-hidden px-4 pb-5 pt-20 sm:px-6 sm:pb-6 sm:pt-24 md:pl-32 md:pr-8 md:pt-10 lg:px-10 lg:pb-8 lg:pt-10 xl:pl-36">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(221,187,140,0.2),transparent_30%),linear-gradient(180deg,rgba(8,7,6,0.22),rgba(8,7,6,0.6)_58%,rgba(8,7,6,0.82))]" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(231,196,147,0.24),transparent_34%),linear-gradient(180deg,rgba(8,7,6,0.12),rgba(8,7,6,0.42)_58%,rgba(8,7,6,0.64))]" />
 
       <motion.div
         className="pointer-events-auto relative flex max-w-3xl flex-col gap-4"
@@ -627,14 +627,14 @@ export default function Picture3DGallery({ images, className }: Picture3DGallery
     <motion.div
       ref={galleryRef}
       className={cn(
-        'relative h-screen w-full overflow-hidden bg-[radial-gradient(circle_at_top,#3a2b1d_0%,#18120f_36%,#0f0c0a_100%)]',
+        'relative h-screen w-full overflow-hidden bg-[radial-gradient(circle_at_top,#493524_0%,#211814_36%,#120d0b_100%)]',
         className
       )}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.9 }}
     >
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_18%,rgba(223,174,108,0.18),transparent_24%),radial-gradient(circle_at_80%_22%,rgba(98,126,160,0.14),transparent_22%)]" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_18%,rgba(223,174,108,0.24),transparent_28%),radial-gradient(circle_at_80%_22%,rgba(98,126,160,0.18),transparent_24%)]" />
 
       <Suspense fallback={null}>
         <Canvas
