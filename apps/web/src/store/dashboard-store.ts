@@ -41,6 +41,7 @@ interface DashboardState {
   applyLayoutTemplate: (template: LayoutTemplate) => void
   /** 直接设置 layout（用于从云端加载或应用用户保存的模板） */
   setLayout: (layout: DashboardLayout | null) => void
+  setLoading: (isLoading: boolean) => void
 }
 
 export const useDashboardStore = create<DashboardState>()(
@@ -277,6 +278,10 @@ export const useDashboardStore = create<DashboardState>()(
           },
           selectedCardId: null,
         })
+      },
+
+      setLoading: (isLoading) => {
+        set({ isLoading })
       },
     }),
     {

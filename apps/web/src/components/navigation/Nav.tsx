@@ -24,8 +24,6 @@ import { NavContent } from './NavContent'
 import { getInnerNavMode } from './nav-layout'
 
 const NAV_ELEMENT_ID = 'nav-component'
-const DEFAULT_AVATAR = '/images/avatar/avatar-pink.png'
-
 const NAV_SHELL_SPRING = {
   type: 'spring' as const,
   stiffness: 320,
@@ -51,17 +49,17 @@ const NAV_CONTENT_SWAP_DELAY_MS = 0
 const DESKTOP_RAIL_OFFSET = { x: 20, y: 28 }
 const MOBILE_BAR_TOP = 12
 
-function useProfileAvatarFromLayout(): string {
+function useProfileAvatarFromLayout(): string | null {
   const layout = useDashboardStore((s) => s.layout)
   const profileCard = layout?.cards?.find((c) => c.type === 'profile')
   const avatar = profileCard?.config?.avatar
-  return typeof avatar === 'string' && avatar.trim() ? avatar.trim() : DEFAULT_AVATAR
+  return typeof avatar === 'string' && avatar.trim() ? avatar.trim() : null
 }
 
 export function Nav() {
   const pathname = usePathname()
-  const { isEditMode } = useDashboard()
-  const { config, updatePosition, updateSize, setResizing } = useNavStore()
+  const { isEditMode, isLoading } = useDashboard()
+  const { config, updatePosition, updateSize, setResizing, hasHydrated } = useNavStore()
   const avatarSrc = useProfileAvatarFromLayout()
 
   const isHomepage = pathname === '/'
@@ -251,7 +249,10 @@ export function Nav() {
       : targetLayoutMode === 'rail'
         ? hasMeasuredRailSize
         : hasMeasuredTopbarSize
+  const shouldWaitForHomeBootstrap = isHomepage && isLoading
   const isReady =
+    hasHydrated &&
+    !shouldWaitForHomeBootstrap &&
     (!isHomepage || hasRealViewport) &&
     (isHomepage && config.customSize ? true : hasMeasuredTargetSize || !isHomepage)
 

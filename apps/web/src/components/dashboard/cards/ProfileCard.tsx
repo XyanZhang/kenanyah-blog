@@ -12,10 +12,9 @@ interface ProfileCardProps {
 export function ProfileCard({ card }: ProfileCardProps) {
   const config = card.config as ProfileCardConfig
 
-  const defaultAvatar = '/images/avatar/avatar-pink.png'
   const profile = {
     name: 'Kenanyah',
-    avatar: (config.avatar && config.avatar.trim()) || defaultAvatar,
+    avatar: typeof config.avatar === 'string' && config.avatar.trim() ? config.avatar.trim() : null,
     greeting: 'Hello, I\'m',
     subtitle: 'Nice to meet you.',
     social: {
@@ -27,7 +26,7 @@ export function ProfileCard({ card }: ProfileCardProps) {
 
   return (
     <div className="relative flex h-full flex-col items-center justify-center space-y-6 text-center">
-      {config.showAvatar && (
+      {config.showAvatar && profile.avatar && (
         <div className="relative">
           <div
             className="relative h-32 w-32 overflow-hidden rounded-full ring-accent-primary-light/50 shadow-2xl"

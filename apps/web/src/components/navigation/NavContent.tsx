@@ -15,7 +15,7 @@ const NAV_INDICATOR_SPRING = {
 }
 
 interface NavContentProps {
-  avatarSrc: string
+  avatarSrc: string | null
   items: NavItemType[]
   pathname: string
   layoutMode: 'home' | 'rail' | 'topbar'
@@ -46,6 +46,7 @@ export function NavContent({
   const isHomeLayout = layoutMode === 'home'
   const isCompact = layoutMode !== 'home'
   const isTopbar = layoutMode === 'topbar'
+  const hasAvatar = Boolean(avatarSrc)
   const highlightedIndex = hoverIndex ?? items.findIndex((item) => item.href === pathname)
 
   useEffect(() => {
@@ -125,21 +126,29 @@ export function NavContent({
         className={cn(
           'flex shrink-0 items-center',
           isTopbar
-            ? 'mr-2 gap-2 border-r border-line-glass pr-3'
+            ? hasAvatar
+              ? 'mr-2 gap-2 border-r border-line-glass pr-3'
+              : 'mr-0 gap-0 border-r-0 pr-0'
             : isHomeLayout
-              ? 'mb-2 flex-col gap-2 border-b border-line-glass pb-3'
-              : 'mb-2 flex-col gap-2 border-b border-line-glass pb-3'
+              ? hasAvatar
+                ? 'mb-2 flex-col gap-2 border-b border-line-glass pb-3'
+                : 'mb-0 flex-col gap-0 border-b-0 pb-0'
+              : hasAvatar
+                ? 'mb-2 flex-col gap-2 border-b border-line-glass pb-3'
+                : 'mb-0 flex-col gap-0 border-b-0 pb-0'
         )}
       >
-        <div>
-          <Image
-            src={avatarSrc}
-            alt="Kenanyah"
-            width={48}
-            height={48}
-            className={cn('rounded-full', isHomeLayout ? '' : 'mr-0')}
-          />
-        </div>
+        {avatarSrc ? (
+          <div>
+            <Image
+              src={avatarSrc}
+              alt="Kenanyah"
+              width={48}
+              height={48}
+              className={cn('rounded-full', isHomeLayout ? '' : 'mr-0')}
+            />
+          </div>
+        ) : null}
 
         {isHomeLayout ? (
           <span className="text-sm font-medium text-content-primary">Kenanyah</span>

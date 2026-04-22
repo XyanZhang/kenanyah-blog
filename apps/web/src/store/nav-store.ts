@@ -26,6 +26,7 @@ type LegacyNavConfig = Partial<NavConfig> & {
 interface NavState {
   config: NavConfig
   isResizing: boolean
+  hasHydrated: boolean
   updatePosition: (delta: { x: number; y: number }) => void
   setPosition: (position: { x: number; y: number }) => void
   updateSize: (size: { width: number; height: number } | null) => void
@@ -76,6 +77,7 @@ export const useNavStore = create<NavState>()(
     (set, get) => ({
       config: DEFAULT_CONFIG,
       isResizing: false,
+      hasHydrated: false,
 
       updatePosition: (delta) => {
         const { config } = get()
@@ -185,11 +187,15 @@ export const useNavStore = create<NavState>()(
         return {
           ...current,
           ...persisted,
+          hasHydrated: true,
           config: {
             ...normalizeConfig(persisted.config),
             items: mergeNavItemsWithDefaults(items),
           },
         }
+      },
+      onRehydrateStorage: () => () => {
+        useNavStore.setState({ hasHydrated: true })
       },
       migrate: (persistedState: unknown, version: number) => {
         const old = persistedState as { config?: LegacyNavConfig }

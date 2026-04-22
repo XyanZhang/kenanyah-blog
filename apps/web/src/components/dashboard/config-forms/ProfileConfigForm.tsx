@@ -7,8 +7,6 @@ interface ProfileConfigFormProps {
   onChange: (config: Record<string, any>) => void
 }
 
-const DEFAULT_AVATAR = '/images/avatar/avatar-pink.png'
-
 export function ProfileConfigForm({ config, onChange }: ProfileConfigFormProps) {
   const handleChange = (key: string, value: boolean | string) => {
     onChange({ ...config, [key]: value })
@@ -31,10 +29,10 @@ export function ProfileConfigForm({ config, onChange }: ProfileConfigFormProps) 
             type="text"
             value={config.avatar ?? ''}
             onChange={(e) => handleChange('avatar', e.target.value)}
-            placeholder={DEFAULT_AVATAR}
+            placeholder="/images/avatar/avatar.png"
           />
           <p className="text-xs text-muted-foreground">
-            留空使用默认头像，可填相对路径如 /images/avatar/avatar.png
+            留空则不显示头像，可填相对路径如 /images/avatar/avatar.png
           </p>
         </div>
       )}

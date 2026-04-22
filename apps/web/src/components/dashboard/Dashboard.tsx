@@ -33,6 +33,7 @@ import { DashboardCard } from './DashboardCard'
 import { EditModeToggle } from './EditModeToggle'
 import { AddCardDialog, AddCardDialogHandle } from './AddCardButton'
 import { LayoutTemplatePickerDialog, LayoutTemplatePickerHandle } from './LayoutTemplatePicker'
+import { DashboardBootLoading } from './DashboardBootLoading'
 
 export function Dashboard() {
   const {
@@ -90,26 +91,32 @@ export function Dashboard() {
     })
   }, [navConfig, scale])
 
-  // 初始化：先加载本地配置，再从云端拉取覆盖
+  // 初始化：优先渲染本地布局，远端配置在后台同步，避免首页首屏被网络阻塞
   useEffect(() => {
     if (isInitializedRef.current) return
     isInitializedRef.current = true
 
-    // 1. 先初始化本地布局
+    let isActive = true
     initializeLayout()
 
-    // 2. 再从云端拉取配置覆盖
     getHomeConfig()
       .then((data) => {
-        if (!data) return
-        setLayout(data.layout)
-        setConfigFromApi(data.nav)
-        if (data.canvas?.scale != null) setScale(data.canvas.scale)
+        if (!isActive) return
+
+        if (data) {
+          setLayout(data.layout)
+          setConfigFromApi(data.nav)
+          if (data.canvas?.scale != null) setScale(data.canvas.scale)
+        }
       })
       .catch(() => {
-        // 无配置或网络错误，保持本地/默认
+        // 网络慢或后端不可用时，保持本地布局即可
       })
-  }, [initializeLayout, setLayout, setConfigFromApi, setScale])
+
+    return () => {
+      isActive = false
+    }
+  }, [initializeLayout, setConfigFromApi, setLayout, setScale])
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -253,21 +260,9 @@ export function Dashboard() {
     ? resolvedCardLayouts.contentHeight + MOBILE_LAYOUT_TOP_PADDING + MOBILE_LAYOUT_BOTTOM_PADDING
     : '100vh'
 
-  if (isLoading) {
+  if (isLoading && !layout) {
     return (
-      <div className="relative h-screen w-full">
-        <div className="flex h-full items-center justify-center">
-          <div className="text-lg text-content-muted">Loading dashboard...</div>
-        </div>
-        <EditModeToggle
-          onAddCard={handleAddCard}
-          onSelectLayout={handleSelectLayout}
-          onSyncToCloud={handleSyncToCloud}
-          onSyncToStatic={handleSyncToStatic}
-        />
-        <AddCardDialog ref={addCardDialogRef} />
-        <LayoutTemplatePickerDialog ref={layoutPickerDialogRef} />
-      </div>
+      <DashboardBootLoading />
     )
   }
 
