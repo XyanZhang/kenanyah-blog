@@ -48,7 +48,7 @@ export default function BlogEditorPage() {
   return (
     <main className="min-h-[calc(100vh-80px)] w-full flex flex-col">
       <div className="flex-1 flex flex-col min-h-0 w-full">
-        <div className="max-w-5xl w-full mx-auto px-4 pb-10 pt-24 sm:px-6 sm:pb-12 sm:pt-28 md:py-10 flex flex-col gap-8">
+        <div className="max-w-5xl w-full mx-auto flex flex-col gap-8 px-4 pb-10 sm:px-6 sm:pb-12 md:py-10">
           <header className="flex flex-col gap-3">
             <div className="flex items-start gap-3">
               <div

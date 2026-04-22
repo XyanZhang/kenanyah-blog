@@ -1,9 +1,7 @@
 'use client'
 
-import { useState, useRef, useCallback, useEffect, useLayoutEffect, useMemo } from 'react'
+import { useState, useRef, useEffect, useMemo } from 'react'
 import { usePathname } from 'next/navigation'
-import Image from 'next/image'
-import { motion } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import { useDashboard } from '@/hooks/useDashboard'
 import { useDashboardStore } from '@/store/dashboard-store'
@@ -18,10 +16,12 @@ import {
 import { useAlignmentRegistration } from '@/hooks/useAlignmentRegistration'
 import { useDrag } from '@/hooks/useDrag'
 import { useResize } from '@/hooks/useResize'
-import { NavItem } from './NavItem'
 import type { NavItem as NavItemType } from './nav-items'
 import { NavToolbar } from './NavToolbar'
 import { ResizeHandles } from '@/components/dashboard/ResizeHandles'
+import { NavShell } from './NavShell'
+import { NavContent } from './NavContent'
+import { getInnerNavMode } from './nav-layout'
 
 const NAV_ELEMENT_ID = 'nav-component'
 const DEFAULT_AVATAR = '/images/avatar/avatar-pink.png'
@@ -48,15 +48,9 @@ const NAV_TEXT_TRANSITION = {
 }
 
 const NAV_CONTENT_SWAP_DELAY_MS = 0
+const DESKTOP_RAIL_OFFSET = { x: 20, y: 28 }
+const MOBILE_BAR_TOP = 12
 
-const NAV_INDICATOR_SPRING = {
-  type: 'spring' as const,
-  stiffness: 420,
-  damping: 32,
-  mass: 0.75,
-}
-
-/** 从首页布局中取 Profile 卡片的头像配置，与主卡片保持同步 */
 function useProfileAvatarFromLayout(): string {
   const layout = useDashboardStore((s) => s.layout)
   const profileCard = layout?.cards?.find((c) => c.type === 'profile')
@@ -71,8 +65,8 @@ export function Nav() {
   const avatarSrc = useProfileAvatarFromLayout()
 
   const isHomepage = pathname === '/'
-  const targetMode = isHomepage ? 'home' : 'compact'
-  const [contentMode, setContentMode] = useState<'home' | 'compact'>(targetMode)
+  const innerNavMode = getInnerNavMode(pathname)
+  const isImmersiveRoute = innerNavMode === 'immersive'
   const {
     scale,
     translateX,
@@ -82,42 +76,44 @@ export function Nav() {
     viewportWidth,
   } = useHomeCanvasStore()
   const navRef = useRef<HTMLElement>(null)
-  const navItemsRef = useRef<HTMLDivElement>(null)
   const contentModeTimerRef = useRef<number | null>(null)
-  const previousTargetModeRef = useRef<'home' | 'compact'>(targetMode)
-  const [hoverIndex, setHoverIndex] = useState<number | null>(null)
-  const [indicatorRect, setIndicatorRect] = useState({
-    x: 0,
-    y: 0,
-    width: 0,
-    height: 0,
-    opacity: 0,
-  })
+  const previousTargetLayoutModeRef = useRef<'home' | 'rail' | 'topbar'>('home')
+  const [layoutMode, setLayoutMode] = useState<'home' | 'rail' | 'topbar'>('home')
   const [measuredSizes, setMeasuredSizes] = useState({
     home: { width: 200, height: 60 },
-    compact: { width: 200, height: 60 },
+    rail: { width: 72, height: 460 },
+    topbar: { width: 240, height: 64 },
   })
   const [hasMeasuredHomeSize, setHasMeasuredHomeSize] = useState(false)
-  const [hasMeasuredCompactSize, setHasMeasuredCompactSize] = useState(false)
+  const [hasMeasuredRailSize, setHasMeasuredRailSize] = useState(false)
+  const [hasMeasuredTopbarSize, setHasMeasuredTopbarSize] = useState(false)
 
-  // 同步监听窗口 resize，确保缩小/放大窗口时 store 更新、布局跟随。
-  // 即使当前不是首页，也提前同步视口尺寸，这样从其它页面跳转回首页时不会用到默认视口导致导航位置不一致。
   useEffect(() => {
-    const previousTargetMode = previousTargetModeRef.current
-    previousTargetModeRef.current = targetMode
+    const sync = () => setViewportSize(window.innerWidth, window.innerHeight)
+    sync()
+    window.addEventListener('resize', sync)
+    return () => window.removeEventListener('resize', sync)
+  }, [setViewportSize])
+
+  const isMobileViewport = viewportWidth <= MOBILE_LAYOUT_BREAKPOINT
+  const targetLayoutMode = isHomepage ? 'home' : isMobileViewport ? 'topbar' : 'rail'
+
+  useEffect(() => {
+    const previousTargetLayoutMode = previousTargetLayoutModeRef.current
+    previousTargetLayoutModeRef.current = targetLayoutMode
 
     if (contentModeTimerRef.current !== null) {
       clearTimeout(contentModeTimerRef.current)
       contentModeTimerRef.current = null
     }
 
-    if (previousTargetMode === targetMode) {
-      setContentMode(targetMode)
+    if (previousTargetLayoutMode === targetLayoutMode) {
+      setLayoutMode(targetLayoutMode)
       return
     }
 
     contentModeTimerRef.current = window.setTimeout(() => {
-      setContentMode(targetMode)
+      setLayoutMode(targetLayoutMode)
       contentModeTimerRef.current = null
     }, NAV_CONTENT_SWAP_DELAY_MS)
 
@@ -127,17 +123,10 @@ export function Nav() {
         contentModeTimerRef.current = null
       }
     }
-  }, [targetMode])
+  }, [targetLayoutMode])
 
-  useEffect(() => {
-    const sync = () => setViewportSize(window.innerWidth, window.innerHeight)
-    sync()
-    window.addEventListener('resize', sync)
-    return () => window.removeEventListener('resize', sync)
-  }, [setViewportSize])
-
-  const isVisualHomepage = contentMode === 'home'
-  const isTopRowHomepage = isHomepage && viewportWidth <= MOBILE_LAYOUT_BREAKPOINT
+  const isTopRowHomepage = isHomepage && isMobileViewport
+  const visualLayoutMode: 'home' | 'rail' | 'topbar' = isTopRowHomepage ? 'topbar' : layoutMode
 
   const visibleNavItems: NavItemType[] = useMemo(
     () =>
@@ -157,60 +146,58 @@ export function Nav() {
   )
 
   useEffect(() => {
-    if (navRef.current && !config.customSize) {
-      const rect = navRef.current.getBoundingClientRect()
-      if (rect.width > 0 && rect.height > 0) {
-        const nextSize = { width: rect.width, height: rect.height }
-        setMeasuredSizes((current) => {
-          const currentSize = current[contentMode]
-          if (
-            Math.abs(currentSize.width - nextSize.width) < 0.5 &&
-            Math.abs(currentSize.height - nextSize.height) < 0.5
-          ) {
-            return current
-          }
+    if (!navRef.current) return
 
-            return {
-              ...current,
-              [contentMode]: nextSize,
-            }
-          })
+    const shouldUseMeasuredSize = isHomepage ? !config.customSize : true
+    if (!shouldUseMeasuredSize) return
 
-        if (contentMode === 'home') {
-          setHasMeasuredHomeSize(true)
-        } else {
-          setHasMeasuredCompactSize(true)
-        }
+    const rect = navRef.current.getBoundingClientRect()
+    if (rect.width <= 0 || rect.height <= 0) return
+
+    const nextSize = { width: rect.width, height: rect.height }
+    setMeasuredSizes((current) => {
+      const currentSize = current[visualLayoutMode]
+      if (
+        Math.abs(currentSize.width - nextSize.width) < 0.5 &&
+        Math.abs(currentSize.height - nextSize.height) < 0.5
+      ) {
+        return current
       }
+
+      return {
+        ...current,
+        [visualLayoutMode]: nextSize,
+      }
+    })
+
+    if (visualLayoutMode === 'home') {
+      setHasMeasuredHomeSize(true)
+    } else if (visualLayoutMode === 'rail') {
+      setHasMeasuredRailSize(true)
+    } else {
+      setHasMeasuredTopbarSize(true)
     }
-  }, [config.customSize, visibleNavItems.length, isVisualHomepage, contentMode])
+  }, [config.customSize, isHomepage, visibleNavItems.length, visualLayoutMode, viewportWidth])
 
-  useEffect(() => {
-    setHoverIndex(null)
-  }, [pathname])
-
-  // 首页用竖向位置（画布坐标），非首页用横向位置；首页拖拽 delta 需除以 scale 转为画布坐标
   const { isDragging, dragDelta, dragHandlers } = useDrag({
     onDragEnd: (delta) => {
+      if (!isHomepage) return
+
       const currentSnapOffset = useAlignmentStore.getState().snapOffset
       const finalViewportDelta = {
         x: delta.x + (currentSnapOffset?.x ?? 0),
         y: delta.y + (currentSnapOffset?.y ?? 0),
       }
-      if (isHomepage) {
-        const canvasDelta = {
-          x: finalViewportDelta.x / scale,
-          y: finalViewportDelta.y / scale,
-        }
-        updatePosition(canvasDelta, false)
-      } else {
-        updatePosition(finalViewportDelta, true)
-      }
+      updatePosition({
+        x: finalViewportDelta.x / scale,
+        y: finalViewportDelta.y / scale,
+      })
     },
-    disabled: !isEditMode,
+    disabled: !isEditMode || !isHomepage,
   })
 
-  const baseSize = config.customSize || measuredSizes[contentMode]
+  const baseSize =
+    isHomepage && config.customSize ? config.customSize : measuredSizes[visualLayoutMode]
   const {
     isResizing,
     currentSize,
@@ -220,160 +207,80 @@ export function Nav() {
     initialSize: baseSize,
     constraints: { minWidth: 60, minHeight: 60, maxWidth: 600, maxHeight: 600 },
     onResizeEnd: (size, positionDelta) => {
+      if (!isHomepage) return
+
       updateSize(size)
       if (positionDelta.x !== 0 || positionDelta.y !== 0) {
-        if (isHomepage) {
-          updatePosition(
-            { x: positionDelta.x / scale, y: positionDelta.y / scale },
-            false
-          )
-        } else {
-          updatePosition(positionDelta, true)
-        }
+        updatePosition({
+          x: positionDelta.x / scale,
+          y: positionDelta.y / scale,
+        })
       }
       setResizing(false)
     },
   })
 
   useEffect(() => {
-    if (isResizing) {
+    if (isHomepage && isResizing) {
       setResizing(true)
     }
-  }, [isResizing, setResizing])
+  }, [isHomepage, isResizing, setResizing])
 
   useAlignmentRegistration({
     id: NAV_ELEMENT_ID,
     ref: navRef,
-    isEditMode,
+    isEditMode: isEditMode && isHomepage,
     isDragging,
-    isResizing,
+    isResizing: isHomepage && isResizing,
   })
 
-  const handleMouseEnter = useCallback(
-    (index: number) => {
-      if (isEditMode) return
-      setHoverIndex(index)
-    },
-    [isEditMode]
-  )
-
-  const handleMouseLeave = useCallback(() => {
-    setHoverIndex(null)
-  }, [])
-
-  const position = isHomepage ? config.verticalPosition : config.horizontalPosition
-  const baseSizeForPosition = config.customSize || measuredSizes[targetMode]
+  const position = config.homePosition
+  const baseSizeForPosition = isHomepage && config.customSize ? config.customSize : measuredSizes.home
   const navCanvasLeft = CANVAS_WIDTH / 2 + position.x - baseSizeForPosition.width / 2
   const navCanvasTop = CANVAS_HEIGHT / 2 + position.y - baseSizeForPosition.height / 2
-  const homeLeft = translateX + navCanvasLeft * scale + dragDelta.x + (isResizing ? resizePositionDelta.x : 0)
-  const homeTop = translateY + navCanvasTop * scale + dragDelta.y + (isResizing ? resizePositionDelta.y : 0)
+  const homeLeft =
+    translateX + navCanvasLeft * scale + dragDelta.x + (isResizing ? resizePositionDelta.x : 0)
+  const homeTop =
+    translateY + navCanvasTop * scale + dragDelta.y + (isResizing ? resizePositionDelta.y : 0)
 
-  const useFixedSize = Boolean(config.customSize) || isResizing
+  const useFixedSize = isHomepage && (Boolean(config.customSize) || isResizing)
   const displaySize = useFixedSize ? currentSize : undefined
-  const hasMeasuredTargetSize = targetMode === 'home' ? hasMeasuredHomeSize : hasMeasuredCompactSize
+  const hasMeasuredTargetSize =
+    targetLayoutMode === 'home'
+      ? hasMeasuredHomeSize
+      : targetLayoutMode === 'rail'
+        ? hasMeasuredRailSize
+        : hasMeasuredTopbarSize
   const isReady =
     (!isHomepage || hasRealViewport) &&
-    (config.customSize ? true : hasMeasuredTargetSize || !isHomepage)
+    (isHomepage && config.customSize ? true : hasMeasuredTargetSize || !isHomepage)
 
-  const targetX = isHomepage ? homeLeft : 20
-  const targetY = isHomepage ? homeTop : 20
-  const highlightedIndex =
-    hoverIndex ?? visibleNavItems.findIndex((item) => item.href === pathname)
+  const rowNavWidth = Math.max(0, viewportWidth - 24)
+  const targetSize = measuredSizes[targetLayoutMode]
+  const targetX = isHomepage
+    ? homeLeft
+    : targetLayoutMode === 'topbar'
+      ? Math.max(12, (viewportWidth - targetSize.width) / 2)
+      : DESKTOP_RAIL_OFFSET.x
+  const targetY =
+    isHomepage ? homeTop : targetLayoutMode === 'topbar' ? MOBILE_BAR_TOP : DESKTOP_RAIL_OFFSET.y
   const animateShell = isReady && !isDragging && !isResizing
   const shellX = isTopRowHomepage ? 0 : targetX
   const shellY = isTopRowHomepage ? 0 : targetY
-  const rowNavWidth = Math.max(0, viewportWidth - 24)
-
-  useLayoutEffect(() => {
-    const container = navItemsRef.current
-    if (!container || highlightedIndex < 0) {
-      setIndicatorRect((current) =>
-        current.opacity === 0
-          ? current
-          : {
-              ...current,
-              opacity: 0,
-            }
-      )
-      return
-    }
-
-    const target = container.querySelector<HTMLElement>(`[data-nav-item-index="${highlightedIndex}"]`)
-    if (!target) {
-      setIndicatorRect((current) =>
-        current.opacity === 0
-          ? current
-          : {
-              ...current,
-              opacity: 0,
-            }
-      )
-      return
-    }
-
-    const containerRect = container.getBoundingClientRect()
-    const targetRect = target.getBoundingClientRect()
-    const nextRect = {
-      x: targetRect.left - containerRect.left,
-      y: targetRect.top - containerRect.top,
-      width: targetRect.width,
-      height: targetRect.height,
-      opacity: 1,
-    }
-
-    setIndicatorRect((current) => {
-      if (
-        Math.abs(current.x - nextRect.x) < 0.5 &&
-        Math.abs(current.y - nextRect.y) < 0.5 &&
-        Math.abs(current.width - nextRect.width) < 0.5 &&
-        Math.abs(current.height - nextRect.height) < 0.5 &&
-        current.opacity === nextRect.opacity
-      ) {
-        return current
-      }
-
-      return nextRect
-    })
-  }, [highlightedIndex, pathname, isVisualHomepage, visibleNavItems.length])
-
-  useEffect(() => {
-    const container = navItemsRef.current
-    if (!container) return
-
-    const updateIndicator = () => {
-      if (highlightedIndex < 0) return
-      const target = container.querySelector<HTMLElement>(`[data-nav-item-index="${highlightedIndex}"]`)
-      if (!target) return
-
-      const containerRect = container.getBoundingClientRect()
-      const targetRect = target.getBoundingClientRect()
-      setIndicatorRect({
-        x: targetRect.left - containerRect.left,
-        y: targetRect.top - containerRect.top,
-        width: targetRect.width,
-        height: targetRect.height,
-        opacity: 1,
-      })
-    }
-
-    const observer = new ResizeObserver(updateIndicator)
-    observer.observe(container)
-    Array.from(container.children).forEach((child) => observer.observe(child))
-
-    return () => {
-      observer.disconnect()
-    }
-  }, [highlightedIndex, isVisualHomepage, visibleNavItems.length])
+  const isHomeVisual = visualLayoutMode === 'home'
 
   return (
-    <motion.div
-      initial={false}
-      animate={{
-        x: shellX,
-        y: shellY,
-        opacity: isReady ? 1 : 0,
-        scale: isDragging ? 0.985 : 1,
-      }}
+    <NavShell
+      shellClassName={cn(
+        visualLayoutMode === 'topbar'
+          ? 'fixed left-0 top-0 z-50 flex w-full justify-center px-3 pt-3'
+          : 'fixed left-0 top-0 z-50'
+      )}
+      shellX={shellX}
+      shellY={shellY}
+      isReady={isReady}
+      isDragging={isDragging}
+      animateShell={animateShell}
       transition={{
         layout: NAV_LAYOUT_SPRING,
         x: animateShell ? NAV_SHELL_SPRING : NAV_IMMEDIATE_TRANSITION,
@@ -381,109 +288,52 @@ export function Nav() {
         opacity: NAV_TEXT_TRANSITION,
         scale: isDragging ? NAV_SHELL_SPRING : NAV_TEXT_TRANSITION,
       }}
-      className={cn(
-        isTopRowHomepage
-          ? 'relative z-50 flex w-full justify-center px-3 pt-3'
-          : 'fixed left-0 top-0 z-50'
+      navClassName={cn(
+        isHomepage && isEditMode && 'cursor-grab active:cursor-grabbing ring-2 ring-accent-primary/50',
+        isDragging && 'opacity-80',
+        isImmersiveRoute && !isHomepage && 'bg-surface-glass/85'
       )}
-      style={{
-        willChange: animateShell ? 'transform, opacity' : undefined,
+      navStyle={{
+        display: 'flex',
+        flexDirection: visualLayoutMode === 'topbar' ? 'row' : 'column',
+        alignItems: visualLayoutMode === 'home' ? undefined : 'center',
+        gap: '4px',
+        padding:
+          visualLayoutMode === 'topbar'
+            ? '8px 12px'
+            : isHomeVisual
+              ? '12px'
+              : '12px 10px',
+        width:
+          visualLayoutMode === 'topbar'
+            ? rowNavWidth
+            : isHomeVisual
+              ? displaySize?.width
+              : 72,
+        maxWidth: visualLayoutMode === 'topbar' ? 720 : undefined,
+        height: isHomeVisual ? displaySize?.height : undefined,
+        minWidth: isHomeVisual ? undefined : 72,
+        minHeight: 48,
+        overflow: useFixedSize && !isEditMode ? 'hidden' : 'visible',
+        willChange: animateShell ? 'width, height' : undefined,
         backfaceVisibility: 'hidden',
       }}
+      navRef={navRef}
+      onPointerDown={isHomepage && isEditMode ? dragHandlers.onPointerDown : undefined}
     >
-      <nav
-        ref={navRef}
-        className={cn(
-          'group rounded-2xl bg-surface-glass backdrop-blur-lg',
-          'border border-line-glass',
-          '[box-shadow:0_20px_40px_-10px_rgba(0,0,0,0.1)]',
-          isEditMode && 'cursor-grab active:cursor-grabbing ring-2 ring-accent-primary/50',
-          isDragging && 'opacity-80'
-        )}
-        style={{
-          display: 'flex',
-          flexDirection: isTopRowHomepage ? 'row' : isVisualHomepage ? 'column' : 'row',
-          alignItems: isTopRowHomepage || !isVisualHomepage ? 'center' : undefined,
-          gap: '4px',
-          padding: isTopRowHomepage ? '8px 12px' : isVisualHomepage ? '12px' : '8px 12px',
-          width: isTopRowHomepage ? rowNavWidth : isVisualHomepage ? displaySize?.width : undefined,
-          maxWidth: isTopRowHomepage ? 720 : undefined,
-          height: isTopRowHomepage ? undefined : isVisualHomepage ? displaySize?.height : undefined,
-          minWidth: isVisualHomepage ? undefined : 48,
-          minHeight: 48,
-          overflow: useFixedSize && !isEditMode ? 'hidden' : 'visible',
-          willChange: animateShell ? 'width, height' : undefined,
-          backfaceVisibility: 'hidden',
-        }}
-        onPointerDown={isEditMode ? dragHandlers.onPointerDown : undefined}
-        onMouseLeave={handleMouseLeave}
-      >
-        {isEditMode && <NavToolbar isHomepage={isHomepage} />}
+      {isHomepage && isEditMode ? <NavToolbar isHomepage /> : null}
 
-        <div
-          className={cn(
-            'flex shrink-0 items-center',
-            isTopRowHomepage
-              ? 'mr-2 gap-2 border-r border-line-glass pr-3'
-              : isVisualHomepage
-                ? 'mb-2 flex-col gap-2 border-b border-line-glass pb-3'
-                : 'border-r border-line-glass pr-1'
-          )}
-        >
-          <div>
-            <Image
-              src={avatarSrc}
-              alt="Kenanyah"
-              width={48}
-              height={48}
-              className={cn('rounded-full', isVisualHomepage ? '' : 'mr-2')}
-            />
-          </div>
+      <NavContent
+        avatarSrc={avatarSrc}
+        items={visibleNavItems}
+        pathname={pathname}
+        layoutMode={visualLayoutMode}
+        isEditMode={isEditMode}
+        onItemHover={() => undefined}
+        onMouseLeave={() => undefined}
+      />
 
-          {isVisualHomepage && !isTopRowHomepage ? (
-            <span className="text-sm font-medium text-content-primary">Kenanyah</span>
-          ) : null}
-        </div>
-
-        <div
-          ref={navItemsRef}
-          data-nav-items
-          className={cn(
-            'relative flex min-w-0 flex-1 overflow-hidden',
-            isTopRowHomepage
-              ? 'flex-row items-center justify-start gap-0'
-              : isVisualHomepage
-                ? 'min-w-30 flex-col justify-center gap-1'
-                : 'flex-row items-center gap-0'
-          )}
-        >
-          <motion.div
-            aria-hidden
-            className="pointer-events-none absolute rounded-xl bg-accent-primary-light"
-            animate={indicatorRect}
-            transition={NAV_INDICATOR_SPRING}
-            style={{
-              left: 0,
-              top: 0,
-              willChange: 'transform, width, height, opacity',
-            }}
-          />
-
-          {visibleNavItems.map((item, index) => (
-            <NavItem
-              key={item.id}
-              index={index}
-              item={item}
-              isActive={pathname === item.href}
-              isHighlighted={highlightedIndex === index}
-              isCompact={!isVisualHomepage || isTopRowHomepage}
-              onMouseEnter={() => handleMouseEnter(index)}
-            />
-          ))}
-        </div>
-
-        {isEditMode && <ResizeHandles onResizeStart={handleResizeStart} />}
-      </nav>
-    </motion.div>
+      {isHomepage && isEditMode && isHomeVisual ? <ResizeHandles onResizeStart={handleResizeStart} /> : null}
+    </NavShell>
   )
 }

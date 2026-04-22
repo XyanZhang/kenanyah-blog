@@ -1285,7 +1285,7 @@ export default function AiChatPage() {
   )
 
   return (
-    <main className="mx-auto grid w-full max-w-[1240px] gap-4 px-4 pb-6 pt-24 sm:pt-28 md:pb-8 min-[760px]:grid-cols-[240px_minmax(0,1fr)] 2xl:grid-cols-[252px_minmax(0,1fr)]">
+    <main className="mx-auto grid w-full max-w-[1240px] gap-4 px-4 pb-6 md:pb-8 min-[760px]:grid-cols-[240px_minmax(0,1fr)] 2xl:grid-cols-[252px_minmax(0,1fr)]">
       <section className="hidden min-h-[24rem] flex-col min-[760px]:sticky min-[760px]:top-6 min-[760px]:flex min-[760px]:h-[calc(100vh-7rem)]">
         {sessionPanel}
       </section>

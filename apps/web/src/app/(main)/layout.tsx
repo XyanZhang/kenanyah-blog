@@ -1,5 +1,6 @@
 import { PageBackground } from '@/components/background/PageBackground'
 import { FallingParticles } from '@/components/background/FallingParticles'
+import { MainPageFrame } from '@/components/layout/MainPageFrame'
 
 /** 花瓣类型使用的图片（项目内资源，位于 public/images/particle/） */
 const PETAL_IMAGE = '/images/particle/petal_2.png'
@@ -26,7 +27,7 @@ export default function MainLayout({
         />
       </div>
       <div className="relative z-10">
-        {children}
+        <MainPageFrame>{children}</MainPageFrame>
       </div>
     </div>
   )

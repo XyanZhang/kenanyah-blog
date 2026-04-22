@@ -73,7 +73,7 @@ export default function SearchPage() {
   }, [query, doSearch])
 
   return (
-    <main className="min-h-[60vh] w-full px-4 pb-12 pt-24 sm:px-6 sm:pt-28 md:pb-16">
+    <main className="min-h-[60vh] w-full px-4 pb-12 sm:px-6 md:pb-16">
       <div className="mx-auto max-w-2xl">
         <section className="rounded-[28px] border border-line-glass bg-surface-glass p-5 backdrop-blur-sm sm:p-6">
           <h1 className="mb-4 text-2xl font-semibold text-content-primary">语义搜索</h1>

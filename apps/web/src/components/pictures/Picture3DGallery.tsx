@@ -1,11 +1,9 @@
 'use client'
 
-import { useRef, useMemo, useState, useEffect } from 'react'
+import { Suspense, useRef, useMemo, useState, useEffect } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import {
-  Environment,
   Float,
-  OrbitControls,
   RoundedBox,
   useTexture,
 } from '@react-three/drei'
@@ -14,6 +12,7 @@ import Image from 'next/image'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import { buildPicturesImageUrl, isPicturesSource } from '@/lib/image-service'
+import { OrbitControls as ThreeOrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 
 interface GalleryImage {
   id: string
@@ -36,14 +35,15 @@ interface PictureFrameProps {
 type OrbitControlsHandle = {
   target: THREE.Vector3
   update: () => void
+  dispose: () => void
 }
 
 function resolveGalleryTextureSrc(src: string): string {
   if (!isPicturesSource(src)) return src
   return buildPicturesImageUrl(src, {
-    width: 1200,
-    height: 1600,
-    quality: 82,
+    width: 768,
+    height: 1024,
+    quality: 72,
     fit: 'cover',
     format: 'webp',
   })
@@ -51,7 +51,13 @@ function resolveGalleryTextureSrc(src: string): string {
 
 function resolveGalleryDetailSrc(src: string): string {
   if (!isPicturesSource(src)) return src
-  return buildPicturesImageUrl(src)
+  return buildPicturesImageUrl(src, {
+    width: 1600,
+    height: 1200,
+    quality: 82,
+    fit: 'inside',
+    format: 'webp',
+  })
 }
 
 function formatDateLabel(date: string): string {
@@ -188,7 +194,7 @@ function PictureFrame({
 }
 
 function Stars() {
-  const count = 1200
+  const count = 320
   const positions = useMemo(() => {
     const values = new Float32Array(count * 3)
     for (let i = 0; i < count; i++) {
@@ -255,7 +261,7 @@ function CameraRig({
 }: {
   activeIndex: number | null
   positions: Array<{ position: [number, number, number] }>
-  controlsRef: React.RefObject<React.ElementRef<typeof OrbitControls> | null>
+  controlsRef: React.RefObject<OrbitControlsHandle | null>
 }) {
   const { camera } = useThree()
   const targetPositionRef = useRef(new THREE.Vector3(0, 1.8, 15.6))
@@ -320,7 +326,7 @@ function Gallery3D({
 }) {
   const [hoveredId, setHoveredId] = useState<string | null>(null)
   const positions = useMemo(() => buildPositions(images), [images])
-  const controlsRef = useRef<React.ElementRef<typeof OrbitControls> | null>(null)
+  const controlsRef = useRef<OrbitControlsHandle | null>(null)
 
   return (
     <>
@@ -330,8 +336,14 @@ function Gallery3D({
       <directionalLight position={[5, 8, 6]} intensity={1.8} color="#fff3df" />
       <pointLight position={[-8, -2, -6]} intensity={1.1} color="#6d88a8" />
       <pointLight position={[7, 2, -4]} intensity={1.2} color="#d59a53" />
-
-      <Environment preset="warehouse" />
+      <spotLight
+        position={[0, 9, 2]}
+        angle={0.52}
+        penumbra={0.55}
+        intensity={22}
+        distance={30}
+        color="#f0d6ae"
+      />
       <Stars />
       <GalleryFloor />
 
@@ -350,16 +362,40 @@ function Gallery3D({
       ))}
 
       <CameraRig activeIndex={activeIndex} positions={positions} controlsRef={controlsRef} />
-      <OrbitControls
-        ref={controlsRef}
-        enablePan={false}
-        enableZoom={false}
-        minPolarAngle={0.18}
-        maxPolarAngle={Math.PI - 0.18}
-        rotateSpeed={0.45}
-      />
+      <GalleryOrbitControls controlsRef={controlsRef} />
     </>
   )
+}
+
+function GalleryOrbitControls({
+  controlsRef,
+}: {
+  controlsRef: React.RefObject<OrbitControlsHandle | null>
+}) {
+  const { camera, gl } = useThree()
+
+  useEffect(() => {
+    const controls = new ThreeOrbitControls(camera, gl.domElement)
+    controls.enablePan = false
+    controls.enableZoom = false
+    controls.minPolarAngle = 0.18
+    controls.maxPolarAngle = Math.PI - 0.18
+    controls.rotateSpeed = 0.45
+    controls.enableDamping = true
+    controls.dampingFactor = 0.06
+    controlsRef.current = controls
+
+    return () => {
+      controls.dispose()
+      controlsRef.current = null
+    }
+  }, [camera, gl, controlsRef])
+
+  useFrame(() => {
+    controlsRef.current?.update()
+  })
+
+  return null
 }
 
 interface GalleryOverlayProps {
@@ -548,11 +584,6 @@ interface Picture3DGalleryProps {
 
 export default function Picture3DGallery({ images, className }: Picture3DGalleryProps) {
   const [activeIndex, setActiveIndex] = useState<number | null>(null)
-  const [isLoaded, setIsLoaded] = useState(false)
-
-  useEffect(() => {
-    setIsLoaded(true)
-  }, [])
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -572,19 +603,21 @@ export default function Picture3DGallery({ images, className }: Picture3DGallery
         className
       )}
       initial={{ opacity: 0 }}
-      animate={{ opacity: isLoaded ? 1 : 0 }}
+      animate={{ opacity: 1 }}
       transition={{ duration: 0.9 }}
     >
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_18%,rgba(223,174,108,0.18),transparent_24%),radial-gradient(circle_at_80%_22%,rgba(98,126,160,0.14),transparent_22%)]" />
 
-      <Canvas
-        camera={{ position: [0, 1.8, 15.6], fov: 52 }}
-        gl={{ antialias: true, alpha: true }}
-        dpr={[1, 1.8]}
-        className="absolute inset-0"
-      >
-        <Gallery3D images={images} activeIndex={activeIndex} onImageClick={setActiveIndex} />
-      </Canvas>
+      <Suspense fallback={null}>
+        <Canvas
+          camera={{ position: [0, 1.8, 15.6], fov: 52 }}
+          gl={{ antialias: true, alpha: true }}
+          dpr={[1, 1.8]}
+          className="absolute inset-0"
+        >
+          <Gallery3D images={images} activeIndex={activeIndex} onImageClick={setActiveIndex} />
+        </Canvas>
+      </Suspense>
 
       <GalleryOverlay count={images.length} activeImage={activeImage} />
 

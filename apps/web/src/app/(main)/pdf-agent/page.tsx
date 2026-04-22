@@ -70,7 +70,7 @@ export default function PdfAgentPage() {
   }, [parseDetail, chunkFilter])
 
   return (
-    <main className="mx-auto w-full max-w-5xl px-4 pb-10 pt-24 sm:px-6 sm:pb-12 sm:pt-28 md:py-10">
+    <main className="mx-auto w-full max-w-5xl px-4 pb-10 sm:px-6 sm:pb-12 md:py-10">
       <header className="mb-6 rounded-3xl border border-line-glass bg-surface-glass/70 backdrop-blur-sm p-5 md:p-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>

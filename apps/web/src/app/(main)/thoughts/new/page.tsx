@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 
 export default function NewThoughtPage() {
   return (
-    <main className="min-h-screen px-4 pb-10 pt-24 sm:px-6 sm:pb-12 sm:pt-28 md:pl-24 md:pr-8 md:py-8">
+    <main className="min-h-screen px-4 pb-10 sm:px-6 sm:pb-12 md:px-8 md:py-8">
       <div className="max-w-2xl mx-auto">
         <Link
           href="/thoughts"

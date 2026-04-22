@@ -48,7 +48,7 @@ async function loadGalleryImages() {
     }
   }
 
-  return items.slice(0, 20) // Limit for performance
+  return items.slice(0, 12)
 }
 
 export default async function Pictures3DPage() {

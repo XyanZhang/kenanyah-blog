@@ -36,7 +36,7 @@ const tools: Array<{
 
 export function ToolsPageClient() {
   return (
-    <main className="min-h-screen px-4 pb-20 pt-24 sm:px-6 sm:pt-28 lg:pl-24 lg:pr-8 lg:pt-10">
+    <main className="min-h-screen px-4 pb-20 sm:px-6 lg:pr-8">
       <div className="mx-auto max-w-5xl">
         <section className="border-b border-black/6 pb-8">
           <div className="max-w-3xl">

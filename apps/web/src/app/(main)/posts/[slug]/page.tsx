@@ -208,7 +208,7 @@ export default function PostPage() {
   const nextHeadingId = createHeadingIdGenerator()
 
   return (
-    <main className="min-h-[60vh] pb-8 pt-24 sm:py-12">
+    <main className="min-h-[60vh] pb-8 sm:py-12">
       {/* 让正文列 + 右侧目录作为一个 1140px 布局整体居中，目录仍保持 fixed。 */}
       <div className="relative mx-auto w-full max-w-[1140px] px-4 sm:px-6 xl:px-0">
         <div

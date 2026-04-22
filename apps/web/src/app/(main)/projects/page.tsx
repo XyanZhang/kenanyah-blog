@@ -96,7 +96,7 @@ function coverShape(index: number) {
 
 export default function ProjectsPage() {
   return (
-    <main className="min-h-screen px-4 pb-16 pt-24 sm:px-6 sm:pt-28 lg:pl-24 lg:pr-8 lg:pt-8">
+    <main className="min-h-screen px-4 pb-16 sm:px-6 lg:pr-8">
       <div className="mx-auto max-w-7xl">
         <section className="grid gap-6 border-b border-black/8 pb-8 sm:gap-8 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-end">
           <div className="max-w-3xl">
