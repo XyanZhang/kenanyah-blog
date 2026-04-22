@@ -23,13 +23,15 @@ interface GalleryImage {
 
 interface PictureFrameProps {
   image: GalleryImage
-  position: [number, number, number]
-  rotation: [number, number, number]
+  baseAngle: number
+  radius: number
+  baseY: number
   scale: number
   isActive: boolean
   onClick: () => void
   hoveredId: string | null
   setHoveredId: (id: string | null) => void
+  rotationController: React.MutableRefObject<{ current: number; target: number }>
 }
 
 type OrbitControlsHandle = {
@@ -86,14 +88,12 @@ function buildPositions(images: GalleryImage[]) {
   return images.map((_, i) => {
     const angle = (i / Math.max(images.length, 1)) * Math.PI * 2
     const radius = 8.2 + Math.sin(i * 0.85) * 1.1
-    const x = Math.cos(angle) * radius
     const y = Math.sin(angle * 1.45) * 1.6 + Math.cos(i * 0.45) * 0.5
-    const z = Math.sin(angle) * radius
-    const rotY = -angle + Math.PI / 2
 
     return {
-      position: [x, y, z] as [number, number, number],
-      rotation: [0, rotY, 0] as [number, number, number],
+      angle,
+      radius,
+      y,
       scale: 0.9 + (i % 4) * 0.04,
     }
   })
@@ -101,13 +101,15 @@ function buildPositions(images: GalleryImage[]) {
 
 function PictureFrame({
   image,
-  position,
-  rotation,
+  baseAngle,
+  radius,
+  baseY,
   scale,
   isActive,
   onClick,
   hoveredId,
   setHoveredId,
+  rotationController,
 }: PictureFrameProps) {
   const groupRef = useRef<THREE.Group>(null)
   const plateRef = useRef<THREE.Mesh>(null)
@@ -121,16 +123,20 @@ function PictureFrame({
   useFrame((state) => {
     if (!groupRef.current || !plateRef.current) return
 
+    const orbitAngle = baseAngle + rotationController.current.current
+    const x = Math.cos(orbitAngle) * radius
+    const z = Math.sin(orbitAngle) * radius
+    const rotY = -orbitAngle + Math.PI / 2
     const hoverLift = isHovered || isActive ? 0.38 : 0
-    const targetY = position[1] + hoverLift
-    const wobble = Math.sin(state.clock.elapsedTime * 0.7 + position[0]) * 0.03
+    const targetY = baseY + hoverLift
+    const wobble = Math.sin(state.clock.elapsedTime * 0.7 + x) * 0.03
 
-    groupRef.current.position.x = THREE.MathUtils.lerp(groupRef.current.position.x, position[0], 0.08)
+    groupRef.current.position.x = THREE.MathUtils.lerp(groupRef.current.position.x, x, 0.08)
     groupRef.current.position.y = THREE.MathUtils.lerp(groupRef.current.position.y, targetY + wobble, 0.08)
-    groupRef.current.position.z = THREE.MathUtils.lerp(groupRef.current.position.z, position[2], 0.08)
+    groupRef.current.position.z = THREE.MathUtils.lerp(groupRef.current.position.z, z, 0.08)
     groupRef.current.rotation.y = THREE.MathUtils.lerp(
       groupRef.current.rotation.y,
-      rotation[1] + (isHovered ? 0.08 : 0),
+      rotY + (isHovered ? 0.08 : 0),
       0.08
     )
 
@@ -142,7 +148,7 @@ function PictureFrame({
   })
 
   return (
-    <group ref={groupRef} position={position} rotation={rotation} scale={scale}>
+    <group ref={groupRef} position={[Math.cos(baseAngle) * radius, baseY, Math.sin(baseAngle) * radius]} rotation={[0, -baseAngle + Math.PI / 2, 0]} scale={scale}>
       <Float speed={1.7} rotationIntensity={0.14} floatIntensity={0.18}>
         <group
           onClick={onClick}
@@ -254,7 +260,7 @@ function CameraRig({
   controlsRef,
 }: {
   activeIndex: number | null
-  positions: Array<{ position: [number, number, number] }>
+  positions: Array<{ angle: number; radius: number; y: number; scale: number }>
   controlsRef: React.RefObject<OrbitControlsHandle | null>
 }) {
   const { camera } = useThree()
@@ -313,14 +319,24 @@ function Gallery3D({
   images,
   activeIndex,
   onImageClick,
+  rotationController,
 }: {
   images: GalleryImage[]
   activeIndex: number | null
   onImageClick: (index: number) => void
+  rotationController: React.MutableRefObject<{ current: number; target: number }>
 }) {
   const [hoveredId, setHoveredId] = useState<string | null>(null)
   const positions = useMemo(() => buildPositions(images), [images])
   const controlsRef = useRef<OrbitControlsHandle | null>(null)
+
+  useFrame(() => {
+    rotationController.current.current = THREE.MathUtils.lerp(
+      rotationController.current.current,
+      rotationController.current.target,
+      0.08
+    )
+  })
 
   return (
     <>
@@ -345,13 +361,15 @@ function Gallery3D({
         <PictureFrame
           key={image.id}
           image={image}
-          position={positions[i].position}
-          rotation={positions[i].rotation}
+          baseAngle={positions[i].angle}
+          radius={positions[i].radius}
+          baseY={positions[i].y}
           scale={positions[i].scale}
           isActive={activeIndex === i}
           onClick={() => onImageClick(i)}
           hoveredId={hoveredId}
           setHoveredId={setHoveredId}
+          rotationController={rotationController}
         />
       ))}
 
@@ -455,9 +473,9 @@ function GalleryOverlay({ count, activeImage }: GalleryOverlayProps) {
               交互 / Interaction
             </p>
             <p className="mt-3 text-base leading-6 text-[#fff0da]">
-              拖动旋转，点击查看
+              滚轮或拖动旋转，点击查看
               <br />
-              Drag to orbit, click to open
+              Scroll or drag to orbit, click to open
             </p>
           </div>
           <div className="rounded-[1.6rem] border border-white/12 bg-black/28 p-4 backdrop-blur-md sm:p-5">
@@ -578,6 +596,8 @@ interface Picture3DGalleryProps {
 
 export default function Picture3DGallery({ images, className }: Picture3DGalleryProps) {
   const [activeIndex, setActiveIndex] = useState<number | null>(null)
+  const galleryRef = useRef<HTMLDivElement>(null)
+  const rotationController = useRef({ current: 0, target: 0 })
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -588,10 +608,24 @@ export default function Picture3DGallery({ images, className }: Picture3DGallery
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [])
 
+  useEffect(() => {
+    const element = galleryRef.current
+    if (!element) return
+
+    const handleWheel = (event: WheelEvent) => {
+      event.preventDefault()
+      rotationController.current.target += event.deltaY * 0.0018
+    }
+
+    element.addEventListener('wheel', handleWheel, { passive: false })
+    return () => element.removeEventListener('wheel', handleWheel)
+  }, [])
+
   const activeImage = activeIndex === null ? null : images[activeIndex]
 
   return (
     <motion.div
+      ref={galleryRef}
       className={cn(
         'relative h-screen w-full overflow-hidden bg-[radial-gradient(circle_at_top,#3a2b1d_0%,#18120f_36%,#0f0c0a_100%)]',
         className
@@ -609,7 +643,12 @@ export default function Picture3DGallery({ images, className }: Picture3DGallery
           dpr={[1, 1.8]}
           className="absolute inset-0"
         >
-          <Gallery3D images={images} activeIndex={activeIndex} onImageClick={setActiveIndex} />
+          <Gallery3D
+            images={images}
+            activeIndex={activeIndex}
+            onImageClick={setActiveIndex}
+            rotationController={rotationController}
+          />
         </Canvas>
       </Suspense>
 
