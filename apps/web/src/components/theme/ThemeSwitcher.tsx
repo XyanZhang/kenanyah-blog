@@ -14,6 +14,27 @@ const colorModeIcons = {
   light: Sun,
 } as const
 
+const colorModeButtonStyles = {
+  system: {
+    active: 'text-content-primary',
+    icon: 'text-accent-primary',
+    glow:
+      'bg-[radial-gradient(circle,color-mix(in_srgb,var(--theme-accent-primary)_20%,transparent),transparent_72%)]',
+  },
+  dark: {
+    active: 'text-content-primary',
+    icon: 'text-accent-secondary',
+    glow:
+      'bg-[radial-gradient(circle,color-mix(in_srgb,var(--theme-accent-secondary)_22%,transparent),transparent_72%)]',
+  },
+  light: {
+    active: 'text-content-primary',
+    icon: 'text-accent-tertiary',
+    glow:
+      'bg-[radial-gradient(circle,color-mix(in_srgb,var(--theme-accent-tertiary)_22%,transparent),transparent_72%)]',
+  },
+} as const
+
 export function ThemeSwitcher() {
   const [isOpen, setIsOpen] = useState(false)
   const panelRef = useRef<HTMLDivElement>(null)
@@ -100,12 +121,13 @@ export function ThemeSwitcher() {
       {isOpen && (
         <div
           ref={panelRef}
-          className="absolute bottom-16 right-0 w-80 rounded-2xl border border-line-primary bg-surface-primary p-4 shadow-xl"
+          className="absolute bottom-16 right-0 w-[20.5rem] overflow-hidden rounded-[1.75rem] border border-line-primary bg-[linear-gradient(180deg,color-mix(in_srgb,var(--theme-surface-primary)_92%,white_8%),color-mix(in_srgb,var(--theme-surface-secondary)_94%,transparent))] p-4 shadow-[0_24px_60px_rgba(15,23,42,0.16)] backdrop-blur-md"
         >
+          <div className="pointer-events-none absolute inset-x-6 top-0 h-16 rounded-full bg-[radial-gradient(circle_at_top,color-mix(in_srgb,var(--theme-accent-primary)_14%,transparent),transparent_72%)] blur-2xl" />
           <div className="mb-4">
-            <div className="mb-2 flex items-center justify-between">
+            <div className="mb-3 flex items-center justify-between">
               <h3 className="text-sm font-semibold text-content-primary">显示模式</h3>
-              <span className="text-xs text-content-muted">
+              <span className="rounded-full border border-line-primary bg-surface-secondary px-2.5 py-1 text-[11px] font-medium text-content-muted shadow-sm">
                 {colorModePreference === 'system'
                   ? `跟随系统 · 当前${resolvedColorMode === 'dark' ? '深色' : '浅色'}`
                   : colorModePreference === 'dark'
@@ -113,30 +135,43 @@ export function ThemeSwitcher() {
                     : '固定浅色'}
               </span>
             </div>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="flex items-center justify-center gap-3 rounded-[1.25rem] bg-[linear-gradient(180deg,color-mix(in_srgb,var(--theme-surface-secondary)_72%,white_28%),color-mix(in_srgb,var(--theme-surface-selected)_50%,transparent))] px-3 py-2">
               {colorModes.map((mode) => {
                 const Icon = colorModeIcons[mode.id]
                 const isSelected = colorModePreference === mode.id
+                const modeStyle = colorModeButtonStyles[mode.id]
 
                 return (
-                  <button
-                    key={mode.id}
-                    type="button"
-                    onClick={() => setColorModePreference(mode.id)}
-                    className={`
-                      flex flex-col items-start gap-1 rounded-xl border px-3 py-3 text-left transition-colors
-                      ${isSelected
-                        ? 'border-line-focus bg-surface-selected text-content-primary'
-                        : 'border-line-primary bg-surface-secondary text-content-secondary hover:bg-surface-hover'
-                      }
-                    `}
-                  >
-                    <span className="flex items-center gap-2 text-sm font-medium">
-                      <Icon className="h-4 w-4" />
-                      {mode.name}
-                    </span>
-                    <span className="text-xs text-content-muted">{mode.description}</span>
-                  </button>
+                  <Tooltip key={mode.id}>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        onClick={() => setColorModePreference(mode.id)}
+                        aria-label={mode.name}
+                        aria-pressed={isSelected}
+                        className={`
+                          relative flex h-12 w-12 items-center justify-center overflow-hidden rounded-full transition-all duration-300
+                          ${isSelected
+                            ? modeStyle.active
+                            : 'text-content-secondary hover:text-content-primary'
+                          }
+                        `}
+                      >
+                        {isSelected && (
+                          <>
+                            <span className={`absolute inset-0 opacity-90 ${modeStyle.glow}`} />
+                            <span className="absolute bottom-1.5 left-1/2 h-1 w-1 -translate-x-1/2 rounded-full bg-current/70" />
+                          </>
+                        )}
+                        <span className="relative flex h-8 w-8 items-center justify-center rounded-full">
+                          <Icon
+                            className={`transition-transform duration-300 ${isSelected ? `h-5 w-5 scale-110 ${modeStyle.icon}` : 'h-[18px] w-[18px]'}`}
+                          />
+                        </span>
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="top">{mode.name}</TooltipContent>
+                  </Tooltip>
                 )
               })}
             </div>
