@@ -5,6 +5,7 @@ import { Hono } from 'hono'
 import { z } from 'zod'
 import { env } from '../env'
 import { prisma } from '../lib/db'
+import { logger } from '../lib/logger'
 import { authMiddleware } from '../middleware/auth'
 import {
   dateStringToUtcDate,
@@ -76,16 +77,41 @@ function extFromFilename(name: string): string {
   return ''
 }
 
+function isDatabaseUnavailableError(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false
+
+  const candidate = error as { code?: unknown; message?: unknown }
+  return (
+    candidate.code === 'ECONNREFUSED' ||
+    (typeof candidate.message === 'string' &&
+      (candidate.message.includes('ECONNREFUSED') ||
+        candidate.message.includes("Can't reach database server") ||
+        candidate.message.includes('database server')))
+  )
+}
+
 // GET /pictures/entries — 列出数据库中的照片记录
 pictures.get('/entries', async (c) => {
-  const list = await prisma.photoEntry.findMany({
-    orderBy: [{ takenAt: 'desc' }, { createdAt: 'desc' }],
-  })
+  try {
+    const list = await prisma.photoEntry.findMany({
+      orderBy: [{ takenAt: 'desc' }, { createdAt: 'desc' }],
+    })
 
-  return c.json({
-    success: true,
-    data: list.map(serializePhotoEntry),
-  })
+    return c.json({
+      success: true,
+      data: list.map(serializePhotoEntry),
+    })
+  } catch (error) {
+    if (isDatabaseUnavailableError(error)) {
+      logger.warn({ err: error, path: c.req.path }, 'Pictures entries DB unavailable, falling back to empty list')
+      return c.json({
+        success: true,
+        data: [],
+      })
+    }
+
+    throw error
+  }
 })
 
 // POST /pictures/entries — 创建数据库照片记录
