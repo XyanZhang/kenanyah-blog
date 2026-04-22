@@ -312,7 +312,6 @@ export function WeatherCard({ card }: { card: DashboardCardType }) {
   if (geoLoading || loading) {
     return (
       <CardLoadingState
-        label="天气加载中 / Loading Weather"
         spinnerSize="lg"
         className="rounded-3xl"
       />

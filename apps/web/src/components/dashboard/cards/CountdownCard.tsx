@@ -100,7 +100,7 @@ export function CountdownCard({ card, onOpenConfig }: CountdownCardProps) {
 
   if (loading) {
     return (
-      <CardLoadingState label="倒计时加载中 / Loading Countdowns" spinnerSize="sm" />
+      <CardLoadingState spinnerSize="sm" />
     )
   }
 

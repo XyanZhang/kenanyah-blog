@@ -81,7 +81,7 @@ const CARD_DRAG_ACTIVATOR_INSET = 16
 
 function CardPlaceholder() {
   return (
-    <CardLoadingState label="组件加载中 / Loading Card" spinnerSize="sm" className="min-h-[140px]" />
+    <CardLoadingState spinnerSize="sm" className="min-h-[140px]" />
   )
 }
 
@@ -213,7 +213,7 @@ export function DashboardCard({ card, animationIndex, layoutMode, resolvedLayout
   )
 
   // Animation delay based on priority
-  const animationDelay = animationIndex * 0.08
+  const animationDelay = animationIndex * 0.045
 
   return (
     <motion.div

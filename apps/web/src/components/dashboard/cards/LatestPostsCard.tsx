@@ -103,7 +103,7 @@ export function LatestPostsCard({ card }: LatestPostsCardProps) {
       <div className="flex h-full flex-col">
         <h3 className="mb-4 text-lg font-semibold text-content-primary">最新文章</h3>
         <div className="flex-1">
-          <CardLoadingState label="文章载入中 / Loading Posts" />
+          <CardLoadingState />
         </div>
       </div>
     )
@@ -131,7 +131,7 @@ export function LatestPostsCard({ card }: LatestPostsCardProps) {
               <Link
               key={post.id}
               href={`/posts/${post.slug}` as any}
-              className="group flex gap-3 rounded-xl border border-line-glass/50 bg-surface-glass/40 p-2 backdrop-blur-sm transition-all hover:border-line-hover hover:bg-surface-glass/60 hover:shadow-md"
+              className="group flex gap-3 rounded-xl border border-line-glass/50 bg-surface-glass/40 p-2 backdrop-blur-sm transition-all hover:bg-surface-glass/60 hover:shadow-md"
             >
               {config.showImage && (
                 <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-lg bg-linear-to-br from-accent-primary-light to-accent-secondary-light">
