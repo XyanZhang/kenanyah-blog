@@ -6,6 +6,7 @@ import { WiHumidity, WiStrongWind } from 'react-icons/wi';
 import { DashboardCard as DashboardCardType, WeatherCardConfig } from '@blog/types';
 import { clsx } from 'clsx';
 import { useGeolocation } from '@/hooks/useGeolocation';
+import { CardLoadingState } from './CardLoadingState';
 
 interface WeatherApiData {
   temperature: number;
@@ -310,27 +311,11 @@ export function WeatherCard({ card }: { card: DashboardCardType }) {
 
   if (geoLoading || loading) {
     return (
-      <div className="w-full h-full rounded-3xl bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <motion.div
-            className="relative"
-            animate={{ rotate: 360 }}
-            transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
-          >
-            <div className="w-16 h-16 rounded-full border-4 border-slate-300 border-t-slate-500" />
-          </motion.div>
-          <div className="flex gap-2">
-            {[...Array(3)].map((_, i) => (
-              <motion.div
-                key={i}
-                className="w-3 h-3 rounded-full bg-slate-400"
-                animate={{ scale: [1, 1.5, 1], opacity: [0.5, 1, 0.5] }}
-                transition={{ duration: 1, repeat: Infinity, delay: i * 0.2 }}
-              />
-            ))}
-          </div>
-        </div>
-      </div>
+      <CardLoadingState
+        label="天气加载中 / Loading Weather"
+        spinnerSize="lg"
+        className="rounded-3xl"
+      />
     );
   }
 

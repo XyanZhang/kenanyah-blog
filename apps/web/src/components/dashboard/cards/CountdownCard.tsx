@@ -16,6 +16,7 @@ import { format } from 'date-fns'
 import { CalendarHeart, PlusCircle } from 'lucide-react'
 import { DashboardCard, CountdownCardConfig } from '@blog/types'
 import { getCountdownEvents, type CountdownEventDto } from '@/lib/countdown-api'
+import { CardLoadingState } from './CardLoadingState'
 
 interface CountdownCardProps {
   card: DashboardCard
@@ -99,10 +100,7 @@ export function CountdownCard({ card, onOpenConfig }: CountdownCardProps) {
 
   if (loading) {
     return (
-      <div className="flex h-full flex-col items-center justify-center gap-2 text-content-muted">
-        <div className="h-6 w-6 animate-spin rounded-full border-2 border-accent-primary border-t-transparent" />
-        <span className="text-sm">加载中…</span>
-      </div>
+      <CardLoadingState label="倒计时加载中 / Loading Countdowns" spinnerSize="sm" />
     )
   }
 

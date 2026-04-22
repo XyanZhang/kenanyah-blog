@@ -79,6 +79,7 @@ export function ResizeHandles({ onResizeStart }: ResizeHandlesProps) {
             position: 'absolute',
             cursor,
             zIndex: 20,
+            touchAction: 'none',
           }}
           className={`
             transition-opacity duration-150

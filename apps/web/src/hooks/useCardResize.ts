@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { CardDimensions } from '@blog/types'
 import { RESIZE_CONSTRAINTS } from '@/lib/constants/dashboard'
 import { type ResizeDirection } from '@/hooks/useResize'
@@ -35,6 +35,8 @@ export function useCardResize({
   const latestDimensionsRef = useRef<CardDimensions>(initialDimensions)
   const latestPositionDeltaRef = useRef({ x: 0, y: 0 })
   const onResizeEndRef = useRef(onResizeEnd)
+  const activeTargetRef = useRef<HTMLElement | null>(null)
+  const activePointerIdRef = useRef<number | null>(null)
   onResizeEndRef.current = onResizeEnd
 
   const stateRef = useRef({
@@ -44,6 +46,14 @@ export function useCardResize({
     startWidth: 0,
     startHeight: 0,
   })
+
+  const cleanupListenersRef = useRef<(() => void) | null>(null)
+
+  useEffect(() => {
+    return () => {
+      cleanupListenersRef.current?.()
+    }
+  }, [])
 
   const handlePointerMove = useCallback((e: PointerEvent) => {
     const { direction, startX, startY, startWidth, startHeight } = stateRef.current
@@ -94,27 +104,45 @@ export function useCardResize({
     latestDimensionsRef.current = newDims
     latestPositionDeltaRef.current = newPos
 
-    setCurrentDimensions(newDims)
-    setPositionDelta(newPos)
+    setCurrentDimensions((prev) =>
+      prev.width === newDims.width && prev.height === newDims.height ? prev : newDims
+    )
+    setPositionDelta((prev) =>
+      prev.x === newPos.x && prev.y === newPos.y ? prev : newPos
+    )
   }, [])
 
-  const handlePointerUp = useCallback((e: PointerEvent) => {
-    const target = e.target as HTMLElement
-    target.releasePointerCapture(e.pointerId)
+  const finalizeResize = useCallback((cancelled = false) => {
+    cleanupListenersRef.current?.()
+    cleanupListenersRef.current = null
 
-    document.removeEventListener('pointermove', handlePointerMove)
-    document.removeEventListener('pointerup', handlePointerUp)
+    const activeTarget = activeTargetRef.current
+    const activePointerId = activePointerIdRef.current
+    if (activeTarget && activePointerId !== null && activeTarget.hasPointerCapture(activePointerId)) {
+      activeTarget.releasePointerCapture(activePointerId)
+    }
 
-    // Read from refs to avoid setState-in-render issue
+    activeTargetRef.current = null
+    activePointerIdRef.current = null
+    stateRef.current.direction = null
+    setIsResizing(false)
+
     const finalDimensions = latestDimensionsRef.current
     const finalPositionDelta = latestPositionDeltaRef.current
-
-    setIsResizing(false)
     setPositionDelta({ x: 0, y: 0 })
 
-    // Call onResizeEnd outside of render cycle
-    onResizeEndRef.current(finalDimensions, finalPositionDelta)
-  }, [handlePointerMove])
+    if (!cancelled) {
+      onResizeEndRef.current(finalDimensions, finalPositionDelta)
+    }
+  }, [])
+
+  const handlePointerUp = useCallback(() => {
+    finalizeResize(false)
+  }, [finalizeResize])
+
+  const handlePointerCancel = useCallback(() => {
+    finalizeResize(true)
+  }, [finalizeResize])
 
   const handleResizeStart = useCallback((direction: ResizeDirection, e: React.PointerEvent) => {
     e.stopPropagation()
@@ -122,6 +150,8 @@ export function useCardResize({
 
     const target = e.target as HTMLElement
     target.setPointerCapture(e.pointerId)
+    activeTargetRef.current = target
+    activePointerIdRef.current = e.pointerId
 
     stateRef.current = {
       direction,
@@ -139,9 +169,18 @@ export function useCardResize({
     setPositionDelta({ x: 0, y: 0 })
     setIsResizing(true)
 
+    cleanupListenersRef.current?.()
+    const cleanup = () => {
+      document.removeEventListener('pointermove', handlePointerMove)
+      document.removeEventListener('pointerup', handlePointerUp)
+      document.removeEventListener('pointercancel', handlePointerCancel)
+    }
+    cleanupListenersRef.current = cleanup
+
     document.addEventListener('pointermove', handlePointerMove)
     document.addEventListener('pointerup', handlePointerUp)
-  }, [initialDimensions, handlePointerMove, handlePointerUp])
+    document.addEventListener('pointercancel', handlePointerCancel)
+  }, [initialDimensions, handlePointerCancel, handlePointerMove, handlePointerUp])
 
   return {
     isResizing,

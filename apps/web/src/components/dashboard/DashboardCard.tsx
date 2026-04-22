@@ -15,6 +15,7 @@ import type { DashboardLayoutMode, ResolvedCardLayout } from '@/lib/dashboard/re
 import { CardToolbar } from './CardToolbar'
 import { CardConfigDialog } from './CardConfigDialog'
 import { ResizeHandles } from './ResizeHandles'
+import { CardLoadingState } from './cards/CardLoadingState'
 
 const cardComponents = {
   [CardType.PROFILE]: lazy(() => import('./cards/ProfileCard').then(m => ({ default: m.ProfileCard }))),
@@ -76,11 +77,11 @@ const CARD_HOVER_TRANSITION = {
   mass: 0.52,
 }
 
+const CARD_DRAG_ACTIVATOR_INSET = 16
+
 function CardPlaceholder() {
   return (
-    <div className="flex h-full w-full items-center justify-center">
-      <div className="h-8 w-8 animate-spin rounded-full border-2 border-border-primary border-t-transparent" />
-    </div>
+    <CardLoadingState label="组件加载中 / Loading Card" spinnerSize="sm" className="min-h-[140px]" />
   )
 }
 
@@ -169,6 +170,25 @@ export function DashboardCard({ card, animationIndex, layoutMode, resolvedLayout
   const hideCardContainer = card.config?.hideCardContainer ?? false
   const hoverScale = navigateTo ? CARD_HOVER_SCALE : CARD_SUBTLE_HOVER_SCALE
   const hoverLift = navigateTo ? CARD_HOVER_LIFT : CARD_SUBTLE_HOVER_LIFT
+  const isInteracting = canEditCard && (isDragging || isResizing)
+  const liveWidth = isResizing
+    ? currentDimensions.width
+    : (resolvedLayout.width ?? currentDimensions.width)
+  const liveHeight = isResizing
+    ? currentDimensions.height
+    : (resolvedLayout.height ?? currentDimensions.height)
+
+  const cardContent = useMemo(
+    () => (
+      <Suspense fallback={<CardPlaceholder />}>
+        <CardContent
+          card={card}
+          onOpenConfig={canEditCard ? handleOpenConfig : undefined}
+        />
+      </Suspense>
+    ),
+    [CardContent, card, canEditCard, handleOpenConfig]
+  )
 
   // 画布坐标：card.position 为画布坐标，transform 与 positionDelta 为视口像素需除以 scale
   const position = useMemo(
@@ -205,6 +225,8 @@ export function DashboardCard({ card, animationIndex, layoutMode, resolvedLayout
         zIndex: isDragging || isResizing ? 1000 : resolvedLayout.zIndex,
         borderRadius: hideCardContainer ? 0 : borderRadius,
         padding: hideCardContainer ? 0 : padding,
+        touchAction: canEditCard ? 'none' : undefined,
+        userSelect: canEditCard ? 'none' : undefined,
         willChange: !canEditCard && !isDragging && !isResizing ? 'transform, width, height, opacity' : undefined,
       }}
       initial={{
@@ -215,8 +237,8 @@ export function DashboardCard({ card, animationIndex, layoutMode, resolvedLayout
         ...(isAutoSize
           ? {}
           : {
-              width: resolvedLayout.width ?? currentDimensions.width,
-              height: resolvedLayout.height ?? currentDimensions.height,
+              width: liveWidth,
+              height: liveHeight,
             }),
       }}
       animate={{
@@ -227,15 +249,15 @@ export function DashboardCard({ card, animationIndex, layoutMode, resolvedLayout
         ...(isAutoSize
           ? {}
           : {
-              width: resolvedLayout.width ?? currentDimensions.width,
-              height: resolvedLayout.height ?? currentDimensions.height,
+              width: liveWidth,
+              height: liveHeight,
             }),
       }}
       transition={{
-        x: canEditCard && (isDragging || isResizing) ? CARD_INTERACTION_TRANSITION : CARD_POSITION_SPRING,
-        y: canEditCard && (isDragging || isResizing) ? CARD_INTERACTION_TRANSITION : CARD_POSITION_SPRING,
-        width: isAutoSize || (canEditCard && isResizing) ? CARD_INTERACTION_TRANSITION : CARD_SIZE_SPRING,
-        height: isAutoSize || (canEditCard && isResizing) ? CARD_INTERACTION_TRANSITION : CARD_SIZE_SPRING,
+        x: isInteracting ? CARD_INTERACTION_TRANSITION : CARD_POSITION_SPRING,
+        y: isInteracting ? CARD_INTERACTION_TRANSITION : CARD_POSITION_SPRING,
+        width: isAutoSize || isInteracting ? CARD_INTERACTION_TRANSITION : CARD_SIZE_SPRING,
+        height: isAutoSize || isInteracting ? CARD_INTERACTION_TRANSITION : CARD_SIZE_SPRING,
         scale: {
           ...CARD_ENTRANCE_SPRING,
           delay: hasAnimated ? 0 : animationDelay,
@@ -261,24 +283,31 @@ export function DashboardCard({ card, animationIndex, layoutMode, resolvedLayout
       className={`
         card group relative
         ${hideCardContainer ? '' : 'squircle bg-surface-glass border border-line-glass backdrop-blur-lg [box-shadow:0_20px_40px_-10px_rgba(0,0,0,0.1),inset_0_1px_0_rgba(255,255,255,0.7)]'}
-        ${canEditCard ? 'cursor-grab active:cursor-grabbing' : ''}
         ${isSelected ? 'ring-2 ring-line-focus' : ''}
         ${!hideCardContainer && isDragging ? '[box-shadow:0_30px_50px_-15px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.7)]' : ''}
         ${!canEditCard && navigateTo ? 'cursor-pointer' : ''}
       `}
       onClick={handleCardClick}
-      {...(canEditCard && !isResizing ? { ...attributes, ...listeners } : {})}
     >
+      {canEditCard && !isResizing && (
+        <div
+          className="absolute z-10 rounded-[inherit] cursor-grab active:cursor-grabbing"
+          style={{
+            top: CARD_DRAG_ACTIVATOR_INSET,
+            right: CARD_DRAG_ACTIVATOR_INSET,
+            bottom: CARD_DRAG_ACTIVATOR_INSET,
+            left: CARD_DRAG_ACTIVATOR_INSET,
+          }}
+          {...attributes}
+          {...listeners}
+        />
+      )}
+
       <div
         className="h-full w-full overflow-hidden relative z-0"
         style={{ borderRadius: hideCardContainer ? 0 : `${Math.max(0, borderRadius - 24)}px` }}
       >
-        <Suspense fallback={<CardPlaceholder />}>
-          <CardContent
-            card={card}
-            onOpenConfig={canEditCard ? handleOpenConfig : undefined}
-          />
-        </Suspense>
+        {cardContent}
       </div>
       {canEditCard && (
         <div className="absolute right-2 top-2 z-20 pointer-events-none">

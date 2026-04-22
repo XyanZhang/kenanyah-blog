@@ -6,11 +6,12 @@ import Link from 'next/link'
 import { format } from 'date-fns'
 import { zhCN } from 'date-fns/locale'
 import { DashboardCard, LatestPostsCardConfig } from '@blog/types'
-import { Calendar, Loader2 } from 'lucide-react'
+import { Calendar } from 'lucide-react'
 import { apiClient } from '@/lib/api-client'
 import type { ApiResponse } from '@/lib/api-client'
 import { getApiErrorMessage } from '@/lib/api-error'
 import { buildDynamicImageUrl, isStaticsSource } from '@/lib/image-service'
+import { CardLoadingState } from './CardLoadingState'
 
 interface LatestPostsCardProps {
   card: DashboardCard
@@ -101,8 +102,8 @@ export function LatestPostsCard({ card }: LatestPostsCardProps) {
     return (
       <div className="flex h-full flex-col">
         <h3 className="mb-4 text-lg font-semibold text-content-primary">最新文章</h3>
-        <div className="flex flex-1 items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-content-muted" />
+        <div className="flex-1">
+          <CardLoadingState label="文章载入中 / Loading Posts" />
         </div>
       </div>
     )
