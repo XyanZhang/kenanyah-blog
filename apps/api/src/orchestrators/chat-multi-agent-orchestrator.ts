@@ -1,4 +1,8 @@
 import {
+  patchIntentContext,
+  type IntentContext,
+} from '../agents/chat-intent-state'
+import {
   type ChatExecutionRoute,
   type ChatToolCall,
   runBusinessToolAgent,
@@ -25,6 +29,7 @@ import {
 } from '../tools/business-agent-tools'
 import {
   formatConversationForPrompt,
+  buildIntentConversationDigest,
   type ConversationMessage,
 } from '../tools/session-tools'
 import { buildFollowupOperationCardMessage } from '../lib/operation-card'
@@ -56,6 +61,10 @@ export type ChatMultiAgentStreamEvent =
       role: 'system'
       content: string
     }
+  | {
+      type: 'intent_state'
+      content: string
+    }
 
 type ChatMultiAgentInput = {
   conversationId: string
@@ -63,6 +72,7 @@ type ChatMultiAgentInput = {
   userRole: string
   siteBaseUrl: string
   messages: ConversationMessage[]
+  intentContext: IntentContext
   latestUserMessage: string
   useKnowledgeBase: boolean
   signal?: AbortSignal
@@ -346,6 +356,7 @@ export async function* runChatMultiAgentOrchestrator(
   let executionRoute: ChatExecutionRoute | 'unknown' = 'unknown'
   let completed = false
   let currentUserStatus: ChatUserFacingStatus | null = null
+  let currentIntentContext = input.intentContext
   const diagnosticsLogger = logger.child({
     scope: 'chat-orchestrator',
     conversationId: input.conversationId,
@@ -379,33 +390,70 @@ export async function* runChatMultiAgentOrchestrator(
 
   try {
     throwIfAborted(input.signal)
-    const conversationText = formatConversationForPrompt(input.messages, 24)
+    const conversationDigest = buildIntentConversationDigest(input.messages, currentIntentContext, 5)
+    const rawConversationText = formatConversationForPrompt(input.messages, 24)
+
+    const emitIntentState = async function* (
+      patch: Partial<IntentContext>,
+      extras?: Record<string, unknown>
+    ): AsyncGenerator<ChatMultiAgentStreamEvent, void, undefined> {
+      currentIntentContext = patchIntentContext(currentIntentContext, patch)
+      diagnosticsLogger.info({
+        msg: 'chat.intent.state_updated',
+        ...extras,
+        nextIntentContext: currentIntentContext,
+      })
+      yield {
+        type: 'intent_state',
+        content: JSON.stringify(currentIntentContext),
+      }
+    }
 
     yield* emitStatus('thinking', 'intent')
     const intentStartedAt = Date.now()
     const intent = await runIntentRecognitionAgent({
-      conversationText,
+      conversationText: conversationDigest,
       latestUserMessage: input.latestUserMessage,
       useKnowledgeBase: input.useKnowledgeBase,
+      context: currentIntentContext,
       signal: input.signal,
     })
     stageTimings.intent += Date.now() - intentStartedAt
     throwIfAborted(input.signal)
+    yield* emitIntentState(intent.statePatch, {
+      internalStage: 'intent',
+      finalIntent: intent.intent,
+      confidence: intent.confidence,
+      confirmationRequired: intent.confirmationRequired,
+      forcedFollowupReason: intent.forcedFollowupReason,
+    })
 
     const skill = resolveChatAppSkill({
       intent,
       latestUserMessage: input.latestUserMessage,
       useKnowledgeBase: input.useKnowledgeBase,
+      state: currentIntentContext,
     })
     executionRoute = skill.route
     diagnosticsLogger.info({
       msg: 'chat.intent.resolved',
       route: executionRoute,
       intent: intent.intent,
+      reviewedIntent: intent.intent,
+      candidateIntents: intent.candidateTrace.map((item) => ({
+        intent: item.intent,
+        source: item.source,
+        confidence: item.confidence,
+      })),
+      activeDomainBefore: input.intentContext.activeDomain,
+      activeDomainAfter: currentIntentContext.activeDomain,
+      usedState: currentIntentContext,
+      finalIntent: intent.intent,
       skillId: skill.id,
       shouldUseKnowledgeBase: intent.shouldUseKnowledgeBase,
       needPlanning: intent.needPlanning,
       needsFollowup: intent.needsFollowup,
+      forcedFollowupReason: intent.forcedFollowupReason,
     })
 
     if (executionRoute === 'blog_workflow') {
@@ -416,6 +464,7 @@ export async function* runChatMultiAgentOrchestrator(
       const workflowStartedAt = Date.now()
       const queue = createAsyncQueue<ChatMultiAgentStreamEvent>()
       let workflowError: unknown = null
+      let workflowResultStatus: 'need_more_info' | 'completed' | 'failed' | null = null
 
       const workflowPromise = runBlogReactOrchestrator({
         conversationId: input.conversationId,
@@ -438,7 +487,21 @@ export async function* runChatMultiAgentOrchestrator(
         },
       })
         .then((result) => {
+          workflowResultStatus = result.status === 'need_more_info' ? 'need_more_info' : 'completed'
           if (result.status === 'need_more_info') {
+            queue.push({
+              type: 'intent_state',
+              content: JSON.stringify(
+                patchIntentContext(currentIntentContext, {
+                  activeDomain: 'blog_workflow',
+                  pendingAction: 'blog_workflow_followup',
+                  pendingEntityType: 'workflow',
+                  pendingEntityId: null,
+                  lastOperationCardScope: 'workflow',
+                  confidenceMode: 'normal',
+                })
+              ),
+            })
             queue.push({
               type: 'followup',
               questions: result.followupQuestions,
@@ -457,6 +520,13 @@ export async function* runChatMultiAgentOrchestrator(
         })
 
       for await (const event of streamQueuedEvents(queue)) {
+        if (event.type === 'intent_state') {
+          try {
+            currentIntentContext = JSON.parse(event.content) as IntentContext
+          } catch {
+            // ignore malformed state updates from nested workflow
+          }
+        }
         yield event
       }
 
@@ -465,18 +535,45 @@ export async function* runChatMultiAgentOrchestrator(
       if (workflowError) {
         throw workflowError
       }
+      yield* emitIntentState(
+        {
+          activeDomain: 'blog_workflow',
+          pendingAction: workflowResultStatus === 'need_more_info' ? 'blog_workflow_followup' : null,
+          pendingEntityType: 'workflow',
+          pendingEntityId: null,
+          lastOperationCardScope: workflowResultStatus === 'need_more_info' ? 'workflow' : null,
+          confidenceMode: 'normal',
+        },
+        {
+          internalStage: 'workflow',
+          finalIntent: intent.intent,
+        }
+      )
       completed = true
       return
     }
 
     if (executionRoute === 'tool') {
+      if (intent.confirmationRequired && intent.followupQuestions.length > 0) {
+        yield {
+          type: 'followup',
+          questions: intent.followupQuestions,
+        }
+        yield {
+          type: 'content',
+          content: buildFollowupMessage(intent.followupQuestions),
+        }
+        completed = true
+        return
+      }
+
       yield* emitStatus('organizing', 'tool', {
         skillId: skill.id,
       })
 
       const toolStartedAt = Date.now()
       const toolCall = await runBusinessToolAgent({
-        conversationText,
+        conversationText: rawConversationText,
         latestUserMessage: input.latestUserMessage,
         intent,
         availableTools: skill.businessTools,
@@ -521,7 +618,7 @@ export async function* runChatMultiAgentOrchestrator(
         userId: input.userId,
         siteBaseUrl: input.siteBaseUrl,
         latestUserMessage: input.latestUserMessage,
-        conversationText,
+        conversationText: rawConversationText,
         useKnowledgeBase: input.useKnowledgeBase,
         signal: input.signal,
       })
@@ -557,11 +654,101 @@ export async function* runChatMultiAgentOrchestrator(
         resultStatus: 'status' in result ? result.status : undefined,
       })
       if (result.tool === 'get_post_detail' && result.status === 'found' && result.post?.id) {
+        yield* emitIntentState(
+          {
+            activeDomain: 'content_management',
+            pendingAction: null,
+            pendingEntityType: 'post',
+            pendingEntityId: result.post.id,
+            lastShownPostId: result.post.id,
+            lastOperationCardScope: null,
+            confidenceMode: 'normal',
+          },
+          {
+            internalStage: 'tool',
+            toolName: result.tool,
+          }
+        )
         yield {
           type: 'state',
           role: 'system',
           content: buildPostNavigationStateMessage(result.post.id),
         }
+      } else if (result.tool === 'delete_post' && result.status === 'need_more_info') {
+        yield* emitIntentState(
+          {
+            activeDomain: 'content_management',
+            pendingAction: 'confirm_delete_post',
+            pendingEntityType: 'post',
+            lastOperationCardScope: 'tool',
+            confidenceMode: 'cautious',
+          },
+          {
+            internalStage: 'tool',
+            toolName: result.tool,
+          }
+        )
+      } else if (result.tool === 'update_post' && result.status === 'need_more_info') {
+        yield* emitIntentState(
+          {
+            activeDomain: 'content_management',
+            pendingAction: 'update_post_followup',
+            pendingEntityType: 'post',
+            lastOperationCardScope: 'tool',
+            confidenceMode: 'cautious',
+          },
+          {
+            internalStage: 'tool',
+            toolName: result.tool,
+          }
+        )
+      } else if (result.tool === 'create_calendar_event' && result.status === 'need_more_info') {
+        yield* emitIntentState(
+          {
+            activeDomain: 'calendar_planning',
+            pendingAction: 'confirm_calendar_plan',
+            pendingEntityType: 'calendar_event',
+            lastOperationCardScope: 'tool',
+            confidenceMode: 'cautious',
+          },
+          {
+            internalStage: 'tool',
+            toolName: result.tool,
+          }
+        )
+      } else if (
+        (result.tool === 'publish_post' || result.tool === 'update_post' || result.tool === 'delete_post') &&
+        result.status !== 'need_more_info'
+      ) {
+        yield* emitIntentState(
+          {
+            activeDomain: 'content_management',
+            pendingAction: null,
+            pendingEntityType: result.tool === 'delete_post' ? null : 'post',
+            pendingEntityId: 'post' in result && result.post?.id ? result.post.id : null,
+            lastOperationCardScope: null,
+            confidenceMode: 'normal',
+          },
+          {
+            internalStage: 'tool',
+            toolName: result.tool,
+          }
+        )
+      } else if (result.tool === 'create_calendar_event' && result.status === 'created') {
+        yield* emitIntentState(
+          {
+            activeDomain: 'calendar_planning',
+            pendingAction: null,
+            pendingEntityType: 'calendar_event',
+            pendingEntityId: result.event?.id ?? null,
+            lastOperationCardScope: null,
+            confidenceMode: 'normal',
+          },
+          {
+            internalStage: 'tool',
+            toolName: result.tool,
+          }
+        )
       }
       yield {
         type: 'content',
@@ -582,7 +769,7 @@ export async function* runChatMultiAgentOrchestrator(
       })
       const planStartedAt = Date.now()
       resolvedPlan = await runTaskPlanningAgent({
-        conversationText,
+        conversationText: conversationDigest,
         latestUserMessage: input.latestUserMessage,
         intent,
         skillPrompt: skill.prompts.planner,
@@ -636,7 +823,7 @@ export async function* runChatMultiAgentOrchestrator(
             }
           })()
         : await runToolRoutingAgent({
-            conversationText,
+            conversationText: conversationDigest,
             latestUserMessage: input.latestUserMessage,
             intent,
             plan: resolvedPlan,
@@ -695,7 +882,7 @@ export async function* runChatMultiAgentOrchestrator(
     })
 
     const responseUserPrompt = buildResponderUserPrompt({
-      conversationText,
+      conversationText: conversationDigest,
       latestUserMessage: input.latestUserMessage,
       useKnowledgeBase: input.useKnowledgeBase,
       intent,

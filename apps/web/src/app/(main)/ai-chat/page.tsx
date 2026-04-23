@@ -1285,12 +1285,12 @@ export default function AiChatPage() {
   )
 
   return (
-    <main className="mx-auto grid w-full max-w-[1240px] gap-4 px-4 pb-6 md:pb-8 min-[760px]:grid-cols-[240px_minmax(0,1fr)] 2xl:grid-cols-[252px_minmax(0,1fr)]">
-      <section className="hidden min-h-[24rem] flex-col min-[760px]:sticky min-[760px]:top-6 min-[760px]:flex min-[760px]:h-[calc(100vh-7rem)]">
+    <main className="mx-auto grid w-full max-w-[1240px] gap-4 px-4 pt-3 pb-4 md:pt-4 md:pb-5 min-[760px]:grid-cols-[240px_minmax(0,1fr)] 2xl:grid-cols-[252px_minmax(0,1fr)]">
+      <section className="hidden min-h-[24rem] flex-col min-[760px]:sticky min-[760px]:top-4 min-[760px]:flex min-[760px]:h-[calc(100vh-4rem)]">
         {sessionPanel}
       </section>
 
-      <section className="flex min-h-[60vh] min-w-0 flex-col min-[760px]:h-[calc(100vh-7rem)]">
+      <section className="flex min-h-[vh] min-w-0 flex-col min-[760px]:h-[calc(100vh-4rem)]">
         <div className={`${panelClass} flex min-w-0 flex-1 flex-col overflow-hidden p-4 md:p-5`}>
           <div className="mx-auto mb-4 flex w-full min-w-0 max-w-full items-center justify-between gap-3 border-b border-line-glass/60 pb-4">
             <div className="min-w-0 flex flex-1 items-center gap-2">

@@ -4,6 +4,7 @@ import type {
   ChatIntentRecognition,
   ChatToolName,
 } from './chat-coordinator-agents'
+import type { IntentContext } from './chat-intent-state'
 
 export type ChatAppSkillId =
   | 'general_chat'
@@ -52,6 +53,7 @@ type SkillMatcherInput = {
   intent: ChatIntentRecognition
   latestUserMessage: string
   useKnowledgeBase: boolean
+  state: IntentContext
 }
 
 type ChatAppSkillDefinition = ChatAppSkill & {
@@ -84,7 +86,7 @@ const APP_SKILL_DEFINITIONS: ChatAppSkillDefinition[] = [
     route: 'blog_workflow',
     toolPolicy: { mode: 'none' },
     prompts: {},
-    matches: ({ intent }) => intent.intent === 'write_blog',
+    matches: ({ intent, state }) => intent.intent === 'write_blog' || state.activeDomain === 'blog_workflow',
   },
   {
     id: 'scenario_planning',
@@ -116,7 +118,8 @@ const APP_SKILL_DEFINITIONS: ChatAppSkillDefinition[] = [
       businessTool:
         '当前启用 skill=calendar_planning。只允许选择 create_calendar_event。优先保留用户原始安排、日期和确认措辞，便于下游执行计划、确认与取消流程。',
     },
-    matches: ({ intent }) => intent.intent === 'create_calendar_event',
+    matches: ({ intent, state }) =>
+      intent.intent === 'create_calendar_event' || state.activeDomain === 'calendar_planning',
   },
   {
     id: 'content_management',
@@ -131,14 +134,14 @@ const APP_SKILL_DEFINITIONS: ChatAppSkillDefinition[] = [
       businessTool:
         '当前启用 skill=content_management。仅在文章/草稿相关工具里选择最匹配的一项，不要误选其他业务工具。',
     },
-    matches: ({ intent }) =>
+    matches: ({ intent, state }) =>
       intentIn(intent.intent, [
         'publish_post',
         'update_post',
         'delete_post',
         'get_post_detail',
         'list_drafts',
-      ]),
+      ]) || state.activeDomain === 'content_management',
   },
   {
     id: 'thoughts_memory',
@@ -153,8 +156,9 @@ const APP_SKILL_DEFINITIONS: ChatAppSkillDefinition[] = [
       businessTool:
         '当前启用 skill=thoughts_memory。只允许在 create_thought、search_thoughts、answer_thoughts 之间选择最匹配的工具。',
     },
-    matches: ({ intent }) =>
-      intentIn(intent.intent, ['create_thought', 'search_thoughts', 'answer_thoughts']),
+    matches: ({ intent, state }) =>
+      intentIn(intent.intent, ['create_thought', 'search_thoughts', 'answer_thoughts']) ||
+      state.activeDomain === 'thoughts_memory',
   },
   {
     id: 'bookmark_management',
@@ -169,7 +173,8 @@ const APP_SKILL_DEFINITIONS: ChatAppSkillDefinition[] = [
       businessTool:
         '当前启用 skill=bookmark_management。只允许在 save_bookmark_from_url 和 list_bookmarks 之间选择。',
     },
-    matches: ({ intent }) => intentIn(intent.intent, ['create_bookmark', 'list_bookmarks']),
+    matches: ({ intent, state }) =>
+      intentIn(intent.intent, ['create_bookmark', 'list_bookmarks']) || state.activeDomain === 'bookmark_management',
   },
   {
     id: 'implementation_advice',

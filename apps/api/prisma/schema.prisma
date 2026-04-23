@@ -271,6 +271,7 @@ model ChatConversation {
   id             String   @id @default(cuid())
   title          String?
   userId         String?
+  intentStateJson String? @db.Text
   messageCount   Int      @default(0)
   lastMessageAt  DateTime @default(now())
   createdAt      DateTime @default(now())

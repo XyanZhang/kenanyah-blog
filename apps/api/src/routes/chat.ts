@@ -8,6 +8,8 @@ import { isAbortError } from '../lib/abort'
 import { indexConversation } from '../lib/semantic-search'
 import { runChatMultiAgentOrchestrator } from '../orchestrators/chat-multi-agent-orchestrator'
 import { logger } from '../lib/logger'
+import { parseIntentContext } from '../agents/chat-intent-state'
+import { deriveIntentContextFromMessages } from '../tools/session-tools'
 
 type ChatVariables = {
   user: { userId: string; role: string }
@@ -241,11 +243,20 @@ chat.post('/conversations/:id/messages/stream', async (c) => {
 
   let fullAssistant = ''
   const pendingSystemMessages: string[] = []
+  let latestIntentStateJson = conversation.intentStateJson ?? null
   const requestSignal = c.req.raw.signal
 
   return streamSSE(c, async (stream) => {
     try {
       await stream.writeSSE({ data: JSON.stringify({ type: 'start' }) })
+
+      const intentContext = deriveIntentContextFromMessages(
+        historyForOrchestrator.map((message) => ({
+          role: message.role,
+          content: message.content,
+        })),
+        parseIntentContext(conversation.intentStateJson)
+      )
 
       for await (const event of runChatMultiAgentOrchestrator({
         conversationId: id,
@@ -256,6 +267,7 @@ chat.post('/conversations/:id/messages/stream', async (c) => {
           role: message.role,
           content: message.content,
         })),
+        intentContext,
         latestUserMessage: content,
         useKnowledgeBase,
         signal: requestSignal,
@@ -264,10 +276,23 @@ chat.post('/conversations/:id/messages/stream', async (c) => {
           pendingSystemMessages.push(event.content)
           continue
         }
+        if (event.type === 'intent_state') {
+          latestIntentStateJson = event.content
+          continue
+        }
         if (event.type === 'content') {
           fullAssistant += event.content
         }
         await stream.writeSSE({ data: JSON.stringify(event) })
+      }
+
+      if (latestIntentStateJson !== conversation.intentStateJson) {
+        await prisma.chatConversation.update({
+          where: { id },
+          data: {
+            intentStateJson: latestIntentStateJson,
+          },
+        })
       }
 
       if (fullAssistant.trim()) {
@@ -283,6 +308,7 @@ chat.post('/conversations/:id/messages/stream', async (c) => {
           data: {
             messageCount: { increment: 1 },
             lastMessageAt: new Date(),
+            intentStateJson: latestIntentStateJson,
           },
         })
         if (pendingSystemMessages.length > 0) {

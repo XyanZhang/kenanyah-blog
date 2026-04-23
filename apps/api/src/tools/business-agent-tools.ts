@@ -102,6 +102,7 @@ type CalendarPlanningPhaseEvent = {
 }
 
 type PlanningReferenceHit = SemanticSearchHit | PdfSemanticHit
+type CalendarExecutionMode = 'plan' | 'quick_create' | 'confirm' | 'cancel'
 
 export type BusinessToolExecutionResult =
   | {
@@ -666,6 +667,37 @@ function extractJsonObject(text: string): string | null {
   return text.slice(start, end + 1)
 }
 
+async function invokeJsonAgent<T>(input: {
+  userPrompt: string
+  systemPrompt: string
+  fallback: T
+  schema: z.ZodType<T, z.ZodTypeDef, unknown>
+  signal?: AbortSignal
+  model?: 'fast' | 'default' | 'reasoning'
+  temperature?: number
+}): Promise<T> {
+  throwIfAborted(input.signal)
+  const raw = await invokeChat(input.userPrompt, input.systemPrompt, {
+    model: input.model ?? 'fast',
+    temperature: input.temperature ?? 0.1,
+    signal: input.signal,
+  })
+  throwIfAborted(input.signal)
+
+  const jsonText = extractJsonObject(raw)
+  if (!jsonText) {
+    return input.fallback
+  }
+
+  try {
+    const parsed = JSON.parse(jsonText)
+    const result = input.schema.safeParse(parsed)
+    return result.success ? (result.data as T) : input.fallback
+  } catch {
+    return input.fallback
+  }
+}
+
 function compactText(value: string): string {
   return value.replace(/\s+/g, ' ').trim()
 }
@@ -891,6 +923,9 @@ function looksLikeSchedulePlanningRequest(rawText: string): boolean {
   const text = compactText(rawText)
   return (
     /(?:帮我|请)?(?:安排|规划|梳理|排一下|排个|计划一下|排期|统筹)/.test(text) ||
+    /(?:推荐(?:一下)?|推荐较为详细|详细行程|行程推荐|路线推荐|旅游攻略|攻略|怎么玩|怎么逛|怎么走|怎么安排)/.test(
+      text
+    ) ||
     /(?:合理安排|怎么安排|如何安排|做事顺序|执行顺序)/.test(text) ||
     (/[，、；;]/.test(text) && /(?:今天|明天|后天|本周|下周|日程|计划|待办)/.test(text))
   )
@@ -955,6 +990,91 @@ function decodePendingCalendarSchedulePlan(
   }
 
   return parsePendingCalendarSchedulePlan(encoded)
+}
+
+const calendarExecutionModeSchema = z.object({
+  mode: z.enum(['plan', 'quick_create', 'confirm', 'cancel']).catch('quick_create'),
+  confidence: z.number().min(0).max(1).catch(0.6),
+  reason: z.string().trim().max(160).catch(''),
+})
+
+export async function resolveCalendarExecutionMode(input: {
+  rawText: string
+  conversationText: string
+  suggestedMode?: CalendarExecutionMode
+  signal?: AbortSignal
+}): Promise<{
+  mode: CalendarExecutionMode
+  confidence: number
+  reason: string
+}> {
+  const rawText = compactText(input.rawText)
+  const suggestedMode = input.suggestedMode ?? 'quick_create'
+
+  if (looksLikeSchedulePlanConfirmation(rawText)) {
+    return { mode: 'confirm', confidence: 0.99, reason: '命中确认创建日程计划' }
+  }
+
+  if (looksLikeSchedulePlanCancellation(rawText)) {
+    return { mode: 'cancel', confidence: 0.99, reason: '命中取消创建日程计划' }
+  }
+
+  const deterministicPlanSignal =
+    looksLikeSchedulePlanningRequest(rawText) ||
+    looksLikeScenarioPlanningRequest(rawText) ||
+    /(?:推荐(?:一下)?|推荐较为详细|详细行程|行程推荐|路线推荐|旅游攻略|攻略|怎么玩|怎么逛|怎么走)/.test(rawText)
+
+  if (suggestedMode === 'plan' && deterministicPlanSignal) {
+    return { mode: 'plan', confidence: 0.95, reason: '上游已判定为规划，且文本命中规划信号' }
+  }
+
+  const fallback = {
+    mode: deterministicPlanSignal ? 'plan' : suggestedMode,
+    confidence: deterministicPlanSignal ? 0.82 : suggestedMode === 'plan' ? 0.74 : 0.68,
+    reason: deterministicPlanSignal ? '文本包含明显规划/推荐信号' : '沿用上游建议模式',
+  } satisfies {
+    mode: CalendarExecutionMode
+    confidence: number
+    reason: string
+  }
+
+  const systemPrompt = [
+    '你是日程执行模式识别器。',
+    '你的任务不是判断大类 intent，而是判断当前 create_calendar_event 应该走哪种执行模式。',
+    '严格输出 JSON，不要输出任何额外解释。',
+    '返回字段：mode, confidence, reason。',
+    'mode 只允许：plan, quick_create, confirm, cancel。',
+    'plan：用户要方案、推荐、攻略、详细行程、多天规划，先生成规划卡，再确认是否写入日历。',
+    'quick_create：用户要直接写入单条日程/提醒/待办。',
+    'confirm：用户是在确认之前那张日程规划卡。',
+    'cancel：用户是在取消之前那张日程规划卡。',
+    '不要因为出现“日历/日程”就直接给 quick_create，要优先识别“推荐/方案/攻略/详细安排”这类规划诉求。',
+  ].join('\n')
+
+  const userPrompt = JSON.stringify(
+    {
+      rawText,
+      recentConversation: input.conversationText.slice(-1200),
+      suggestedMode,
+    },
+    null,
+    2
+  )
+
+  const result = await invokeJsonAgent({
+    systemPrompt,
+    userPrompt,
+    fallback,
+    schema: calendarExecutionModeSchema,
+    model: 'fast',
+    signal: input.signal,
+  })
+
+  return {
+    mode: result.mode,
+    confidence: Number(Math.max(0.05, Math.min(0.99, result.confidence)).toFixed(2)),
+    reason: result.reason || fallback.reason,
+  }
 }
 
 function formatExistingCalendarSummary(
@@ -1772,6 +1892,13 @@ async function executeCreateCalendarEventTool(
   throwIfAborted(input.signal)
 
   const rawText = toolCall.rawText.trim()
+  const executionMode = await resolveCalendarExecutionMode({
+    rawText,
+    conversationText: input.conversationText,
+    suggestedMode: toolCall.planningMode,
+    signal: input.signal,
+  })
+  throwIfAborted(input.signal)
   const now = new Date()
   const extractedContext = await extractScheduleContext({
     rawText,
@@ -1831,7 +1958,7 @@ async function executeCreateCalendarEventTool(
     }
   }
 
-  if (looksLikeSchedulePlanCancellation(rawText)) {
+  if (executionMode.mode === 'cancel') {
     return {
       tool: 'create_calendar_event',
       status: 'cancelled',
@@ -1845,7 +1972,7 @@ async function executeCreateCalendarEventTool(
     }
   }
 
-  if (looksLikeSchedulePlanConfirmation(rawText)) {
+  if (executionMode.mode === 'confirm') {
     const pendingPlan = decodePendingCalendarSchedulePlan(rawText, input.conversationText)
     if (!pendingPlan) {
       return {
@@ -1938,7 +2065,7 @@ async function executeCreateCalendarEventTool(
     }
   }
 
-  if (looksLikeSchedulePlanningRequest(rawText)) {
+  if (executionMode.mode === 'plan') {
     const existingDays = []
     let cursorDate = startDate
     while (cursorDate <= endDate) {
@@ -1991,7 +2118,7 @@ async function executeCreateCalendarEventTool(
         },
         {
           phase: 'confirm',
-          label: '场景方案已生成，等待你确认后写入日历。',
+          label: `场景方案已生成，等待你确认后写入日历。模式识别：${executionMode.reason || '规划模式'}`,
         },
       ],
       assistantMessage: buildCalendarScheduleConfirmOperationCardMessage({
