@@ -2,10 +2,12 @@
 
 import { useEffect } from 'react'
 import { useThemeStore, resolveColorMode } from '@/store/theme-store'
+import { buildCustomThemeCssVariables } from '@/lib/theme/custom-theme'
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const themeId = useThemeStore((state) => state.themeId)
   const colorModePreference = useThemeStore((state) => state.colorModePreference)
+  const customTheme = useThemeStore((state) => state.customTheme)
 
   useEffect(() => {
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
@@ -18,6 +20,17 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       root.setAttribute('data-color-mode-preference', colorModePreference)
       root.setAttribute('data-color-mode', resolvedColorMode)
       root.style.colorScheme = resolvedColorMode
+
+      if (themeId === 'custom') {
+        const variables = buildCustomThemeCssVariables(customTheme)
+        Object.entries(variables).forEach(([key, value]) => {
+          root.style.setProperty(key, value)
+        })
+      } else {
+        Object.keys(buildCustomThemeCssVariables(customTheme)).forEach((key) => {
+          root.style.removeProperty(key)
+        })
+      }
     }
 
     applyTheme()
@@ -29,7 +42,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     return () => {
       mediaQuery.removeEventListener('change', applyTheme)
     }
-  }, [themeId, colorModePreference])
+  }, [customTheme, themeId, colorModePreference])
 
   return <>{children}</>
 }

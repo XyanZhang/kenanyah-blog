@@ -48,6 +48,13 @@ export type {
   PostFilters,
 } from './api'
 
+export type {
+  ThemeId,
+  ColorModePreference,
+  CustomThemeColors,
+  ThemeConfig,
+} from './theme'
+
 // Calendar types
 export type {
   CalendarEventSourceType,

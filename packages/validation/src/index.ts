@@ -67,6 +67,7 @@ export {
   aiSummarySchema,
   aiGenerateArticleSchema,
   aiGenerateCoverSchema,
+  aiRecommendThemeSchema,
   type AiRewriteInput,
   type AiExpandInput,
   type AiShrinkInput,
@@ -74,6 +75,7 @@ export {
   type AiSummaryInput,
   type AiGenerateArticleInput,
   type AiGenerateCoverInput,
+  type AiRecommendThemeInput,
 } from './ai'
 
 // Dashboard validation

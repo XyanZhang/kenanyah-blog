@@ -9,7 +9,15 @@ import {
 } from '@/store/theme-store'
 
 export function useTheme() {
-  const { themeId, colorModePreference, setTheme, setColorModePreference } = useThemeStore()
+  const {
+    themeId,
+    colorModePreference,
+    customTheme,
+    setTheme,
+    setColorModePreference,
+    updateCustomTheme,
+    getThemeConfig,
+  } = useThemeStore()
   const [systemPrefersDark, setSystemPrefersDark] = useState(false)
 
   useEffect(() => {
@@ -24,18 +32,29 @@ export function useTheme() {
     }
   }, [])
 
-  const currentTheme =
-    THEME_OPTIONS.find((t) => t.id === themeId) ?? THEME_OPTIONS[0]
+  const themes = THEME_OPTIONS.map((theme) =>
+    theme.id === 'custom'
+      ? {
+          ...theme,
+          name: customTheme.name || theme.name,
+          previewColors: [customTheme.primary, customTheme.secondary, customTheme.tertiary] as const,
+        }
+      : theme
+  )
+  const currentTheme = themes.find((t) => t.id === themeId) ?? themes[0]
   const resolvedColorMode = resolveColorMode(colorModePreference, systemPrefersDark)
 
   return {
     themeId,
     currentTheme,
     setTheme,
-    themes: THEME_OPTIONS,
+    themes,
     colorModePreference,
     colorModes: COLOR_MODE_OPTIONS,
     resolvedColorMode,
     setColorModePreference,
+    customTheme,
+    updateCustomTheme,
+    getThemeConfig,
   } as const
 }

@@ -211,6 +211,7 @@ model HomeConfig {
   layoutJson String   @db.Text
   navJson    String   @db.Text
   canvasJson String?  @db.Text
+  themeJson  String?  @db.Text
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 

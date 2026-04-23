@@ -10,6 +10,7 @@ import {
   aiSummarySchema,
   aiGenerateArticleSchema,
   aiGenerateCoverSchema,
+  aiRecommendThemeSchema,
   type AiRewriteInput,
   type AiExpandInput,
   type AiShrinkInput,
@@ -17,6 +18,7 @@ import {
   type AiSummaryInput,
   type AiGenerateArticleInput,
   type AiGenerateCoverInput,
+  type AiRecommendThemeInput,
 } from '@blog/validation'
 import { streamChat, invokeChat } from '../lib/llm'
 import { generateImage } from '../lib/image-gen'
@@ -69,6 +71,65 @@ function generateArticleSystemPrompt(): string {
     '3. 不要输出多份版本或重复内容，不要在文末再重复整篇文章。',
     '4. 只输出 Markdown 正文，不要任何解释性文字。',
   ].join('\n')
+}
+
+function recommendThemeSystemPrompt(): string {
+  return [
+    '你是一个网站视觉主题设计助手。',
+    '你的任务是根据：当前主题、已有预设主题、网站整体风格、用户的额外提示词，推荐一个新的自定义主题。',
+    '这个网站的主题风格偏：轻盈、玻璃拟态、柔和、现代、有设计感，不适合过度刺眼或极端高饱和的配色。',
+    '请结合现有主题，给出一个既有变化又不脱离站点气质的方案。',
+    '必须输出严格 JSON，不要 Markdown，不要解释，不要代码块。',
+    'JSON 格式必须是：',
+    '{"name":"主题名","backgroundBase":"#rrggbb","primary":"#rrggbb","secondary":"#rrggbb","tertiary":"#rrggbb","rationale":"一句简短中文说明"}',
+    '颜色要求：',
+    '1. 全部使用 6 位十六进制颜色。',
+    '2. backgroundBase 适合做页面背景，不能太黑也不能刺眼。',
+    '3. primary / secondary / tertiary 要彼此协调，并适合 UI 主题。',
+    '4. 输出要稳定、克制、可读，不要荧光色。',
+    '5. rationale 控制在 40 字以内。',
+  ].join('\n')
+}
+
+function extractJsonObject(text: string): string {
+  const fencedMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/i)
+  if (fencedMatch?.[1]) return fencedMatch[1].trim()
+
+  const firstBrace = text.indexOf('{')
+  const lastBrace = text.lastIndexOf('}')
+  if (firstBrace >= 0 && lastBrace > firstBrace) {
+    return text.slice(firstBrace, lastBrace + 1)
+  }
+
+  return text.trim()
+}
+
+function isHexColor(value: unknown): value is string {
+  return typeof value === 'string' && /^#[0-9a-fA-F]{6}$/.test(value)
+}
+
+function parseThemeRecommendation(text: string) {
+  const jsonText = extractJsonObject(text)
+  const parsed = JSON.parse(jsonText) as Record<string, unknown>
+
+  if (
+    typeof parsed.name !== 'string' ||
+    !isHexColor(parsed.backgroundBase) ||
+    !isHexColor(parsed.primary) ||
+    !isHexColor(parsed.secondary) ||
+    !isHexColor(parsed.tertiary)
+  ) {
+    throw new Error('AI 返回的主题格式无效')
+  }
+
+  return {
+    name: parsed.name.trim() || 'AI 推荐主题',
+    backgroundBase: parsed.backgroundBase.toLowerCase(),
+    primary: parsed.primary.toLowerCase(),
+    secondary: parsed.secondary.toLowerCase(),
+    tertiary: parsed.tertiary.toLowerCase(),
+    rationale: typeof parsed.rationale === 'string' ? parsed.rationale.trim() : '',
+  }
 }
 
 // POST /ai/rewrite — 改写（支持流式与非流式）
@@ -265,6 +326,24 @@ ai.post('/generate-article', validateBody(aiGenerateArticleSchema), async (c) =>
       stream.close()
     }
   })
+})
+
+// POST /ai/recommend-theme — 根据当前主题和提示词推荐一个主题配置
+ai.post('/recommend-theme', validateBody(aiRecommendThemeSchema), async (c) => {
+  const body = (c.get as (k: string) => AiRecommendThemeInput)('validatedBody')
+
+  try {
+    const text = await invokeChat(
+      JSON.stringify(body, null, 2),
+      recommendThemeSystemPrompt(),
+      { model: 'reasoning' }
+    )
+    const recommendation = parseThemeRecommendation(text)
+    return c.json({ success: true, data: recommendation })
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'AI 主题推荐失败'
+    return c.json({ success: false, error: message }, 500)
+  }
 })
 
 // POST /ai/generate-cover — 根据文章内容生成封面图（qwen-image-2.0-pro）

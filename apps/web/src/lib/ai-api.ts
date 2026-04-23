@@ -18,11 +18,43 @@ export type AiHeadingsPayload = { content: string }
 export type AiSummaryPayload = { content: string }
 export type AiGenerateArticlePayload = { keywords: string }
 export type AiGenerateCoverPayload = { title: string; content: string }
+export type AiRecommendThemePayload = {
+  prompt: string
+  currentThemeId: string
+  currentThemeName: string
+  currentThemeDescription?: string
+  siteStyleSummary: string
+  currentCustomTheme: {
+    name: string
+    backgroundBase: string
+    primary: string
+    secondary: string
+    tertiary: string
+  }
+  presetThemes: Array<{
+    id: string
+    name: string
+    description: string
+    previewColors: [string, string, string]
+  }>
+}
 
 export type AiTextResponse = { success: boolean; data?: { text: string }; error?: string }
 export type AiGenerateCoverResponse = {
   success: boolean
   data?: { imageUrl: string }
+  error?: string
+}
+export type AiRecommendThemeResponse = {
+  success: boolean
+  data?: {
+    name: string
+    backgroundBase: string
+    primary: string
+    secondary: string
+    tertiary: string
+    rationale?: string
+  }
   error?: string
 }
 
@@ -201,6 +233,21 @@ export async function aiGenerateCover(payload: AiGenerateCoverPayload): Promise<
   const json = (await res.json()) as AiGenerateCoverResponse
   if (!json.success || !json.data?.imageUrl) throw new Error(json.error || '封面图生成失败')
   return json.data.imageUrl
+}
+
+/** POST /ai/recommend-theme — 生成推荐主题配置 */
+export async function aiRecommendTheme(
+  payload: AiRecommendThemePayload
+): Promise<NonNullable<AiRecommendThemeResponse['data']>> {
+  const res = await fetch(`${API_BASE_URL}/ai/recommend-theme`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(payload),
+  })
+  const json = (await res.json()) as AiRecommendThemeResponse
+  if (!json.success || !json.data) throw new Error(json.error || '主题推荐失败')
+  return json.data
 }
 
 /** Stream: POST /ai/generate-article?stream=true */

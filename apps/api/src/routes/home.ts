@@ -12,11 +12,13 @@ function parseHomeConfigRow(config: {
   layoutJson: string
   navJson: string
   canvasJson: string | null
+  themeJson?: string | null
 }) {
   return {
     layout: JSON.parse(config.layoutJson),
     nav: JSON.parse(config.navJson),
     canvas: config.canvasJson ? JSON.parse(config.canvasJson) : null,
+    theme: config.themeJson ? JSON.parse(config.themeJson) : null,
   }
 }
 
@@ -87,6 +89,7 @@ home.put('/config', authMiddleware, async (c) => {
     const layout = body.layout
     const nav = body.nav
     const canvas = body.canvas ?? null
+    const theme = body.theme ?? null
     if (!layout || !nav) {
       return c.json({ success: false, error: 'layout and nav are required' }, 400)
     }
@@ -94,18 +97,20 @@ home.put('/config', authMiddleware, async (c) => {
     let layoutJson: string
     let navJson: string
     let canvasJson: string | null = null
+    let themeJson: string | null = null
     try {
       layoutJson = JSON.stringify(layout)
       navJson = JSON.stringify(nav)
       if (canvas != null) canvasJson = JSON.stringify(canvas)
+      if (theme != null) themeJson = JSON.stringify(theme)
     } catch (e) {
-      return c.json({ success: false, error: 'Invalid JSON in layout/nav/canvas' }, 400)
+      return c.json({ success: false, error: 'Invalid JSON in layout/nav/canvas/theme' }, 400)
     }
 
     await prisma.homeConfig.upsert({
       where: { userId },
-      create: { userId, layoutJson, navJson, canvasJson },
-      update: { layoutJson, navJson, canvasJson, updatedAt: new Date() },
+      create: { userId, layoutJson, navJson, canvasJson, themeJson },
+      update: { layoutJson, navJson, canvasJson, themeJson, updatedAt: new Date() },
     })
 
     return c.json({ success: true })

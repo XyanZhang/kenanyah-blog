@@ -11,10 +11,11 @@ import path from 'path'
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-    const { layout, nav, canvas = null } = body as {
+    const { layout, nav, canvas = null, theme = null } = body as {
       layout?: unknown
       nav?: unknown
       canvas?: unknown
+      theme?: unknown
     }
 
     if (!layout || !nav || typeof layout !== 'object' || typeof nav !== 'object') {
@@ -24,7 +25,7 @@ export async function POST(request: Request) {
       )
     }
 
-    const config = { layout, nav, canvas }
+    const config = { layout, nav, canvas, theme }
     const outputPath = path.join(process.cwd(), 'public', 'home-config.json')
     await writeFile(outputPath, JSON.stringify(config, null, 2), 'utf-8')
 

@@ -14,6 +14,7 @@ import { useDashboardStore } from '@/store/dashboard-store'
 import { useAlignmentStore } from '@/store/alignment-store'
 import { useHomeCanvasStore } from '@/store/home-canvas-store'
 import { useNavStore } from '@/store/nav-store'
+import { useThemeStore } from '@/store/theme-store'
 import {
   CANVAS_WIDTH,
   CANVAS_HEIGHT,
@@ -55,6 +56,7 @@ export function Dashboard() {
     viewportWidth,
   } = useHomeCanvasStore()
   const { config: navConfig, setConfigFromApi } = useNavStore()
+  const applyThemeConfig = useThemeStore((state) => state.applyThemeConfig)
   const viewportRef = useRef<HTMLDivElement>(null)
   const isInitializedRef = useRef(false)
 
@@ -78,6 +80,7 @@ export function Dashboard() {
       layout: currentLayout,
       nav: navConfig,
       canvas: { scale },
+      theme: useThemeStore.getState().getThemeConfig(),
     })
   }, [navConfig, scale])
 
@@ -88,6 +91,7 @@ export function Dashboard() {
       layout: currentLayout,
       nav: navConfig,
       canvas: { scale },
+      theme: useThemeStore.getState().getThemeConfig(),
     })
   }, [navConfig, scale])
 
@@ -107,6 +111,7 @@ export function Dashboard() {
           setLayout(data.layout)
           setConfigFromApi(data.nav)
           if (data.canvas?.scale != null) setScale(data.canvas.scale)
+          if (data.theme) applyThemeConfig(data.theme)
         }
       })
       .catch(() => {
@@ -116,7 +121,7 @@ export function Dashboard() {
     return () => {
       isActive = false
     }
-  }, [initializeLayout, setConfigFromApi, setLayout, setScale])
+  }, [applyThemeConfig, initializeLayout, setConfigFromApi, setLayout, setScale])
 
   const sensors = useSensors(
     useSensor(PointerSensor, {

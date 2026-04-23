@@ -1,11 +1,13 @@
 import { apiClient, type ApiResponse } from './api-client'
 import type { DashboardLayout } from '@blog/types'
+import type { ThemeConfig } from '@blog/types'
 import type { NavConfig } from '@/store/nav-store'
 
 export interface HomeConfigData {
   layout: DashboardLayout
   nav: NavConfig
   canvas: { scale?: number } | null
+  theme: ThemeConfig | null
 }
 
 export interface HomeTemplateSummary {
@@ -30,7 +32,12 @@ export async function getHomeConfig(): Promise<HomeConfigData | null> {
   try {
     const res = await apiClient.get('home/config').json<ApiResponse<HomeConfigData | null>>()
     if (!res.success) throw new Error(res.error ?? '获取首页配置失败')
-    return res.data ?? null
+    return res.data
+      ? {
+          ...res.data,
+          theme: res.data.theme ?? null,
+        }
+      : null
   } catch {
     // 数据库/后端不可用，尝试从静态 JSON 加载
     try {
@@ -39,7 +46,10 @@ export async function getHomeConfig(): Promise<HomeConfigData | null> {
       if (!resp.ok) return null
       const data = (await resp.json()) as HomeConfigData | null
       if (!data || !data.layout || !data.nav) return null
-      return data
+      return {
+        ...data,
+        theme: data.theme ?? null,
+      }
     } catch {
       return null
     }
@@ -51,6 +61,7 @@ export async function putHomeConfig(payload: {
   layout: DashboardLayout
   nav: NavConfig
   canvas?: { scale?: number } | null
+  theme?: ThemeConfig | null
 }): Promise<void> {
   const res = await apiClient
     .put('home/config', { json: payload })
@@ -63,6 +74,7 @@ export async function syncHomeConfigToStatic(payload: {
   layout: DashboardLayout
   nav: NavConfig
   canvas?: { scale?: number } | null
+  theme?: ThemeConfig | null
 }): Promise<void> {
   const res = await fetch('/api/home-config/sync-static', {
     method: 'POST',

@@ -2,17 +2,9 @@
 
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import type { ColorModePreference, CustomThemeColors, ThemeConfig, ThemeId } from '@blog/types'
+import { DEFAULT_CUSTOM_THEME, normalizeCustomThemeColors, normalizeThemeConfig } from '@/lib/theme/custom-theme'
 
-export type ThemeId =
-  | 'default'
-  | 'summer-breeze'
-  | 'warm-natural'
-  | 'classic-minimal'
-  | 'vintage-study'
-  | 'morandi'
-  | 'sakura-pink'
-
-export type ColorModePreference = 'system' | 'dark' | 'light'
 export type ResolvedColorMode = Exclude<ColorModePreference, 'system'>
 
 export interface ThemeOption {
@@ -71,6 +63,16 @@ export const THEME_OPTIONS: readonly ThemeOption[] = [
     description: '浅粉色系，温柔甜美',
     previewColors: ['#fce7f3', '#f9a8d4', '#f472b6'],
   },
+  {
+    id: 'custom',
+    name: '自定义',
+    description: '使用你自己的主题配色方案',
+    previewColors: [
+      DEFAULT_CUSTOM_THEME.primary,
+      DEFAULT_CUSTOM_THEME.secondary,
+      DEFAULT_CUSTOM_THEME.tertiary,
+    ],
+  },
 ] as const
 
 export const COLOR_MODE_OPTIONS: readonly ColorModeOption[] = [
@@ -105,8 +107,12 @@ export function resolveColorMode(
 interface ThemeState {
   readonly themeId: ThemeId
   readonly colorModePreference: ColorModePreference
+  readonly customTheme: CustomThemeColors
   readonly setTheme: (themeId: ThemeId) => void
   readonly setColorModePreference: (preference: ColorModePreference) => void
+  readonly updateCustomTheme: (patch: Partial<CustomThemeColors>) => void
+  readonly applyThemeConfig: (config: ThemeConfig | null | undefined) => void
+  readonly getThemeConfig: () => ThemeConfig
 }
 
 export const useThemeStore = create<ThemeState>()(
@@ -114,16 +120,48 @@ export const useThemeStore = create<ThemeState>()(
     (set) => ({
       themeId: 'default' as ThemeId,
       colorModePreference: 'system' as ColorModePreference,
+      customTheme: DEFAULT_CUSTOM_THEME,
       setTheme: (themeId: ThemeId) => {
         set({ themeId })
       },
       setColorModePreference: (colorModePreference: ColorModePreference) => {
         set({ colorModePreference })
       },
+      updateCustomTheme: (patch) => {
+        set((state) => ({
+          themeId: 'custom',
+          customTheme: normalizeCustomThemeColors({
+            ...state.customTheme,
+            ...patch,
+          }),
+        }))
+      },
+      applyThemeConfig: (config) => {
+        const normalized = normalizeThemeConfig(config)
+        set({
+          themeId: normalized.themeId,
+          colorModePreference: normalized.colorModePreference,
+          customTheme: normalized.customTheme ?? DEFAULT_CUSTOM_THEME,
+        })
+      },
+      getThemeConfig: () => {
+        const normalized = normalizeThemeConfig(useThemeStore.getState())
+        return normalized
+      },
     }),
     {
       name: 'blog-theme',
-      version: 1,
+      version: 2,
+      migrate: (persistedState) => {
+        const state = persistedState as Partial<ThemeState> | undefined
+        const normalized = normalizeThemeConfig(state)
+        return {
+          ...state,
+          themeId: normalized.themeId,
+          colorModePreference: normalized.colorModePreference,
+          customTheme: normalized.customTheme ?? DEFAULT_CUSTOM_THEME,
+        }
+      },
     }
   )
 )
