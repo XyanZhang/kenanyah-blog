@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Edit3, Eye, Plus, LayoutTemplate, PenSquare, CloudUpload, Loader2, FileJson } from 'lucide-react'
+import { Edit3, Eye, Plus, LayoutTemplate, PenSquare, CloudUpload, Loader2 } from 'lucide-react'
 import { useDashboard } from '@/hooks/useDashboard'
 import { useAuthSession } from '@/hooks/useAuthSession'
 import { useFloatingActions } from '@/components/providers/FloatingActionsProvider'
@@ -13,14 +13,12 @@ interface EditModeActionsProps {
   onAddCard: () => void
   onSelectLayout: () => void
   onSyncToCloud?: () => Promise<void>
-  onSyncToStatic?: () => Promise<void>
 }
 
-function EditModeActions({ onAddCard, onSelectLayout, onSyncToCloud, onSyncToStatic }: EditModeActionsProps) {
+function EditModeActions({ onAddCard, onSelectLayout, onSyncToCloud }: EditModeActionsProps) {
   const { isEditMode, toggleEditMode } = useDashboard()
   const router = useRouter()
   const [syncStatus, setSyncStatus] = useState<'idle' | 'syncing' | 'success' | 'error'>('idle')
-  const [staticSyncStatus, setStaticSyncStatus] = useState<'idle' | 'syncing' | 'success' | 'error'>('idle')
 
   const handleSync = useCallback(async () => {
     if (!onSyncToCloud) return
@@ -34,19 +32,6 @@ function EditModeActions({ onAddCard, onSelectLayout, onSyncToCloud, onSyncToSta
       setTimeout(() => setSyncStatus('idle'), 2000)
     }
   }, [onSyncToCloud])
-
-  const handleSyncToStatic = useCallback(async () => {
-    if (!onSyncToStatic) return
-    setStaticSyncStatus('syncing')
-    try {
-      await onSyncToStatic()
-      setStaticSyncStatus('success')
-      setTimeout(() => setStaticSyncStatus('idle'), 2000)
-    } catch {
-      setStaticSyncStatus('error')
-      setTimeout(() => setStaticSyncStatus('idle'), 2000)
-    }
-  }, [onSyncToStatic])
 
   const handleGoToBlogEditor = () => {
     router.push('/blog/editor')
@@ -104,46 +89,6 @@ function EditModeActions({ onAddCard, onSelectLayout, onSyncToCloud, onSyncToSta
                   <span className="text-xs text-ui-success-text">已同步</span>
                 )}
                 {syncStatus === 'error' && (
-                  <span className="text-xs text-ui-destructive">同步失败</span>
-                )}
-              </motion.div>
-            )}
-            {/* 同步到静态配置：数据库不可用时仍可展示首页布局 */}
-            {onSyncToStatic && (
-              <motion.div
-                initial={{ scale: 0, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                exit={{ scale: 0, opacity: 0 }}
-                transition={{ delay: 0.14, type: 'spring', stiffness: 260, damping: 20 }}
-                className="flex flex-col items-center gap-1"
-              >
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      onClick={handleSyncToStatic}
-                      disabled={staticSyncStatus === 'syncing'}
-                      className="flex h-12 w-12 items-center justify-center rounded-full border border-line-primary bg-surface-primary text-content-secondary shadow-lg transition-all hover:bg-surface-hover disabled:opacity-60"
-                      aria-label="同步到静态配置"
-                    >
-                      {staticSyncStatus === 'syncing' ? (
-                        <Loader2 className="h-5 w-5 animate-spin" />
-                      ) : (
-                        <FileJson className="h-5 w-5" />
-                      )}
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent side="left">
-                    {staticSyncStatus === 'success'
-                      ? '已同步到静态'
-                      : staticSyncStatus === 'error'
-                        ? '同步失败'
-                        : '同步到静态配置（数据库不可用时仍可展示）'}
-                  </TooltipContent>
-                </Tooltip>
-                {staticSyncStatus === 'success' && (
-                  <span className="text-xs text-ui-success-text">已同步</span>
-                )}
-                {staticSyncStatus === 'error' && (
                   <span className="text-xs text-ui-destructive">同步失败</span>
                 )}
               </motion.div>
@@ -232,10 +177,9 @@ interface EditModeToggleProps {
   onAddCard: () => void
   onSelectLayout: () => void
   onSyncToCloud?: () => Promise<void>
-  onSyncToStatic?: () => Promise<void>
 }
 
-export function EditModeToggle({ onAddCard, onSelectLayout, onSyncToCloud, onSyncToStatic }: EditModeToggleProps) {
+export function EditModeToggle({ onAddCard, onSelectLayout, onSyncToCloud }: EditModeToggleProps) {
   const { setExtraActions } = useFloatingActions()
   const { isAuthenticated, authChecked } = useAuthSession()
 
@@ -249,7 +193,6 @@ export function EditModeToggle({ onAddCard, onSelectLayout, onSyncToCloud, onSyn
         onAddCard={onAddCard}
         onSelectLayout={onSelectLayout}
         onSyncToCloud={onSyncToCloud}
-        onSyncToStatic={onSyncToStatic}
       />
     )
     return () => setExtraActions(null)
@@ -258,7 +201,6 @@ export function EditModeToggle({ onAddCard, onSelectLayout, onSyncToCloud, onSyn
     onAddCard,
     onSelectLayout,
     onSyncToCloud,
-    onSyncToStatic,
     authChecked,
     isAuthenticated,
   ])

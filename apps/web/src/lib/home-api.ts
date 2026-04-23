@@ -69,24 +69,6 @@ export async function putHomeConfig(payload: {
   if (!res.success) throw new Error(res.error ?? '同步配置失败')
 }
 
-/** POST /api/home-config/sync-static 同步当前配置到静态 JSON 文件（数据库不可用时仍可展示） */
-export async function syncHomeConfigToStatic(payload: {
-  layout: DashboardLayout
-  nav: NavConfig
-  canvas?: { scale?: number } | null
-  theme?: ThemeConfig | null
-}): Promise<void> {
-  const res = await fetch('/api/home-config/sync-static', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
-  })
-  const json = (await res.json()) as { success?: boolean; error?: string }
-  if (!res.ok || !json.success) {
-    throw new Error(json.error ?? '同步到静态配置失败')
-  }
-}
-
 /** GET /home/templates */
 export async function getHomeTemplates(): Promise<HomeTemplateSummary[]> {
   const res = await apiClient

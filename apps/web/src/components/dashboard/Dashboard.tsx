@@ -24,7 +24,7 @@ import {
   MOBILE_LAYOUT_SIDE_PADDING,
   MOBILE_LAYOUT_TOP_PADDING,
 } from '@/lib/constants/dashboard'
-import { getHomeConfig, putHomeConfig, syncHomeConfigToStatic } from '@/lib/home-api'
+import { getHomeConfig, putHomeConfig } from '@/lib/home-api'
 import {
   getDesktopResolvedCardLayout,
   getStackedResolvedCardLayouts,
@@ -77,17 +77,6 @@ export function Dashboard() {
     const currentLayout = useDashboardStore.getState().layout
     if (!currentLayout) return
     await putHomeConfig({
-      layout: currentLayout,
-      nav: navConfig,
-      canvas: { scale },
-      theme: useThemeStore.getState().getThemeConfig(),
-    })
-  }, [navConfig, scale])
-
-  const handleSyncToStatic = useCallback(async () => {
-    const currentLayout = useDashboardStore.getState().layout
-    if (!currentLayout) return
-    await syncHomeConfigToStatic({
       layout: currentLayout,
       nav: navConfig,
       canvas: { scale },
@@ -281,7 +270,6 @@ export function Dashboard() {
           onAddCard={handleAddCard}
           onSelectLayout={handleSelectLayout}
           onSyncToCloud={handleSyncToCloud}
-          onSyncToStatic={handleSyncToStatic}
         />
         <AddCardDialog ref={addCardDialogRef} />
         <LayoutTemplatePickerDialog ref={layoutPickerDialogRef} />
@@ -350,7 +338,6 @@ export function Dashboard() {
           onAddCard={handleAddCard}
           onSelectLayout={handleSelectLayout}
           onSyncToCloud={handleSyncToCloud}
-          onSyncToStatic={handleSyncToStatic}
         />
       )}
       <AddCardDialog ref={addCardDialogRef} />
