@@ -19,7 +19,7 @@ import {
   scrollToHeadingById,
   slugifyHeading,
 } from '@/lib/heading'
-import { PostAside } from '@/components/posts/PostAside'
+import { FixedPostAsideRail } from '@/components/posts/FixedPostAsideRail'
 import PostDetailSkeletonGenerated from '@/components/skeletons/generated/PostDetailSkeletonGenerated'
 
 type PostDetail = {
@@ -38,7 +38,6 @@ const POST_LAYOUT_MAX_WIDTH = 1140
 const POST_ASIDE_WIDTH = 208
 const POST_LAYOUT_GAP = 32
 const POST_CONTENT_MAX_WIDTH = POST_LAYOUT_MAX_WIDTH - POST_ASIDE_WIDTH - POST_LAYOUT_GAP
-const POST_ASIDE_LEFT = `calc(50% + ${POST_LAYOUT_MAX_WIDTH / 2 - POST_ASIDE_WIDTH}px)`
 
 function normalizeImageUrl(url: string | null): string | null {
   if (!url) return null
@@ -209,129 +208,134 @@ export default function PostPage() {
 
   return (
     <main className="min-h-[60vh] pb-8 sm:py-12">
-      {/* 让正文列 + 右侧目录作为一个 1140px 布局整体居中，目录仍保持 fixed。 */}
-      <div className="relative mx-auto w-full max-w-[1140px] px-4 sm:px-6 xl:px-0">
+      {/* 让正文和目录留在同一栅格中，避免 fixed 定位在某些视口下压住正文。 */}
+      <div
+        className="relative mx-auto w-full px-4 sm:px-6 xl:px-0"
+        style={{ maxWidth: `${POST_LAYOUT_MAX_WIDTH}px` }}
+      >
         <div
-          data-skeleton="ignore"
-          className="hidden xl:block fixed top-28 z-40 w-[208px]"
-          style={{ left: POST_ASIDE_LEFT }}
+          className="xl:grid xl:items-start"
+          style={{
+            gap: `${POST_LAYOUT_GAP}px`,
+            gridTemplateColumns: `minmax(0, 1fr) ${POST_ASIDE_WIDTH}px`,
+          }}
         >
-          <PostAside headings={tocHeadings} />
-        </div>
-
-        <div className="w-full xl:max-w-[900px]">
-          <div
-            className={cn(
-              'mb-8 flex flex-col gap-3 sm:flex-row sm:items-center',
-              authChecked && isAuthenticated ? 'sm:justify-between' : ''
-            )}
-          >
-            <Link
-              href="/blog"
-              className="inline-flex items-center gap-2 text-sm text-content-tertiary transition-colors hover:text-accent-primary"
+          <div className="w-full" style={{ maxWidth: `${POST_CONTENT_MAX_WIDTH}px` }}>
+            <div
+              className={cn(
+                'mb-8 flex flex-col gap-3 sm:flex-row sm:items-center',
+                authChecked && isAuthenticated ? 'sm:justify-between' : ''
+              )}
             >
-              <ArrowLeft className="h-4 w-4" />
-              返回博客
-            </Link>
-            {authChecked && isAuthenticated ? (
+              <Link
+                href="/blog"
+                className="inline-flex items-center gap-2 text-sm text-content-tertiary transition-colors hover:text-accent-primary"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                返回博客
+              </Link>
+              {authChecked && isAuthenticated ? (
+                <Link
+                  data-skeleton="ignore"
+                  href={`/blog/editor/${post.id}` as import('next').Route}
+                  className="inline-flex items-center gap-2 self-start rounded-xl border border-line-primary bg-surface-glass px-4 py-2.5 text-sm font-medium text-content-primary transition-colors hover:border-accent-primary/50 hover:bg-accent-primary/10"
+                >
+                  <Pencil className="h-4 w-4" />
+                  编辑
+                </Link>
+              ) : null}
+            </div>
+
+            <article className="font-blog w-full overflow-hidden rounded-2xl border border-line-glass bg-surface-glass/60 shadow-lg backdrop-blur-sm">
+              <header className="p-5 pb-4 sm:p-8">
+                <h1 className="text-2xl sm:text-3xl md:text-4xl font-semibold leading-tight text-content-primary tracking-tight">
+                  {post.title}
+                </h1>
+                <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-content-tertiary">
+                  <span className="font-medium text-content-secondary">
+                    {post.author?.name ?? post.author?.username}
+                  </span>
+                  <span className="text-content-muted" aria-hidden>
+                    ·
+                  </span>
+                  <time dateTime={date} className="text-content-muted">
+                    {formatDate(date)}
+                  </time>
+                </div>
+                {post.excerpt && (
+                  <p className="mt-4 text-content-secondary leading-relaxed">
+                    {post.excerpt}
+                  </p>
+                )}
+              </header>
+
+              {resolvePostCover(post.coverImage) && (
+                <div className="relative w-full aspect-video bg-surface-tertiary">
+                  <Image
+                    src={resolvePostCover(post.coverImage)!}
+                    alt=""
+                    fill
+                    className="object-cover"
+                    sizes={`(max-width: 1279px) 100vw, ${POST_CONTENT_MAX_WIDTH}px`}
+                    unoptimized
+                    priority
+                  />
+                </div>
+              )}
+
+              <div className="p-5 pt-6 sm:p-8">
+                <div className="md-content max-w-none">
+                  <ReactMarkdown
+                    remarkPlugins={[remarkGfm]}
+                    components={{
+                      h1: ({ node: _node, children, ...props }) => {
+                        // h1 通常是文章标题（已在 header 渲染），正文内出现时不做 TOC
+                        return <h1 {...props}>{children}</h1>
+                      },
+                      h2: ({ node: _node, children, ...props }) => {
+                        const text = toPlainText(children).trim()
+                        const id = text ? nextHeadingId(text) : slugifyHeading(text) || 'section'
+                        return (
+                          <h2 {...props} id={id}>
+                            {children}
+                          </h2>
+                        )
+                      },
+                      h3: ({ node: _node, children, ...props }) => {
+                        const text = toPlainText(children).trim()
+                        const id = text ? nextHeadingId(text) : slugifyHeading(text) || 'section'
+                        return (
+                          <h3 {...props} id={id}>
+                            {children}
+                          </h3>
+                        )
+                      },
+                      table: ({ children, ...props }) => (
+                        <div className="md-table-wrapper">
+                          <table {...props}>{children}</table>
+                        </div>
+                      ),
+                    }}
+                  >
+                    {post.content}
+                  </ReactMarkdown>
+                </div>
+              </div>
+            </article>
+
+            <div className="mt-8 flex justify-center">
               <Link
                 data-skeleton="ignore"
-                href={`/blog/editor/${post.id}` as import('next').Route}
-                className="inline-flex items-center gap-2 self-start rounded-xl border border-line-primary bg-surface-glass px-4 py-2.5 text-sm font-medium text-content-primary transition-colors hover:border-accent-primary/50 hover:bg-accent-primary/10"
+                href="/blog"
+                className="inline-flex items-center gap-2 rounded-xl border border-line-primary bg-surface-glass px-4 py-2.5 text-sm font-medium text-content-primary transition-colors hover:border-accent-primary/50 hover:bg-accent-primary/10"
               >
-                <Pencil className="h-4 w-4" />
-                编辑
+                <ArrowLeft className="h-4 w-4" />
+                返回博客列表
               </Link>
-            ) : null}
-          </div>
-
-          <article className="font-blog w-full overflow-hidden rounded-2xl border border-line-glass bg-surface-glass/60 shadow-lg backdrop-blur-sm">
-            <header className="p-5 pb-4 sm:p-8">
-              <h1 className="text-2xl sm:text-3xl md:text-4xl font-semibold leading-tight text-content-primary tracking-tight">
-                {post.title}
-              </h1>
-              <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-content-tertiary">
-                <span className="font-medium text-content-secondary">
-                  {post.author?.name ?? post.author?.username}
-                </span>
-                <span className="text-content-muted" aria-hidden>
-                  ·
-                </span>
-                <time dateTime={date} className="text-content-muted">
-                  {formatDate(date)}
-                </time>
-              </div>
-              {post.excerpt && (
-                <p className="mt-4 text-content-secondary leading-relaxed">
-                  {post.excerpt}
-                </p>
-              )}
-            </header>
-
-            {resolvePostCover(post.coverImage) && (
-              <div className="relative w-full aspect-video bg-surface-tertiary">
-                <Image
-                  src={resolvePostCover(post.coverImage)!}
-                  alt=""
-                  fill
-                  className="object-cover"
-                  sizes={`(max-width: 1279px) 100vw, ${POST_CONTENT_MAX_WIDTH}px`}
-                  unoptimized
-                  priority
-                />
-              </div>
-            )}
-
-            <div className="p-5 pt-6 sm:p-8">
-              <div className="md-content max-w-none">
-                <ReactMarkdown
-                  remarkPlugins={[remarkGfm]}
-                  components={{
-                    h1: ({ node: _node, children, ...props }) => {
-                      // h1 通常是文章标题（已在 header 渲染），正文内出现时不做 TOC
-                      return <h1 {...props}>{children}</h1>
-                    },
-                    h2: ({ node: _node, children, ...props }) => {
-                      const text = toPlainText(children).trim()
-                      const id = text ? nextHeadingId(text) : slugifyHeading(text) || 'section'
-                      return (
-                        <h2 {...props} id={id}>
-                          {children}
-                        </h2>
-                      )
-                    },
-                    h3: ({ node: _node, children, ...props }) => {
-                      const text = toPlainText(children).trim()
-                      const id = text ? nextHeadingId(text) : slugifyHeading(text) || 'section'
-                      return (
-                        <h3 {...props} id={id}>
-                          {children}
-                        </h3>
-                      )
-                    },
-                    table: ({ children, ...props }) => (
-                      <div className="md-table-wrapper">
-                        <table {...props}>{children}</table>
-                      </div>
-                    ),
-                  }}
-                >
-                  {post.content}
-                </ReactMarkdown>
-              </div>
             </div>
-          </article>
-
-          <div className="mt-8 flex justify-center">
-            <Link
-              data-skeleton="ignore"
-              href="/blog"
-              className="inline-flex items-center gap-2 rounded-xl border border-line-primary bg-surface-glass px-4 py-2.5 text-sm font-medium text-content-primary transition-colors hover:border-accent-primary/50 hover:bg-accent-primary/10"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              返回博客列表
-            </Link>
           </div>
+
+          <FixedPostAsideRail headings={tocHeadings} width={POST_ASIDE_WIDTH} />
         </div>
       </div>
     </main>
