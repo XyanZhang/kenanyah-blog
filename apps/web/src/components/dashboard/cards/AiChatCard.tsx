@@ -1,4 +1,5 @@
 import { useCallback } from 'react'
+import type { Route } from 'next'
 import { useRouter } from 'next/navigation'
 import { Bot, ArrowRight } from 'lucide-react'
 import type { DashboardCard as DashboardCardType, AiChatCardConfig } from '@blog/types'
@@ -18,7 +19,7 @@ export function AiChatCard({ card }: AiChatCardProps) {
   const subtitle = config.subtitle ?? '和智能助手聊聊想法、写作灵感或技术问题。'
 
   const handleClick = useCallback(() => {
-    router.push('/ai-chat')
+    router.push('/ai-chat' as Route)
   }, [router])
 
   return (
@@ -58,4 +59,3 @@ export function AiChatCard({ card }: AiChatCardProps) {
     </button>
   )
 }
-

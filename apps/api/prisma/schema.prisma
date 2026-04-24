@@ -271,6 +271,7 @@ model ChatConversation {
   id             String   @id @default(cuid())
   title          String?
   userId         String?
+  isShared       Boolean  @default(false)
   intentStateJson String? @db.Text
   messageCount   Int      @default(0)
   lastMessageAt  DateTime @default(now())
@@ -280,6 +281,7 @@ model ChatConversation {
   messages ChatMessage[]
 
   @@index([userId])
+  @@index([isShared])
   @@index([lastMessageAt])
   @@map("chat_conversations")
 }

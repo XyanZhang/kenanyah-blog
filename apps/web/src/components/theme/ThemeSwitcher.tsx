@@ -1,5 +1,6 @@
 'use client'
 
+import type { Route } from 'next'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useState, useRef, useEffect } from 'react'
@@ -191,7 +192,7 @@ export function ThemeSwitcher() {
       <Tooltip>
         <TooltipTrigger asChild>
           <Link
-            href="/ai-chat"
+            href={'/ai-chat' as Route}
             className={`
               flex h-12 w-12 items-center justify-center rounded-full shadow-lg transition-all
               ${isAiChatPage

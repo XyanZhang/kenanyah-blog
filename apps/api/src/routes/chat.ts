@@ -2,7 +2,7 @@ import { Hono } from 'hono'
 import { streamSSE } from 'hono/streaming'
 import { env } from '../env'
 import { prisma } from '../lib/db'
-import { authMiddleware } from '../middleware/auth'
+import { optionalAuthMiddleware } from '../middleware/auth'
 import { rateLimit } from '../middleware/rate-limit'
 import { isAbortError } from '../lib/abort'
 import { indexConversation } from '../lib/semantic-search'
@@ -19,16 +19,56 @@ const chat = new Hono<{ Variables: ChatVariables }>()
 
 const MAX_MESSAGE_LEN = 4000
 
-chat.use('*', authMiddleware)
+chat.use('*', optionalAuthMiddleware)
 chat.use('*', rateLimit({ windowMs: 60_000, max: 60, message: '聊天请求过于频繁，请稍后再试' }))
+
+function getAuthenticatedUser(c: { get: (key: 'user') => ChatVariables['user'] | undefined }) {
+  const user = c.get('user') as ChatVariables['user'] | undefined
+  if (!user) {
+    return null
+  }
+  return user
+}
+
+async function getConversationById(id: string) {
+  return prisma.chatConversation.findUnique({
+    where: { id },
+  })
+}
+
+function canReadConversation(
+  conversation: { userId: string | null; isShared?: boolean | null } | null,
+  viewerId?: string
+) {
+  if (!conversation) {
+    return false
+  }
+
+  return conversation.userId === viewerId || conversation.isShared === true
+}
+
+function canWriteConversation(
+  conversation: { userId: string | null } | null,
+  viewerId?: string
+) {
+  if (!conversation || !viewerId) {
+    return false
+  }
+
+  return conversation.userId === viewerId
+}
 
 // 获取会话列表（按最近消息时间倒序）
 chat.get('/conversations', async (c) => {
-  const user = c.get('user')
+  const user = getAuthenticatedUser(c)
+
+  if (!user) {
+    return c.json({ success: false, error: '请先登录后查看会话列表' }, 401)
+  }
 
   const conversations = await prisma.chatConversation.findMany({
     where: {
-      OR: [{ userId: user.userId }, { userId: null }],
+      userId: user.userId,
     },
     orderBy: { lastMessageAt: 'desc' },
     take: 50,
@@ -42,7 +82,10 @@ chat.get('/conversations', async (c) => {
 
 // 创建新会话
 chat.post('/conversations', async (c) => {
-  const user = c.get('user')
+  const user = getAuthenticatedUser(c)
+  if (!user) {
+    return c.json({ success: false, error: '请先登录后创建会话' }, 401)
+  }
   const body = await c.req.json().catch(() => ({} as any))
   const initialMessage = typeof body.initialMessage === 'string' ? body.initialMessage.trim() : ''
 
@@ -87,25 +130,36 @@ const TITLE_MAX_LEN = 100
 
 // 更新会话标题
 chat.patch('/conversations/:id', async (c) => {
-  const user = c.get('user')
+  const user = getAuthenticatedUser(c)
+  if (!user) {
+    return c.json({ success: false, error: '请先登录后更新会话' }, 401)
+  }
   const { id } = c.req.param()
   const body = await c.req.json().catch(() => ({} as any))
-  const title = typeof body.title === 'string' ? body.title.trim().slice(0, TITLE_MAX_LEN) : ''
+  const title =
+    typeof body.title === 'string' ? body.title.trim().slice(0, TITLE_MAX_LEN) : undefined
+  const isShared = typeof body.isShared === 'boolean' ? body.isShared : undefined
 
-  const conversation = await prisma.chatConversation.findFirst({
-    where: {
-      id,
-      OR: [{ userId: user.userId }, { userId: null }],
-    },
-  })
+  const conversation = await getConversationById(id)
 
   if (!conversation) {
     return c.json({ success: false, error: '会话不存在' }, 404)
   }
 
+  if (!canWriteConversation(conversation, user.userId)) {
+    return c.json({ success: false, error: '你无权修改这个会话' }, 403)
+  }
+
+  if (typeof title === 'undefined' && typeof isShared === 'undefined') {
+    return c.json({ success: false, error: '没有可更新的内容' }, 400)
+  }
+
   const updated = await prisma.chatConversation.update({
     where: { id },
-    data: { title: title || null },
+    data: {
+      ...(typeof title !== 'undefined' ? { title: title || null } : {}),
+      ...(typeof isShared !== 'undefined' ? { isShared } : {}),
+    },
   })
 
   return c.json({
@@ -116,18 +170,20 @@ chat.patch('/conversations/:id', async (c) => {
 
 // 删除会话及其消息
 chat.delete('/conversations/:id', async (c) => {
-  const user = c.get('user')
+  const user = getAuthenticatedUser(c)
+  if (!user) {
+    return c.json({ success: false, error: '请先登录后删除会话' }, 401)
+  }
   const { id } = c.req.param()
 
-  const conversation = await prisma.chatConversation.findFirst({
-    where: {
-      id,
-      OR: [{ userId: user.userId }, { userId: null }],
-    },
-  })
+  const conversation = await getConversationById(id)
 
   if (!conversation) {
     return c.json({ success: false, error: '会话不存在' }, 404)
+  }
+
+  if (!canWriteConversation(conversation, user.userId)) {
+    return c.json({ success: false, error: '你无权删除这个会话' }, 403)
   }
 
   await prisma.$transaction([
@@ -144,18 +200,17 @@ chat.delete('/conversations/:id', async (c) => {
 
 // 获取单个会话及消息
 chat.get('/conversations/:id', async (c) => {
-  const user = c.get('user')
+  const user = getAuthenticatedUser(c)
   const { id } = c.req.param()
 
-  const conversation = await prisma.chatConversation.findFirst({
-    where: {
-      id,
-      OR: [{ userId: user.userId }, { userId: null }],
-    },
-  })
+  const conversation = await getConversationById(id)
 
   if (!conversation) {
     return c.json({ success: false, error: '会话不存在' }, 404)
+  }
+
+  if (!canReadConversation(conversation, user?.userId)) {
+    return c.json({ success: false, error: '该会话未分享或你无权查看' }, 403)
   }
 
   const messages = await prisma.chatMessage.findMany({
@@ -179,7 +234,10 @@ chat.get('/conversations/:id', async (c) => {
 
 // 向会话发送消息并流式返回 AI 回复
 chat.post('/conversations/:id/messages/stream', async (c) => {
-  const user = c.get('user')
+  const user = getAuthenticatedUser(c)
+  if (!user) {
+    return c.json({ success: false, error: '请先登录后发送消息' }, 401)
+  }
   const { id } = c.req.param()
   const body = await c.req.json().catch(() => ({} as any))
   const content = typeof body.content === 'string' ? body.content.trim() : ''
@@ -196,15 +254,14 @@ chat.post('/conversations/:id/messages/stream', async (c) => {
     )
   }
 
-  const conversation = await prisma.chatConversation.findFirst({
-    where: {
-      id,
-      OR: [{ userId: user.userId }, { userId: null }],
-    },
-  })
+  const conversation = await getConversationById(id)
 
   if (!conversation) {
     return c.json({ success: false, error: '会话不存在' }, 404)
+  }
+
+  if (!canWriteConversation(conversation, user.userId)) {
+    return c.json({ success: false, error: '你无权在这个会话中继续对话' }, 403)
   }
 
   // 先写入用户消息

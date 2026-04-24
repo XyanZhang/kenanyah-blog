@@ -368,7 +368,7 @@ export function CalendarMonthView({ month }: { month: string }) {
                 打开当日页
               </Button>
               <Link
-                href={`/ai-chat?quickDate=${activeDateKey}`}
+                href={{ pathname: '/ai-chat', query: { quickDate: activeDateKey } }}
                 className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-accent-primary/25 bg-accent-primary/8 px-4 py-2 text-sm font-medium text-accent-primary transition-colors hover:bg-accent-primary/12"
               >
                 <Sparkles className="h-4 w-4" />

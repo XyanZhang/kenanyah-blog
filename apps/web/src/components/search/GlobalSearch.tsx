@@ -171,7 +171,7 @@ export function GlobalSearch() {
                           ? `/posts/${
                               (hit as Extract<SemanticSearchHit, { type: 'post' }>).slug
                             }`
-                          : `/ai-chat?conversationId=${
+                          : `/ai-chat/${
                               (hit as Extract<SemanticSearchHit, { type: 'conversation' }>).conversationId
                             }`
                       const Icon = hit.type === 'post' ? FileText : Bot

@@ -2,6 +2,16 @@ import { getApiBaseUrl } from './api-client'
 
 const API_BASE_URL = getApiBaseUrl()
 
+export class ChatApiError extends Error {
+  status: number
+
+  constructor(message: string, status: number) {
+    super(message)
+    this.name = 'ChatApiError'
+    this.status = status
+  }
+}
+
 function getAuthHeaders(): HeadersInit {
   return {
     'Content-Type': 'application/json',
@@ -12,6 +22,7 @@ export interface ChatConversation {
   id: string
   title: string | null
   userId: string | null
+  isShared: boolean
   messageCount: number
   lastMessageAt: string
   createdAt: string
@@ -111,16 +122,27 @@ type ApiResponse<T> = {
   error?: string
 }
 
+async function parseApiResponse<T>(res: Response, fallbackMessage: string): Promise<T> {
+  const json = (await res.json().catch(() => ({}))) as ApiResponse<T>
+  if (!res.ok || !json.success || typeof json.data === 'undefined') {
+    throw new ChatApiError(json.error || fallbackMessage, res.status)
+  }
+  return json.data
+}
+
+async function assertApiSuccess(res: Response, fallbackMessage: string): Promise<void> {
+  const json = (await res.json().catch(() => ({}))) as ApiResponse<unknown>
+  if (!res.ok || !json.success) {
+    throw new ChatApiError(json.error || fallbackMessage, res.status)
+  }
+}
+
 export async function listConversations(): Promise<ChatConversation[]> {
   const res = await fetch(`${API_BASE_URL}/chat/conversations`, {
     credentials: 'include',
     headers: getAuthHeaders(),
   })
-  const json = (await res.json()) as ApiResponse<ChatConversation[]>
-  if (!json.success || !json.data) {
-    throw new Error(json.error || '加载会话失败')
-  }
-  return json.data
+  return parseApiResponse(res, '加载会话失败')
 }
 
 export async function createConversation(initialMessage?: string): Promise<ChatConversation> {
@@ -130,11 +152,7 @@ export async function createConversation(initialMessage?: string): Promise<ChatC
     headers: getAuthHeaders(),
     body: JSON.stringify({ initialMessage }),
   })
-  const json = (await res.json()) as ApiResponse<ChatConversation>
-  if (!json.success || !json.data) {
-    throw new Error(json.error || '创建会话失败')
-  }
-  return json.data
+  return parseApiResponse(res, '创建会话失败')
 }
 
 export async function getConversation(id: string): Promise<ChatConversationDetail> {
@@ -142,16 +160,12 @@ export async function getConversation(id: string): Promise<ChatConversationDetai
     credentials: 'include',
     headers: getAuthHeaders(),
   })
-  const json = (await res.json()) as ApiResponse<ChatConversationDetail>
-  if (!json.success || !json.data) {
-    throw new Error(json.error || '加载会话详情失败')
-  }
-  return json.data
+  return parseApiResponse(res, '加载会话详情失败')
 }
 
 export async function updateConversation(
   id: string,
-  payload: { title: string }
+  payload: { title?: string; isShared?: boolean }
 ): Promise<ChatConversation> {
   const res = await fetch(`${API_BASE_URL}/chat/conversations/${encodeURIComponent(id)}`, {
     method: 'PATCH',
@@ -159,11 +173,7 @@ export async function updateConversation(
     headers: getAuthHeaders(),
     body: JSON.stringify(payload),
   })
-  const json = (await res.json()) as ApiResponse<ChatConversation>
-  if (!json.success || !json.data) {
-    throw new Error(json.error || '更新会话失败')
-  }
-  return json.data
+  return parseApiResponse(res, '更新会话失败')
 }
 
 export async function deleteConversation(id: string): Promise<void> {
@@ -172,10 +182,7 @@ export async function deleteConversation(id: string): Promise<void> {
     credentials: 'include',
     headers: getAuthHeaders(),
   })
-  const json = (await res.json().catch(() => ({}))) as ApiResponse<unknown>
-  if (!res.ok || !json.success) {
-    throw new Error(json.error || '删除会话失败')
-  }
+  await assertApiSuccess(res, '删除会话失败')
 }
 
 export async function streamChatMessage(
