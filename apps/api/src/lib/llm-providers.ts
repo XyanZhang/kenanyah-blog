@@ -1,4 +1,5 @@
 import { env } from '../env'
+import { normalizeDeepSeekOpenAIModel } from './deepseek-model-compat'
 
 /** 文本聊天可路由的厂商（千问走 DashScope OpenAI 兼容模式） */
 export type LlmProviderKind = 'openai' | 'qwen'
@@ -25,6 +26,7 @@ export type ResolvedLlmChat = {
   apiKey: string
   baseURL: string | undefined
   modelName: string
+  modelKwargs?: Record<string, unknown>
   temperature: number
   maxTokens?: number
 }
@@ -161,12 +163,14 @@ export function resolveLlmChatConfig(
     rawModel && !isPurpose(rawModel)
       ? rawModel
       : resolveOpenAIModelName(purposeFromModel)
+  const normalizedModel = normalizeDeepSeekOpenAIModel(modelName, purposeFromModel)
 
   return {
     provider: 'openai',
     apiKey,
     baseURL,
-    modelName,
+    modelName: normalizedModel.modelName,
+    modelKwargs: normalizedModel.modelKwargs,
     temperature,
     maxTokens,
   }
@@ -177,6 +181,7 @@ export function llmConfigCacheKey(resolved: ResolvedLlmChat): string {
     resolved.provider,
     resolved.baseURL ?? '',
     resolved.modelName,
+    JSON.stringify(resolved.modelKwargs ?? {}),
     String(resolved.temperature),
     resolved.maxTokens ?? '',
   ].join('::')

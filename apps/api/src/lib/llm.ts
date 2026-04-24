@@ -49,6 +49,7 @@ function getChatModel(options?: LlmCallOptions): ChatOpenAI | null {
       modelName: resolved.modelName,
       temperature: resolved.temperature,
       ...(resolved.maxTokens != null ? { maxTokens: resolved.maxTokens } : {}),
+      ...(resolved.modelKwargs ? { modelKwargs: resolved.modelKwargs } : {}),
       apiKey: resolved.apiKey,
       configuration: {
         baseURL: resolved.baseURL,
