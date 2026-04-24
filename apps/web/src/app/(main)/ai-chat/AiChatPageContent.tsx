@@ -440,21 +440,15 @@ export default function AiChatPageContent() {
   }, [input, inputMode, syncInputHeight])
 
   async function handleCreateConversation() {
-    try {
-      if (authChecked && !isAuthenticated) {
-        throw new Error('请先登录后创建会话')
-      }
-      const conv = await createConversation()
-      setConversations((prev) => [conv, ...prev])
-      setActiveConversation(conv)
-      setCurrentId(conv.id)
-      setMobileSessionsOpen(false)
-      startTransition(() => {
-        router.push(buildConversationRoute(conv.id) as Route)
-      })
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err))
-    }
+    setError(null)
+    setCurrentId(null)
+    setActiveConversation(null)
+    setMessages([])
+    setWorkflowFollowupMode(false)
+    setMobileSessionsOpen(false)
+    startTransition(() => {
+      router.push('/ai-chat' as Route)
+    })
   }
 
   function handleSelectConversation(conversationId: string) {
@@ -752,11 +746,15 @@ export default function AiChatPageContent() {
     if (!input.trim() || sending || chatQueue.length > 0 || runningWorkflow || workflowQueue.length > 0) {
       return
     }
-    const content = input.trim()
-    const conversationId = await ensureConversationSelected()
-    setInput('')
-    const job = buildChatQueueItem(conversationId, content)
-    await executeChatJob(job)
+    try {
+      const content = input.trim()
+      const conversationId = await ensureConversationSelected()
+      setInput('')
+      const job = buildChatQueueItem(conversationId, content)
+      await executeChatJob(job)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    }
   }
 
   function handleQueueSend() {
@@ -1256,6 +1254,8 @@ export default function AiChatPageContent() {
   const currentConversationIsUntitled = Boolean(currentConversation) && !currentConversationTitle
   const shouldShowSessionPanel = !initialConversationId || !currentConversation || isCurrentConversationOwner
   const showFullMessagesLoading = loadingMessages && messages.length === 0 && !currentConversation
+  const isDraftConversationView =
+    !currentId && !currentConversation && messages.length === 0 && !showFullMessagesLoading
   const panelClass =
     'rounded-[1.5rem] border border-line-glass bg-surface-glass/88 shadow-[0_18px_48px_rgba(15,23,42,0.06)] backdrop-blur-lg'
 
@@ -1295,94 +1295,122 @@ export default function AiChatPageContent() {
       </section>
 
       <section className="flex min-h-[vh] min-w-0 flex-col min-[760px]:h-[calc(100vh-4rem)]">
-        <div className={`${panelClass} flex min-w-0 flex-1 flex-col overflow-hidden p-4 md:p-5`}>
-          <div className="mx-auto mb-4 flex w-full min-w-0 max-w-full items-center justify-between gap-3 border-b border-line-glass/60 pb-4">
-            <div className="min-w-0 flex flex-1 items-center gap-2">
-              {shouldShowSessionPanel && (
-                <button
-                  type="button"
-                  onClick={() => setMobileSessionsOpen(true)}
-                  className="inline-flex h-10 w-6 shrink-0 items-center justify-center rounded-2xl border border-line-glass bg-surface-glass/56 text-content-secondary transition-colors hover:border-accent-primary/20 hover:text-content-primary min-[760px]:hidden"
-                  aria-label="打开历史会话"
-                >
-                  <PanelLeft className="h-4 w-4" />
-                </button>
-              )}
-              <div className="min-w-0 flex flex-wrap items-center gap-2">
-                <h1 className="min-w-0 truncate text-lg font-semibold tracking-[-0.03em] text-content-primary sm:text-xl">
-                  {currentConversationDisplayTitle}
+        {isDraftConversationView ? (
+          <div className="flex min-h-0 flex-1 flex-col">
+            <div className={`${panelClass} flex min-h-[320px] flex-1 flex-col justify-center p-6 md:p-8`}>
+              <div className="mx-auto flex w-full max-w-3xl flex-col items-center text-center">
+                <div className="inline-flex items-center rounded-full border border-accent-primary/20 bg-accent-primary/8 px-4 py-1 text-xs font-medium tracking-[0.18em] text-accent-primary">
+                  AI CHAT
+                </div>
+                <h1 className="mt-5 text-3xl font-semibold tracking-[-0.04em] text-content-primary sm:text-4xl">
+                  开始一段新的 AI 对话
                 </h1>
-                {currentConversationIsUntitled && (
-                  <span className="inline-flex items-center rounded-full border border-accent-primary/20 bg-accent-primary/8 px-2.5 py-1 text-xs font-medium text-accent-primary">
-                    未命名
+                <p className="mt-3 max-w-2xl text-sm leading-7 text-content-secondary sm:text-base">
+                  输入你的第一条消息后，我们再创建会话并进入完整对话视图。
+                </p>
+                <div className="mt-6 flex flex-wrap items-center justify-center gap-2 text-xs text-content-tertiary">
+                  <span className="rounded-full border border-line-glass bg-white/60 px-3 py-1.5">
+                    日程安排
                   </span>
-                )}
-                {isReadonlySharedConversation && (
-                  <span className="inline-flex items-center gap-1.5 rounded-full border border-sky-500/18 bg-[linear-gradient(135deg,rgba(14,165,233,0.10),rgba(59,130,246,0.06))] px-3 py-1 text-xs font-medium text-sky-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.65)]">
-                    <span className="h-1.5 w-1.5 rounded-full bg-sky-500" />
-                    共享查看
+                  <span className="rounded-full border border-line-glass bg-white/60 px-3 py-1.5">
+                    博客撰写
                   </span>
-                )}
-                {loadingMessages && currentConversation && (
-                  <span className="inline-flex items-center gap-1.5 text-xs text-content-tertiary">
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    正在切换
+                  <span className="rounded-full border border-line-glass bg-white/60 px-3 py-1.5">
+                    知识问答
                   </span>
-                )}
+                </div>
               </div>
             </div>
-            {currentConversation && (
-              <div className="flex shrink-0 flex-wrap items-center justify-end gap-3">
-                {isCurrentConversationOwner && (
-                  <label className="inline-flex items-center gap-2 text-xs text-content-secondary">
-                    <span>分享</span>
-                    <Switch
-                      checked={currentConversation.isShared}
-                      onCheckedChange={(checked) => {
-                        void handleShareChange(checked)
-                      }}
-                    />
-                  </label>
-                )}
-                {currentConversation.isShared && (
+          </div>
+        ) : (
+          <div className={`${panelClass} flex min-w-0 flex-1 flex-col overflow-hidden p-4 md:p-5`}>
+            <div className="mx-auto mb-4 flex w-full min-w-0 max-w-full items-center justify-between gap-3 border-b border-line-glass/60 pb-4">
+              <div className="min-w-0 flex flex-1 items-center gap-2">
+                {shouldShowSessionPanel && (
                   <button
                     type="button"
-                    onClick={() => {
-                      void handleCopyConversationLink()
-                    }}
-                    className="inline-flex h-10 items-center gap-2 rounded-2xl border border-line-glass bg-surface-glass/56 px-3 text-sm text-content-secondary transition-colors hover:border-accent-primary/20 hover:text-content-primary"
+                    onClick={() => setMobileSessionsOpen(true)}
+                    className="inline-flex h-10 w-6 shrink-0 items-center justify-center rounded-2xl border border-line-glass bg-surface-glass/56 text-content-secondary transition-colors hover:border-accent-primary/20 hover:text-content-primary min-[760px]:hidden"
+                    aria-label="打开历史会话"
                   >
-                    <Copy className="h-4 w-4" />
-                    <span className="hidden sm:inline">复制链接</span>
+                    <PanelLeft className="h-4 w-4" />
                   </button>
                 )}
+                <div className="min-w-0 flex flex-wrap items-center gap-2">
+                  <h1 className="min-w-0 truncate text-lg font-semibold tracking-[-0.03em] text-content-primary sm:text-xl">
+                    {currentConversationDisplayTitle}
+                  </h1>
+                  {currentConversationIsUntitled && (
+                    <span className="inline-flex items-center rounded-full border border-accent-primary/20 bg-accent-primary/8 px-2.5 py-1 text-xs font-medium text-accent-primary">
+                      未命名
+                    </span>
+                  )}
+                  {isReadonlySharedConversation && (
+                    <span className="inline-flex items-center gap-1.5 rounded-full border border-sky-500/18 bg-[linear-gradient(135deg,rgba(14,165,233,0.10),rgba(59,130,246,0.06))] px-3 py-1 text-xs font-medium text-sky-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.65)]">
+                      <span className="h-1.5 w-1.5 rounded-full bg-sky-500" />
+                      共享查看
+                    </span>
+                  )}
+                  {loadingMessages && currentConversation && (
+                    <span className="inline-flex items-center gap-1.5 text-xs text-content-tertiary">
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      正在切换
+                    </span>
+                  )}
+                </div>
+              </div>
+              {currentConversation && (
+                <div className="flex shrink-0 flex-wrap items-center justify-end gap-3">
+                  {isCurrentConversationOwner && (
+                    <label className="inline-flex items-center gap-2 text-xs text-content-secondary">
+                      <span>分享</span>
+                      <Switch
+                        checked={currentConversation.isShared}
+                        onCheckedChange={(checked) => {
+                          void handleShareChange(checked)
+                        }}
+                      />
+                    </label>
+                  )}
+                  {currentConversation.isShared && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        void handleCopyConversationLink()
+                      }}
+                      className="inline-flex h-10 items-center gap-2 rounded-2xl border border-line-glass bg-surface-glass/56 px-3 text-sm text-content-secondary transition-colors hover:border-accent-primary/20 hover:text-content-primary"
+                    >
+                      <Copy className="h-4 w-4" />
+                      <span className="hidden sm:inline">复制链接</span>
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+            {error && (
+              <p className="mb-3 text-sm text-red-500" role="alert">
+                {error}
+              </p>
+            )}
+            {showFullMessagesLoading && (
+              <div className="flex-1 flex items-center justify-center">
+                <Loader2 className="h-6 w-6 animate-spin text-content-muted" />
               </div>
             )}
-          </div>
-          {error && (
-            <p className="mb-3 text-sm text-red-500" role="alert">
-              {error}
-            </p>
-          )}
-          {showFullMessagesLoading && (
-            <div className="flex-1 flex items-center justify-center">
-              <Loader2 className="h-6 w-6 animate-spin text-content-muted" />
-            </div>
-          )}
-          {!showFullMessagesLoading && (
-            <div className="hide-scrollbar min-w-0 flex-1 overflow-x-hidden overflow-y-auto pb-4">
-              {messages.length === 0 ? (
-                <div className="h-full flex items-center justify-center text-sm text-content-secondary">
-                  {currentConversation
-                    ? '还没有消息，试着问问 AI 一个问题吧～'
-                    : cannotStartConversation
-                      ? '登录后可以新建会话或打开分享链接查看历史记录。'
-                      : isReadonlySharedConversation
-                        ? '这是一个分享出来的会话页面，你现在只能查看历史内容。'
-                        : '先从左侧选择一个会话，或者直接发送第一条消息开始新的对话。'}
-                </div>
-              ) : (
-                <div className="mx-auto flex w-full min-w-0 max-w-full flex-col gap-4 pr-1">
+            {!showFullMessagesLoading && (
+              <div className="hide-scrollbar min-w-0 flex-1 overflow-x-hidden overflow-y-auto pb-4">
+                {messages.length === 0 ? (
+                  <div className="h-full flex items-center justify-center text-sm text-content-secondary">
+                    {currentConversation
+                      ? '还没有消息，试着问问 AI 一个问题吧～'
+                      : cannotStartConversation
+                        ? '登录后可以新建会话或打开分享链接查看历史记录。'
+                        : isReadonlySharedConversation
+                          ? '这是一个分享出来的会话页面，你现在只能查看历史内容。'
+                          : '先从左侧选择一个会话，或者直接发送第一条消息开始新的对话。'}
+                  </div>
+                ) : (
+                  <div className="mx-auto flex w-full min-w-0 max-w-full flex-col gap-4 pr-1">
                   {messages.map((msg, index) => {
                     const operationCard =
                       msg.role === 'assistant' ? parseOperationCardContent(msg.content || '') : null
@@ -1744,15 +1772,31 @@ export default function AiChatPageContent() {
                       </div>
                     )
                   })}
-                </div>
-              )}
-              <div ref={bottomRef} />
-            </div>
-          )}
-        </div>
+                  </div>
+                )}
+                <div ref={bottomRef} />
+              </div>
+            )}
+          </div>
+        )}
 
-        <div className={`${panelClass} mt-3 min-w-0 p-3 md:p-4`}>
+        <div className={`${panelClass} ${isDraftConversationView ? 'mt-4' : 'mt-3'} min-w-0 p-3 md:p-4`}>
           <div className="mx-auto flex w-full min-w-0 max-w-full flex-col gap-3">
+            {isDraftConversationView && shouldShowSessionPanel && (
+              <button
+                type="button"
+                onClick={() => setMobileSessionsOpen(true)}
+                className="inline-flex h-10 items-center gap-2 self-start rounded-2xl border border-line-glass bg-surface-glass/56 px-3 text-sm text-content-secondary transition-colors hover:border-accent-primary/20 hover:text-content-primary min-[760px]:hidden"
+              >
+                <PanelLeft className="h-4 w-4" />
+                历史会话
+              </button>
+            )}
+            {error && isDraftConversationView && (
+              <p className="text-sm text-red-500" role="alert">
+                {error}
+              </p>
+            )}
             <div className="flex w-full min-w-0 items-end gap-3">
               <div className="min-w-0 flex-1">
                 {inputMode === 'voice' ? (
