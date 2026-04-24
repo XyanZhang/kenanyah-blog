@@ -2,7 +2,7 @@
 
 import { startTransition, useCallback, useEffect, useRef, useState } from 'react'
 import type { Route } from 'next'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import {
@@ -15,14 +15,20 @@ import {
   X,
   Copy,
   Square,
+  Share2,
+  GitBranch,
+  Pencil,
+  RotateCcw,
 } from 'lucide-react'
 import {
+  branchConversation,
   listConversations,
   cancelBlogWorkflow,
   ChatApiError,
   createConversation,
   deleteConversation,
   getConversation,
+  streamRetryChatMessage,
   streamChatMessage,
   streamBlogWorkflow,
   toChatProgressState,
@@ -191,8 +197,17 @@ function buildConversationRoute(conversationId: string) {
   return `/ai-chat/${encodeURIComponent(conversationId)}`
 }
 
+function formatConversationTranscript(messages: UiMessage[]): string {
+  return messages
+    .filter((message) => !message.pending && !message.queued && message.role !== 'system')
+    .map((message) => `${message.role === 'user' ? 'User' : 'AI'}:\n${message.content.trim()}`)
+    .join('\n\n')
+    .trim()
+}
+
 export default function AiChatPageContent() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const params = useParams<{ conversationId?: string[] | string }>()
   const { user, isAuthenticated, authChecked } = useAuthSession()
   const initialConversationId = Array.isArray(params.conversationId)
@@ -219,7 +234,9 @@ export default function AiChatPageContent() {
   const [chatQueue, setChatQueue] = useState<ChatQueueItem[]>([])
   const [workflowQueue, setWorkflowQueue] = useState<WorkflowQueueItem[]>([])
   const [mobileSessionsOpen, setMobileSessionsOpen] = useState(false)
+  const [highlightedMessageId, setHighlightedMessageId] = useState<string | null>(null)
   const bottomRef = useRef<HTMLDivElement | null>(null)
+  const messageRefs = useRef<Record<string, HTMLDivElement | null>>({})
   const isComposingRef = useRef(false)
   const inputRef = useRef<HTMLTextAreaElement | null>(null)
   const activeChatAbortRef = useRef<AbortController | null>(null)
@@ -392,6 +409,28 @@ export default function AiChatPageContent() {
     if (!bottomRef.current) return
     bottomRef.current.scrollIntoView({ behavior: 'smooth' })
   }, [messages.length, sending, runningWorkflow, chatQueue.length, workflowQueue.length])
+
+  useEffect(() => {
+    const targetMessageId = searchParams.get('message')
+    if (!targetMessageId || messages.length === 0) {
+      return
+    }
+
+    const targetElement = messageRefs.current[targetMessageId]
+    if (!targetElement) {
+      return
+    }
+
+    setHighlightedMessageId(targetMessageId)
+    targetElement.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    const timer = window.setTimeout(() => {
+      setHighlightedMessageId((current) => (current === targetMessageId ? null : current))
+    }, 2400)
+
+    return () => {
+      window.clearTimeout(timer)
+    }
+  }, [messages, searchParams])
 
   useEffect(() => {
     const previousConversationId = previousConversationIdRef.current
@@ -737,6 +776,145 @@ export default function AiChatPageContent() {
       }
       if (activeChatJobRef.current?.id === job.id) {
         activeChatJobRef.current = null
+      }
+      setSending(false)
+    }
+  }
+
+  async function handleRetryAssistantMessage(messageId: string) {
+    if (!currentId || sending || runningWorkflow || chatQueue.length > 0 || workflowQueue.length > 0) {
+      return
+    }
+
+    const targetMessage = messages.find((message) => message.id === messageId)
+    const targetIndex = messages.findIndex((message) => message.id === messageId)
+    const previousMessage = targetIndex > 0 ? messages[targetIndex - 1] : null
+
+    if (!targetMessage || targetMessage.role !== 'assistant' || !previousMessage || previousMessage.role !== 'user') {
+      setError('当前消息暂不支持 Try again')
+      return
+    }
+
+    const originalContent = targetMessage.content
+    setSending(true)
+    setError(null)
+    setMessages((prev) =>
+      prev.map((message) =>
+        message.id === messageId
+          ? {
+              ...message,
+              content: '',
+              pending: true,
+              interrupted: false,
+              progress: null,
+            }
+          : message
+      )
+    )
+
+    const controller = new AbortController()
+    activeChatAbortRef.current = controller
+    let receivedContent = false
+    let finalAssistantContent = ''
+
+    try {
+      await streamRetryChatMessage(
+        currentId,
+        messageId,
+        (chunk) => {
+          const isFirstChunk = !receivedContent
+          receivedContent = true
+          finalAssistantContent = isFirstChunk ? chunk : finalAssistantContent + chunk
+          setMessages((prev) =>
+            prev.map((message) =>
+              message.id === messageId
+                ? {
+                    ...message,
+                    progress: {
+                      mode: 'chat',
+                      status: 'responding',
+                      label: '我正在重新整理回答',
+                    },
+                    content: isFirstChunk ? chunk : (message.content ?? '') + chunk,
+                  }
+                : message
+            )
+          )
+        },
+        (err) => {
+          setError(err)
+        },
+        {
+          useKnowledgeBase,
+          signal: controller.signal,
+          onEvent: (event) => {
+            const progress = toChatProgressState(event)
+            if (!progress || receivedContent) {
+              return
+            }
+
+            setMessages((prev) =>
+              prev.map((message) => (message.id === messageId ? { ...message, progress } : message))
+            )
+          },
+        }
+      )
+
+      if (!finalAssistantContent.trim()) {
+        finalAssistantContent = '我重新尝试了一次，但这次没有生成可展示内容。你可以补充更多细节后再试。'
+      }
+
+      setMessages((prev) =>
+        prev.map((message) =>
+          message.id === messageId
+            ? {
+                ...message,
+                content: finalAssistantContent,
+                pending: false,
+                interrupted: false,
+                progress: null,
+              }
+            : message
+        )
+      )
+      setWorkflowFollowupMode(isWorkflowFollowupMessage(finalAssistantContent))
+      refreshConversations().catch(() => undefined)
+    } catch (err) {
+      if (isAbortError(err)) {
+        setMessages((prev) =>
+          prev.map((message) =>
+            message.id === messageId
+              ? {
+                  ...message,
+                  content: originalContent.trim()
+                    ? `${originalContent.trim()}\n\n[本次重试已中断]`
+                    : '本次重试已中断。',
+                  pending: false,
+                  interrupted: true,
+                  progress: null,
+                }
+              : message
+          )
+        )
+      } else {
+        setError(err instanceof Error ? err.message : String(err))
+        setMessages((prev) =>
+          prev.map((message) =>
+            message.id === messageId
+              ? {
+                  ...message,
+                  content: originalContent,
+                  pending: false,
+                  interrupted: false,
+                  progress: null,
+                }
+              : message
+          )
+        )
+      }
+    } finally {
+      if (activeChatAbortRef.current === controller) {
+        activeChatAbortRef.current = null
       }
       setSending(false)
     }
@@ -1118,6 +1296,102 @@ export default function AiChatPageContent() {
     }
   }
 
+  async function handleCopyConversationTranscript() {
+    if (typeof window === 'undefined') return
+    const transcript = formatConversationTranscript(messages)
+    if (!transcript) {
+      setError('当前没有可复制的对话内容')
+      return
+    }
+
+    try {
+      await navigator.clipboard.writeText(transcript)
+    } catch {
+      setError('复制对话失败，请稍后重试')
+    }
+  }
+
+  async function ensureConversationShareEnabled(): Promise<ChatConversation> {
+    if (!activeConversation) {
+      throw new Error('当前没有可分享的会话')
+    }
+
+    if (activeConversation.isShared) {
+      return activeConversation
+    }
+
+    if (!isCurrentConversationOwner) {
+      throw new Error('只有会话拥有者可以开启分享')
+    }
+
+    const updated = await updateConversation(activeConversation.id, {
+      isShared: true,
+    })
+    setActiveConversation(updated)
+    setConversations((prev) =>
+      prev.map((conversation) =>
+        conversation.id === updated.id ? { ...conversation, isShared: updated.isShared } : conversation
+      )
+    )
+    return updated
+  }
+
+  async function handleShareSingleMessage(messageId: string) {
+    if (typeof window === 'undefined') return
+
+    try {
+      const conversation = await ensureConversationShareEnabled()
+      const shareUrl = `${window.location.origin}/ai-chat/share/${encodeURIComponent(conversation.id)}/${encodeURIComponent(messageId)}`
+      await navigator.clipboard.writeText(shareUrl)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '复制消息分享链接失败')
+    }
+  }
+
+  async function handleBranchFromMessage(messageId: string) {
+    if (!currentId) return
+
+    try {
+      const conversation = await branchConversation(currentId, messageId)
+      setConversations((prev) => [conversation, ...prev.filter((item) => item.id !== conversation.id)])
+      setActiveConversation(conversation)
+      setCurrentId(conversation.id)
+      setMessages([])
+      setMobileSessionsOpen(false)
+      startTransition(() => {
+        router.push(buildConversationRoute(conversation.id) as Route)
+      })
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '创建分支会话失败')
+    }
+  }
+
+  function handleEditUserMessage(messageId: string) {
+    const targetMessage = messages.find((message) => message.id === messageId)
+    if (!targetMessage || targetMessage.role !== 'user' || isReadonlySharedConversation) {
+      return
+    }
+
+    setInput(targetMessage.content)
+    switchToTextInput()
+    window.requestAnimationFrame(() => {
+      syncInputHeight()
+    })
+  }
+
+  async function handleCopyMessage(content: string) {
+    if (!content.trim()) {
+      setError('复制消息失败，请稍后重试')
+      return
+    }
+
+    try {
+      await navigator.clipboard.writeText(content)
+    } catch {
+      setError('复制消息失败，请稍后重试')
+    }
+  }
+
   function handleStopCurrentTask() {
     if (runningWorkflow) {
       cancelActiveWorkflowRequest()
@@ -1294,7 +1568,7 @@ export default function AiChatPageContent() {
         />
       </section>
 
-      <section className="flex min-h-[vh] min-w-0 flex-col min-[760px]:h-[calc(100vh-4rem)]">
+      <section className="flex min-h-0 min-w-0 flex-col min-[760px]:h-[calc(100vh-2.5rem)]">
         {isDraftConversationView ? (
           <div className="flex min-h-0 flex-1 flex-col">
             <div className={`${panelClass} flex min-h-[320px] flex-1 flex-col justify-center p-6 md:p-8`}>
@@ -1323,8 +1597,8 @@ export default function AiChatPageContent() {
             </div>
           </div>
         ) : (
-          <div className={`${panelClass} flex min-w-0 flex-1 flex-col overflow-hidden p-4 md:p-5`}>
-            <div className="mx-auto mb-4 flex w-full min-w-0 max-w-full items-center justify-between gap-3 border-b border-line-glass/60 pb-4">
+          <div className={`${panelClass} flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden p-3 md:p-4`}>
+            <div className="mx-auto mb-3 flex w-full min-w-0 max-w-full items-center justify-between gap-3 border-b border-line-glass/60 pb-3">
               <div className="min-w-0 flex flex-1 items-center gap-2">
                 {shouldShowSessionPanel && (
                   <button
@@ -1361,6 +1635,16 @@ export default function AiChatPageContent() {
               </div>
               {currentConversation && (
                 <div className="flex shrink-0 flex-wrap items-center justify-end gap-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      void handleCopyConversationTranscript()
+                    }}
+                    className="inline-flex h-10 items-center gap-2 rounded-2xl border border-line-glass bg-surface-glass/56 px-3 text-sm text-content-secondary transition-colors hover:border-accent-primary/20 hover:text-content-primary"
+                  >
+                    <Copy className="h-4 w-4" />
+                    <span className="hidden sm:inline">复制对话</span>
+                  </button>
                   {isCurrentConversationOwner && (
                     <label className="inline-flex items-center gap-2 text-xs text-content-secondary">
                       <span>分享</span>
@@ -1398,7 +1682,7 @@ export default function AiChatPageContent() {
               </div>
             )}
             {!showFullMessagesLoading && (
-              <div className="hide-scrollbar min-w-0 flex-1 overflow-x-hidden overflow-y-auto pb-4">
+              <div className="hide-scrollbar min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-visible pb-2 pr-3">
                 {messages.length === 0 ? (
                   <div className="h-full flex items-center justify-center text-sm text-content-secondary">
                     {currentConversation
@@ -1410,7 +1694,7 @@ export default function AiChatPageContent() {
                           : '先从左侧选择一个会话，或者直接发送第一条消息开始新的对话。'}
                   </div>
                 ) : (
-                  <div className="mx-auto flex w-full min-w-0 max-w-full flex-col gap-4 pr-1">
+                  <div className="mx-auto flex w-full min-w-0 max-w-full flex-col gap-3 pr-2">
                   {messages.map((msg, index) => {
                     const operationCard =
                       msg.role === 'assistant' ? parseOperationCardContent(msg.content || '') : null
@@ -1434,14 +1718,115 @@ export default function AiChatPageContent() {
                       operationCard?.kind === 'confirm' && isLatestResolvedAssistantMessage
                     const defaultReplyMessage =
                       operationCard?.kind === 'followup' ? operationCard.defaultReplyMessage : undefined
+                    const canShareMessage = Boolean(currentConversation) && !msg.pending
+                    const canBranchMessage =
+                      msg.role === 'assistant' &&
+                      Boolean(currentId) &&
+                      !msg.pending &&
+                      !isReadonlySharedConversation &&
+                      !sending &&
+                      !runningWorkflow
+                    const canEditMessage =
+                      msg.role === 'user' && !msg.pending && !isReadonlySharedConversation
+                    const canRetryMessage =
+                      msg.role === 'assistant' &&
+                      isLatestResolvedAssistantMessage &&
+                      index > 0 &&
+                      messages[index - 1]?.role === 'user' &&
+                      !isReadonlySharedConversation &&
+                      !sending &&
+                      !runningWorkflow
 
                     return (
                       <div
                         key={msg.id}
-                        className={`flex min-w-0 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                        ref={(element) => {
+                          messageRefs.current[msg.id] = element
+                        }}
+                        className={`group/message flex min-w-0 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
                       >
                         <div
-                          className={`relative min-w-0 max-w-[85%] overflow-x-hidden break-words rounded-2xl px-3 py-2 text-sm shadow-sm sm:max-w-[85%] ${
+                          className={`relative flex min-w-0 max-w-[92%] items-start gap-2 overflow-visible lg:max-w-[88%] ${
+                            highlightedMessageId === msg.id ? 'rounded-[1.35rem] ring-2 ring-accent-primary/35 ring-offset-2 ring-offset-transparent transition-shadow' : ''
+                          }`}
+                        >
+                          {msg.role === 'user' && (canEditMessage || canShareMessage) && (
+                            <div className="pointer-events-none order-1 flex shrink-0 items-center gap-1 self-end opacity-0 transition-all group-hover/message:pointer-events-auto group-hover/message:opacity-100">
+                              {canEditMessage && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    handleEditUserMessage(msg.id)
+                                  }}
+                                  className="inline-flex h-6 w-6 items-center justify-center rounded-md bg-transparent text-content-tertiary transition-colors hover:text-content-primary"
+                                  aria-label="编辑消息"
+                                  title="编辑消息"
+                                >
+                                  <Pencil className="h-3 w-3" />
+                                </button>
+                              )}
+                              {canShareMessage && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    void handleCopyMessage(msg.content)
+                                  }}
+                                  disabled={!msg.content.trim()}
+                                  className="inline-flex h-6 w-6 items-center justify-center rounded-md bg-transparent text-content-tertiary transition-colors hover:text-content-primary disabled:cursor-not-allowed disabled:opacity-50"
+                                  aria-label="复制消息"
+                                  title="复制消息"
+                                >
+                                  <Copy className="h-3 w-3" />
+                                </button>
+                              )}
+                            </div>
+                          )}
+                          {msg.role === 'assistant' && (canShareMessage || canRetryMessage || canBranchMessage) && (
+                            <div className="pointer-events-none order-3 flex shrink-0 items-center gap-1 self-end opacity-0 transition-all group-hover/message:pointer-events-auto group-hover/message:opacity-100">
+                              {canRetryMessage && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    void handleRetryAssistantMessage(msg.id)
+                                  }}
+                                  className="inline-flex h-6 w-6 items-center justify-center rounded-md bg-transparent text-content-tertiary transition-colors hover:text-content-primary"
+                                  aria-label="刷新回复"
+                                  title="刷新回复"
+                                >
+                                  <RotateCcw className="h-3 w-3" />
+                                </button>
+                              )}
+                              {msg.role === 'assistant' && canShareMessage && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    void handleShareSingleMessage(msg.id)
+                                  }}
+                                  className="inline-flex h-6 w-6 items-center justify-center rounded-md bg-transparent text-content-tertiary transition-colors hover:text-content-primary"
+                                  aria-label="分享消息"
+                                  title="分享消息"
+                                >
+                                  <Share2 className="h-3 w-3" />
+                                </button>
+                              )}
+                              {canBranchMessage && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    void handleBranchFromMessage(msg.id)
+                                  }}
+                                  className="inline-flex h-6 w-6 items-center justify-center rounded-md bg-transparent text-content-tertiary transition-colors hover:text-content-primary"
+                                  aria-label="分支对话"
+                                  title="分支对话"
+                                >
+                                  <GitBranch className="h-3 w-3" />
+                                </button>
+                              )}
+                            </div>
+                          )}
+                        <div className="order-2 min-w-0 flex-1">
+                        <div
+                          className={`overflow-x-hidden break-words rounded-2xl px-3 py-2 text-sm shadow-sm ${
                             msg.role === 'user'
                               ? 'bg-accent-primary text-white'
                               : 'bg-surface-tertiary/90 text-content-primary'
@@ -1768,6 +2153,8 @@ export default function AiChatPageContent() {
                             {msg.content}
                           </span>
                         )}
+                        </div>
+                        </div>
                       </div>
                       </div>
                     )
@@ -1780,8 +2167,8 @@ export default function AiChatPageContent() {
           </div>
         )}
 
-        <div className={`${panelClass} ${isDraftConversationView ? 'mt-4' : 'mt-3'} min-w-0 p-3 md:p-4`}>
-          <div className="mx-auto flex w-full min-w-0 max-w-full flex-col gap-3">
+        <div className={`${panelClass} ${isDraftConversationView ? 'mt-4' : 'mt-2'} min-w-0 shrink-0 p-2.5 md:p-3`}>
+          <div className="mx-auto flex w-full min-w-0 max-w-full flex-col gap-2.5">
             {isDraftConversationView && shouldShowSessionPanel && (
               <button
                 type="button"
@@ -1797,7 +2184,7 @@ export default function AiChatPageContent() {
                 {error}
               </p>
             )}
-            <div className="flex w-full min-w-0 items-end gap-3">
+            <div className="flex w-full min-w-0 items-end gap-2.5">
               <div className="min-w-0 flex-1">
                 {inputMode === 'voice' ? (
                   <VoiceRecorder
@@ -1808,7 +2195,7 @@ export default function AiChatPageContent() {
                 ) : (
                   <textarea
                     ref={inputRef}
-                    className="hide-scrollbar max-h-40 w-full resize-none overflow-y-auto rounded-2xl border border-line-glass bg-surface-tertiary/40 px-3 py-[0.8rem] text-sm leading-6 text-content-primary placeholder:text-content-tertiary focus:outline-none focus:ring-2 focus:ring-accent-primary/50"
+                    className="hide-scrollbar max-h-32 w-full resize-none overflow-y-auto rounded-2xl border border-line-glass bg-surface-tertiary/40 px-3 py-3 text-sm leading-6 text-content-primary placeholder:text-content-tertiary focus:outline-none focus:ring-2 focus:ring-accent-primary/50"
                     rows={1}
                     placeholder={
                       runningWorkflow
@@ -1834,7 +2221,7 @@ export default function AiChatPageContent() {
               </div>
             </div>
 
-            <div className="flex w-full min-w-0 flex-wrap items-center gap-2 sm:gap-3">
+            <div className="flex w-full min-w-0 flex-wrap items-center gap-2">
               <button
                 type="button"
                 onClick={() => setUseKnowledgeBase((prev) => !prev)}

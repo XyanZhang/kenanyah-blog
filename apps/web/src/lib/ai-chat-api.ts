@@ -42,6 +42,12 @@ export interface ChatConversationDetail {
   messages: ChatMessage[]
 }
 
+export interface ChatMessageSharePreview {
+  conversation: Pick<ChatConversation, 'id' | 'title' | 'isShared'>
+  message: ChatMessage
+  contextMessage: ChatMessage | null
+}
+
 export type ChatUserFacingStatus =
   | 'thinking'
   | 'searching'
@@ -276,6 +282,129 @@ export async function streamChatMessage(
       onChunk(parsed.content)
     }
   }
+}
+
+export async function streamRetryChatMessage(
+  conversationId: string,
+  messageId: string,
+  onChunk: (chunk: string) => void,
+  onError?: (err: string) => void,
+  options?: {
+    useKnowledgeBase?: boolean
+    signal?: AbortSignal
+    onEvent?: (event: ChatStreamEvent) => void
+  }
+): Promise<void> {
+  const res = await fetch(
+    `${API_BASE_URL}/chat/conversations/${encodeURIComponent(conversationId)}/messages/${encodeURIComponent(messageId)}/retry/stream`,
+    {
+      method: 'POST',
+      credentials: 'include',
+      headers: getAuthHeaders(),
+      signal: options?.signal,
+      body: JSON.stringify({ useKnowledgeBase: options?.useKnowledgeBase === true }),
+    }
+  )
+
+  if (!res.ok || !res.body) {
+    const err = (await res.json().catch(() => ({}))) as { error?: string }
+    const message = err.error || '请求失败'
+    onError?.(message)
+    throw new Error(message)
+  }
+
+  const reader = res.body.getReader()
+  const decoder = new TextDecoder()
+  let buffer = ''
+
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) break
+    buffer += decoder.decode(value, { stream: true })
+    const lines = buffer.split('\n')
+    buffer = lines.pop() ?? ''
+    for (const line of lines) {
+      if (line.startsWith('data: ')) {
+        const data = line.slice(6)
+        const trimmed = data.trim()
+        if (!trimmed) continue
+        if (trimmed === '[DONE]') {
+          return
+        }
+        let parsed: (ChatStreamEvent & { error?: string }) | null = null
+        try {
+          parsed = JSON.parse(trimmed) as ChatStreamEvent & { error?: string }
+        } catch {
+          onChunk(data)
+          continue
+        }
+
+        if (parsed.error) {
+          onError?.(parsed.error)
+          throw new Error(parsed.error)
+        }
+
+        options?.onEvent?.(parsed)
+        if (parsed.type === 'content' && typeof parsed.content === 'string') {
+          onChunk(parsed.content)
+        }
+      }
+    }
+  }
+
+  if (buffer.startsWith('data: ')) {
+    const data = buffer.slice(6)
+    const trimmed = data.trim()
+    if (!trimmed) return
+    if (trimmed === '[DONE]') return
+    let parsed: (ChatStreamEvent & { error?: string }) | null = null
+    try {
+      parsed = JSON.parse(trimmed) as ChatStreamEvent & { error?: string }
+    } catch {
+      onChunk(data)
+      return
+    }
+
+    if (parsed.error) {
+      onError?.(parsed.error)
+      throw new Error(parsed.error)
+    }
+
+    options?.onEvent?.(parsed)
+    if (parsed.type === 'content' && typeof parsed.content === 'string') {
+      onChunk(parsed.content)
+    }
+  }
+}
+
+export async function branchConversation(
+  conversationId: string,
+  messageId: string
+): Promise<ChatConversation> {
+  const res = await fetch(
+    `${API_BASE_URL}/chat/conversations/${encodeURIComponent(conversationId)}/branch`,
+    {
+      method: 'POST',
+      credentials: 'include',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ messageId }),
+    }
+  )
+  return parseApiResponse(res, '创建分支会话失败')
+}
+
+export async function getMessageSharePreview(
+  conversationId: string,
+  messageId: string
+): Promise<ChatMessageSharePreview> {
+  const res = await fetch(
+    `${API_BASE_URL}/chat/conversations/${encodeURIComponent(conversationId)}/messages/${encodeURIComponent(messageId)}/share-preview`,
+    {
+      credentials: 'include',
+      headers: getAuthHeaders(),
+    }
+  )
+  return parseApiResponse(res, '加载消息分享预览失败')
 }
 
 export async function runBlogWorkflow(payload: {
