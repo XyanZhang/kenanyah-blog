@@ -58,7 +58,7 @@ function useTodayStats() {
 function BlogPageSkeleton() {
   return (
     <main className="min-h-[calc(100vh-80px)] w-full flex flex-col" aria-busy="true">
-      <header className="flex shrink-0 justify-center px-4 pb-6 sm:px-6 md:pt-8">
+      <header className="flex shrink-0 justify-center px-4 pb-6 sm:px-6 md:pt-4">
         <div className="w-full max-w-2xl text-left">
           <Skeleton className="h-8 w-28 rounded-2xl sm:h-9 sm:w-32" />
           <Skeleton className="mt-3 h-4 w-40 rounded-full" />
@@ -168,7 +168,7 @@ export default function BlogPage() {
   return (
     <main className="min-h-[calc(100vh-80px)] w-full flex flex-col">
       {/* 标题 + 统计 + 当日状态：与时间线同宽居中，内容左对齐 */}
-      <header className="flex shrink-0 justify-center px-4 pb-6 sm:px-6 md:pt-8">
+      <header className="flex shrink-0 justify-center px-4 pb-6 sm:px-6 md:pt-4">
         <div className="w-full max-w-2xl text-left">
           <h1 className="text-2xl font-semibold text-content-primary">时间线</h1>
           <p className="mt-1 text-sm text-content-muted">

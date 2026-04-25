@@ -211,7 +211,7 @@ export default function PostPage() {
   const nextHeadingId = createHeadingIdGenerator()
 
   return (
-    <main className="min-h-[60vh] pb-8 sm:py-12">
+    <main className="min-h-[60vh] pb-8">
       {/* 让正文和目录留在同一栅格中，避免 fixed 定位在某些视口下压住正文。 */}
       <div
         className="relative mx-auto w-full px-4 sm:px-6 xl:px-0"
