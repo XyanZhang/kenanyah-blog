@@ -2,7 +2,7 @@
 
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import Image from 'next/image'
@@ -14,10 +14,10 @@ import { useAuthSession } from '@/hooks/useAuthSession'
 import { cn } from '@/lib/utils'
 import { buildDynamicImageUrl, isStaticsSource } from '@/lib/image-service'
 import {
-  collectTocFromMarkdown,
   createHeadingIdGenerator,
-  scrollToHeadingById,
+  scrollToHeadingByIdWithRetry,
   slugifyHeading,
+  type TocHeading,
 } from '@/lib/heading'
 import { FixedPostAsideRail } from '@/components/posts/FixedPostAsideRail'
 import PostDetailSkeletonGenerated from '@/components/skeletons/generated/PostDetailSkeletonGenerated'
@@ -101,6 +101,8 @@ export default function PostPage() {
   const [post, setPost] = useState<PostDetail | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [tocHeadings, setTocHeadings] = useState<TocHeading[]>([])
+  const markdownRootRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
     if (!slug) return
@@ -136,34 +138,18 @@ export default function PostPage() {
   useEffect(() => {
     if (!post) return
 
-    let cancelled = false
-    let attempts = 0
-    let timer: number | null = null
+    let cleanupScroll: (() => void) | null = null
 
     const scrollFromHash = (behavior: ScrollBehavior = 'auto') => {
       const rawHash = window.location.hash
       if (!rawHash || rawHash.length <= 1) return
 
       const id = decodeURIComponent(rawHash.slice(1))
-
-      const tryScroll = () => {
-        if (cancelled) return
-        const found = scrollToHeadingById(id, { behavior })
-        if (found || attempts >= 8) return
-
-        attempts += 1
-        timer = window.setTimeout(tryScroll, 120)
-      }
-
-      attempts = 0
-      tryScroll()
+      cleanupScroll?.()
+      cleanupScroll = scrollToHeadingByIdWithRetry(id, { behavior })
     }
 
     const handleHashChange = () => {
-      if (timer != null) {
-        window.clearTimeout(timer)
-        timer = null
-      }
       scrollFromHash('smooth')
     }
 
@@ -171,12 +157,31 @@ export default function PostPage() {
     window.addEventListener('hashchange', handleHashChange)
 
     return () => {
-      cancelled = true
-      if (timer != null) {
-        window.clearTimeout(timer)
-      }
+      cleanupScroll?.()
       window.removeEventListener('hashchange', handleHashChange)
     }
+  }, [post])
+
+  useEffect(() => {
+    if (!post) {
+      setTocHeadings([])
+      return
+    }
+
+    const root = markdownRootRef.current
+    if (!root) {
+      setTocHeadings([])
+      return
+    }
+
+    const elements = Array.from(root.querySelectorAll<HTMLHeadingElement>('h2[id], h3[id]'))
+    const headings = elements.map((element) => ({
+      id: element.id,
+      depth: element.tagName === 'H3' ? 3 : 2,
+      text: element.textContent?.trim() ?? '',
+    })) satisfies TocHeading[]
+
+    setTocHeadings(headings.filter((heading) => heading.text))
   }, [post])
 
   if (loading) {
@@ -203,7 +208,6 @@ export default function PostPage() {
   }
 
   const date = post.publishedAt ?? post.createdAt
-  const tocHeadings = collectTocFromMarkdown(post.content)
   const nextHeadingId = createHeadingIdGenerator()
 
   return (
@@ -284,7 +288,7 @@ export default function PostPage() {
               )}
 
               <div className="p-5 pt-6 sm:p-8">
-                <div className="md-content max-w-none">
+                <div ref={markdownRootRef} className="md-content max-w-none">
                   <ReactMarkdown
                     remarkPlugins={[remarkGfm]}
                     components={{

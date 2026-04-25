@@ -13,14 +13,15 @@ function TooltipProvider({ children }: TooltipProviderProps) {
 
 interface TooltipProps {
   children: React.ReactNode
+  className?: string
 }
 
-function Tooltip({ children }: TooltipProps) {
+function Tooltip({ children, className }: TooltipProps) {
   const [open, setOpen] = React.useState(false)
 
   return (
     <TooltipContext.Provider value={{ open, setOpen }}>
-      <div className="relative inline-block">{children}</div>
+      <div className={cn('relative inline-block', className)}>{children}</div>
     </TooltipContext.Provider>
   )
 }

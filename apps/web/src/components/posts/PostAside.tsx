@@ -1,10 +1,57 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { ArrowUp } from 'lucide-react'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui'
 import { cn } from '@/lib/utils'
-import { scrollToHeadingById, type TocHeading } from '@/lib/heading'
+import {
+  getActiveHeadingId,
+  scrollToHeadingByIdWithRetry,
+  type TocHeading,
+} from '@/lib/heading'
 
 export interface PostAsideProps {
   headings: TocHeading[]
+}
+
+function useActiveHeading(headings: TocHeading[]) {
+  const [activeId, setActiveId] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (headings.length === 0) {
+      setActiveId(null)
+      return
+    }
+
+    let frameId: number | null = null
+    const ids = headings.map((heading) => heading.id)
+
+    const update = () => {
+      setActiveId(getActiveHeadingId(ids))
+    }
+
+    const scheduleUpdate = () => {
+      if (frameId != null) return
+      frameId = window.requestAnimationFrame(() => {
+        frameId = null
+        update()
+      })
+    }
+
+    update()
+    window.addEventListener('scroll', scheduleUpdate, { passive: true })
+    window.addEventListener('resize', scheduleUpdate)
+    window.addEventListener('hashchange', scheduleUpdate)
+
+    return () => {
+      window.removeEventListener('scroll', scheduleUpdate)
+      window.removeEventListener('resize', scheduleUpdate)
+      window.removeEventListener('hashchange', scheduleUpdate)
+      if (frameId != null) {
+        window.cancelAnimationFrame(frameId)
+      }
+    }
+  }, [headings])
+
+  return activeId
 }
 
 function useReadingProgress() {
@@ -86,6 +133,7 @@ export function PostAside({ headings }: PostAsideProps) {
   const progress = useReadingProgress()
   const progressPct = Math.round(progress * 100)
   const items = useMemo(() => headings.slice(0, 18), [headings])
+  const activeId = useActiveHeading(items)
 
   useCompletionConfetti(progress)
 
@@ -94,9 +142,19 @@ export function PostAside({ headings }: PostAsideProps) {
   }
 
   const navigateToHeading = (id: string) => (event: React.MouseEvent<HTMLAnchorElement>) => {
+    if (
+      event.button !== 0 ||
+      event.metaKey ||
+      event.ctrlKey ||
+      event.shiftKey ||
+      event.altKey
+    ) {
+      return
+    }
+
     event.preventDefault()
-    if (!scrollToHeadingById(id, { behavior: 'smooth' })) return
-    window.history.replaceState(null, '', `#${id}`)
+    window.history.replaceState(null, '', `#${encodeURIComponent(id)}`)
+    scrollToHeadingByIdWithRetry(id, { behavior: 'smooth' })
   }
 
   const ringSize = 36
@@ -111,21 +169,36 @@ export function PostAside({ headings }: PostAsideProps) {
         {items.length > 0 ? (
           <div>
             <div className="text-xs font-medium text-content-secondary">目录</div>
-            <nav className="mt-2 space-y-1">
+            <TooltipProvider>
+              <nav className="mt-2 space-y-1">
               {items.map((h) => (
-                <a
-                  key={h.id}
-                  href={`#${h.id}`}
-                  onClick={navigateToHeading(h.id)}
-                  className={cn(
-                    'block rounded-md px-2 py-1 text-xs leading-relaxed text-content-tertiary hover:text-accent-primary hover:bg-surface-glass/60 transition-colors',
-                    h.depth === 3 ? 'pl-4' : ''
-                  )}
-                >
-                  {h.text}
-                </a>
+                <Tooltip key={h.id} className="block w-full">
+                  <TooltipTrigger asChild>
+                    <a
+                      href={`#${h.id}`}
+                      onClick={navigateToHeading(h.id)}
+                      aria-current={activeId === h.id ? 'location' : undefined}
+                      className={cn(
+                        'block truncate rounded-md px-2 py-1 text-xs leading-relaxed whitespace-nowrap transition-colors',
+                        activeId === h.id
+                          ? 'bg-accent-primary/12 text-accent-primary'
+                          : 'text-content-tertiary hover:text-accent-primary hover:bg-surface-glass/60',
+                        h.depth === 3 ? 'pl-4' : ''
+                      )}
+                    >
+                      {h.text}
+                    </a>
+                  </TooltipTrigger>
+                  <TooltipContent
+                    side="left"
+                    className="min-w-[20rem] max-w-[36rem] whitespace-normal break-words bg-surface-primary/95 px-3.5 py-2 text-content-primary shadow-lg backdrop-blur-sm"
+                  >
+                    {h.text}
+                  </TooltipContent>
+                </Tooltip>
               ))}
-            </nav>
+              </nav>
+            </TooltipProvider>
             {headings.length > items.length ? (
               <div className="mt-2 text-[11px] text-content-dim">仅展示前 {items.length} 项</div>
             ) : null}

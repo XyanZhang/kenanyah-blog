@@ -4,7 +4,7 @@ export type TocHeading = {
   text: string
 }
 
-const HEADING_SCROLL_OFFSET = 110
+export const HEADING_SCROLL_OFFSET = 110
 
 export function slugifyHeading(text: string) {
   return text
@@ -14,6 +14,18 @@ export function slugifyHeading(text: string) {
     .replace(/[^\p{L}\p{N}-]+/gu, '')
     .replace(/-+/g, '-')
     .replace(/^-|-$/g, '')
+}
+
+function stripInlineMarkdown(text: string) {
+  return text
+    .replace(/!\[([^\]]*)\]\([^)]+\)/g, '$1')
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+    .replace(/`([^`]+)`/g, '$1')
+    .replace(/<[^>]+>/g, '')
+    .replace(/(\*\*|__|\*|_|~~)/g, '')
+    .replace(/\\([\\`*_{}\[\]()#+\-.!>])/g, '$1')
+    .replace(/\s+/g, ' ')
+    .trim()
 }
 
 function createHeadingIdMap() {
@@ -41,6 +53,72 @@ export function scrollToHeadingById(id: string, options?: { behavior?: ScrollBeh
   const y = target.getBoundingClientRect().top + window.scrollY - HEADING_SCROLL_OFFSET
   window.scrollTo({ top: Math.max(0, y), behavior: options?.behavior ?? 'smooth' })
   return true
+}
+
+export function scrollToHeadingByIdWithRetry(
+  id: string,
+  options?: { behavior?: ScrollBehavior; retries?: number; delayMs?: number }
+) {
+  if (typeof document === 'undefined' || typeof window === 'undefined') return () => {}
+
+  let cancelled = false
+  let attempts = 0
+  let timer: number | null = null
+  const retries = options?.retries ?? 8
+  const delayMs = options?.delayMs ?? 120
+
+  const tryScroll = () => {
+    if (cancelled) return
+
+    const found = scrollToHeadingById(id, { behavior: options?.behavior })
+    if (found || attempts >= retries) return
+
+    attempts += 1
+    timer = window.setTimeout(tryScroll, delayMs)
+  }
+
+  tryScroll()
+
+  return () => {
+    cancelled = true
+    if (timer != null) {
+      window.clearTimeout(timer)
+    }
+  }
+}
+
+export function getActiveHeadingId(
+  ids: string[],
+  options?: { offset?: number; threshold?: number }
+) {
+  if (typeof document === 'undefined' || typeof window === 'undefined') return null
+  if (ids.length === 0) return null
+
+  const offset = options?.offset ?? HEADING_SCROLL_OFFSET
+  const threshold = options?.threshold ?? 12
+  const anchorY = window.scrollY + offset + threshold
+
+  let activeId: string | null = null
+
+  for (const id of ids) {
+    const element = document.getElementById(id)
+    if (!element) continue
+
+    const top = element.getBoundingClientRect().top + window.scrollY
+    if (top <= anchorY) {
+      activeId = id
+      continue
+    }
+    break
+  }
+
+  if (activeId) return activeId
+
+  for (const id of ids) {
+    if (document.getElementById(id)) return id
+  }
+
+  return null
 }
 
 export function collectTocFromMarkdown(markdown: string): TocHeading[] {
@@ -73,7 +151,7 @@ export function collectTocFromMarkdown(markdown: string): TocHeading[] {
     const match = /^( {0,3})(#{2,3})[ \t]+(.+?)(?:[ \t]+#+[ \t]*)?$/.exec(line)
     if (!match) continue
     const depth = match[2].length as 2 | 3
-    const text = match[3].trim()
+    const text = stripInlineMarkdown(match[3])
     if (!text) continue
     headings.push({ depth, text })
   }
