@@ -23,7 +23,7 @@ function stripInlineMarkdown(text: string) {
     .replace(/`([^`]+)`/g, '$1')
     .replace(/<[^>]+>/g, '')
     .replace(/(\*\*|__|\*|_|~~)/g, '')
-    .replace(/\\([\\`*_{}\[\]()#+\-.!>])/g, '$1')
+    .replace(/\\([\\`*_{}[\]()#+\-.!>])/g, '$1')
     .replace(/\s+/g, ' ')
     .trim()
 }
