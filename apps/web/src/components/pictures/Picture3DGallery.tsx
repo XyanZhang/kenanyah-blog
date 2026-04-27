@@ -1,7 +1,7 @@
 'use client'
 
 import { Suspense, useRef, useMemo, useState, useEffect } from 'react'
-import { Canvas, useFrame, useThree } from '@react-three/fiber'
+import { Canvas, type ThreeEvent, useFrame, useThree } from '@react-three/fiber'
 import {
   Float,
   RoundedBox,
@@ -28,7 +28,7 @@ interface PictureFrameProps {
   baseY: number
   scale: number
   isActive: boolean
-  onClick: () => void
+  onClick: (event: ThreeEvent<MouseEvent>) => void
   hoveredId: string | null
   setHoveredId: (id: string | null) => void
   rotationController: React.MutableRefObject<{ current: number; target: number }>
@@ -152,8 +152,14 @@ function PictureFrame({
       <Float speed={1.7} rotationIntensity={0.14} floatIntensity={0.18}>
         <group
           onClick={onClick}
-          onPointerEnter={() => setHoveredId(image.id)}
-          onPointerLeave={() => setHoveredId(null)}
+          onPointerEnter={(event) => {
+            event.stopPropagation()
+            setHoveredId(image.id)
+          }}
+          onPointerLeave={(event) => {
+            event.stopPropagation()
+            setHoveredId(null)
+          }}
         >
           <RoundedBox args={[3.45, 4.55, 0.22]} radius={0.08} smoothness={5}>
             <meshStandardMaterial
@@ -366,7 +372,10 @@ function Gallery3D({
           baseY={positions[i].y}
           scale={positions[i].scale}
           isActive={activeIndex === i}
-          onClick={() => onImageClick(i)}
+          onClick={(event) => {
+            event.stopPropagation()
+            onImageClick(i)
+          }}
           hoveredId={hoveredId}
           setHoveredId={setHoveredId}
           rotationController={rotationController}
