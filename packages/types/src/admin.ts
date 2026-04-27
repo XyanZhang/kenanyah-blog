@@ -157,3 +157,20 @@ export interface AdminBookmarkItem {
   createdAt: Date
   updatedAt: Date
 }
+
+export interface AdminThoughtItem {
+  id: string
+  authorId: string | null
+  content: string
+  images: string[]
+  likeCount: number
+  commentCount: number
+  createdAt: Date
+  updatedAt: Date
+  author: {
+    id: string
+    username: string
+    name: string | null
+    avatar: string | null
+  } | null
+}

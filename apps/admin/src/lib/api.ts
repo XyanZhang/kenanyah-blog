@@ -2,6 +2,7 @@ import type {
   AdminCommentItem,
   AdminDashboardData,
   AdminBookmarkItem,
+  AdminThoughtItem,
   AdminMediaItem,
   AdminPostListItem,
   AdminTaxonomyItem,
@@ -186,6 +187,43 @@ export async function updateAdminBookmark(
 
 export async function deleteAdminBookmark(id: string) {
   return request<{ message: string }>(`/admin/bookmarks/${id}`, {
+    method: 'DELETE',
+  })
+}
+
+export async function getAdminThoughts(params: URLSearchParams) {
+  return request<AdminThoughtItem[]>(`/admin/thoughts?${params.toString()}`)
+}
+
+export async function createAdminThought(payload: {
+  content: string
+  images?: string[]
+  likeCount?: number
+  commentCount?: number
+}) {
+  return request<AdminThoughtItem>('/admin/thoughts', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+}
+
+export async function updateAdminThought(
+  id: string,
+  payload: {
+    content?: string
+    images?: string[]
+    likeCount?: number
+    commentCount?: number
+  }
+) {
+  return request<AdminThoughtItem>(`/admin/thoughts/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  })
+}
+
+export async function deleteAdminThought(id: string) {
+  return request<{ message: string }>(`/admin/thoughts/${id}`, {
     method: 'DELETE',
   })
 }

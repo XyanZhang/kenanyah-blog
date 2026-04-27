@@ -48,6 +48,21 @@ export const adminBookmarkQuerySchema = z.object({
   source: z.enum(['browser_extension', 'manual', 'api', 'all']).default('all'),
 })
 
+export const adminThoughtQuerySchema = z.object({
+  page: z.coerce.number().int().positive().default(1),
+  limit: z.coerce.number().int().positive().max(100).default(20),
+  search: z.string().max(100).optional(),
+})
+
+export const adminThoughtCreateSchema = z.object({
+  content: z.string().min(1).max(20000),
+  images: z.array(z.string().min(1)).max(20).optional(),
+  likeCount: z.number().int().min(0).optional(),
+  commentCount: z.number().int().min(0).optional(),
+})
+
+export const adminThoughtUpdateSchema = adminThoughtCreateSchema.partial()
+
 export type AdminLoginInput = z.infer<typeof adminLoginSchema>
 export type AdminPostQueryInput = z.infer<typeof adminPostQuerySchema>
 export type AdminPostUpdateInput = z.infer<typeof adminPostUpdateSchema>
@@ -55,3 +70,6 @@ export type AdminCommentQueryInput = z.infer<typeof adminCommentQuerySchema>
 export type AdminCommentModerationInput = z.infer<typeof adminCommentModerationSchema>
 export type AdminMediaQueryInput = z.infer<typeof adminMediaQuerySchema>
 export type AdminBookmarkQueryInput = z.infer<typeof adminBookmarkQuerySchema>
+export type AdminThoughtQueryInput = z.infer<typeof adminThoughtQuerySchema>
+export type AdminThoughtCreateInput = z.infer<typeof adminThoughtCreateSchema>
+export type AdminThoughtUpdateInput = z.infer<typeof adminThoughtUpdateSchema>

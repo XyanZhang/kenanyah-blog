@@ -94,6 +94,7 @@ export type {
   AdminTaxonomyItem,
   AdminMediaItem,
   AdminBookmarkItem,
+  AdminThoughtItem,
 } from './admin'
 
 // Dashboard types

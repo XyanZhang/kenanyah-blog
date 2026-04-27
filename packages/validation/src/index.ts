@@ -146,6 +146,9 @@ export {
   adminCommentModerationSchema,
   adminMediaQuerySchema,
   adminBookmarkQuerySchema,
+  adminThoughtQuerySchema,
+  adminThoughtCreateSchema,
+  adminThoughtUpdateSchema,
   type AdminLoginInput,
   type AdminPostQueryInput,
   type AdminPostUpdateInput,
@@ -153,4 +156,7 @@ export {
   type AdminCommentModerationInput,
   type AdminMediaQueryInput,
   type AdminBookmarkQueryInput,
+  type AdminThoughtQueryInput,
+  type AdminThoughtCreateInput,
+  type AdminThoughtUpdateInput,
 } from './admin'
