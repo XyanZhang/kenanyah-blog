@@ -144,3 +144,16 @@ export interface AdminMediaItem {
   updatedAt: string
   subdir: string
 }
+
+export interface AdminBookmarkItem {
+  id: string
+  title: string
+  url: string
+  notes: string | null
+  category: string | null
+  tags: string[]
+  source: string
+  favicon: string | null
+  createdAt: Date
+  updatedAt: Date
+}

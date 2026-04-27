@@ -6,6 +6,7 @@ import adminComments from './admin-comments'
 import adminCategories from './admin-categories'
 import adminTags from './admin-tags'
 import adminMedia from './admin-media'
+import adminBookmarks from './admin-bookmarks'
 
 const admin = new Hono()
 
@@ -16,5 +17,6 @@ admin.route('/comments', adminComments)
 admin.route('/categories', adminCategories)
 admin.route('/tags', adminTags)
 admin.route('/media', adminMedia)
+admin.route('/bookmarks', adminBookmarks)
 
 export default admin

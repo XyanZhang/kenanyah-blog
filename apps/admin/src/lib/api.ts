@@ -1,6 +1,7 @@
 import type {
   AdminCommentItem,
   AdminDashboardData,
+  AdminBookmarkItem,
   AdminMediaItem,
   AdminPostListItem,
   AdminTaxonomyItem,
@@ -145,5 +146,46 @@ export async function uploadAdminMedia(file: File) {
   return request<{ url: string }>('/admin/media/upload', {
     method: 'POST',
     body: form,
+  })
+}
+
+export async function getAdminBookmarks(params: URLSearchParams) {
+  return request<AdminBookmarkItem[]>(`/admin/bookmarks?${params.toString()}`)
+}
+
+export async function createAdminBookmark(payload: {
+  title: string
+  url: string
+  notes?: string
+  category?: string
+  tags?: string[]
+  favicon?: string
+}) {
+  return request<AdminBookmarkItem>('/admin/bookmarks', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+}
+
+export async function updateAdminBookmark(
+  id: string,
+  payload: {
+    title?: string
+    url?: string
+    notes?: string | null
+    category?: string | null
+    tags?: string[] | null
+    favicon?: string | null
+  }
+) {
+  return request<AdminBookmarkItem>(`/admin/bookmarks/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  })
+}
+
+export async function deleteAdminBookmark(id: string) {
+  return request<{ message: string }>(`/admin/bookmarks/${id}`, {
+    method: 'DELETE',
   })
 }

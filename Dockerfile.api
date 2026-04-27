@@ -4,8 +4,8 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# Build native dependencies used by nodejs-whisper during production image creation.
-RUN apk add --no-cache cmake make g++ git
+# Build native dependencies used by bcrypt and nodejs-whisper during production image creation.
+RUN apk add --no-cache python3 cmake make g++ git
 
 # Use a registry mirror in restricted networks (e.g. CN servers)
 ENV NPM_CONFIG_REGISTRY=https://registry.npmmirror.com

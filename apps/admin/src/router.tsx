@@ -13,6 +13,7 @@ import { PostsPage } from './pages/PostsPage'
 import { CommentsPage } from './pages/CommentsPage'
 import { TaxonomyPage } from './pages/TaxonomyPage'
 import { MediaPage } from './pages/MediaPage'
+import { BookmarksPage } from './pages/BookmarksPage'
 import { AdminShell } from './components/AdminShell'
 
 function RootLayout() {
@@ -97,6 +98,12 @@ const commentsRoute = createRoute({
   component: CommentsPage,
 })
 
+const bookmarksRoute = createRoute({
+  getParentRoute: () => protectedRoute,
+  path: '/bookmarks',
+  component: BookmarksPage,
+})
+
 const taxonomyRoute = createRoute({
   getParentRoute: () => protectedRoute,
   path: '/taxonomy',
@@ -115,6 +122,7 @@ const routeTree = rootRoute.addChildren([
     dashboardRoute,
     postsRoute,
     commentsRoute,
+    bookmarksRoute,
     taxonomyRoute,
     mediaRoute,
   ]),

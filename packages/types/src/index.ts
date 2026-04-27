@@ -93,6 +93,7 @@ export type {
   AdminCommentItem,
   AdminTaxonomyItem,
   AdminMediaItem,
+  AdminBookmarkItem,
 } from './admin'
 
 // Dashboard types

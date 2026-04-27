@@ -145,10 +145,12 @@ export {
   adminCommentQuerySchema,
   adminCommentModerationSchema,
   adminMediaQuerySchema,
+  adminBookmarkQuerySchema,
   type AdminLoginInput,
   type AdminPostQueryInput,
   type AdminPostUpdateInput,
   type AdminCommentQueryInput,
   type AdminCommentModerationInput,
   type AdminMediaQueryInput,
+  type AdminBookmarkQueryInput,
 } from './admin'

@@ -8,6 +8,7 @@ const items = [
   { to: '/', label: 'Dashboard' },
   { to: '/posts', label: 'Posts' },
   { to: '/comments', label: 'Comments' },
+  { to: '/bookmarks', label: 'Bookmarks' },
   { to: '/taxonomy', label: 'Taxonomy' },
   { to: '/media', label: 'Media' },
 ]

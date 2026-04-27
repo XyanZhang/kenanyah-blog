@@ -40,9 +40,18 @@ export const adminMediaQuerySchema = z.object({
   subdir: z.string().max(64).optional(),
 })
 
+export const adminBookmarkQuerySchema = z.object({
+  page: z.coerce.number().int().positive().default(1),
+  limit: z.coerce.number().int().positive().max(100).default(20),
+  search: z.string().max(100).optional(),
+  category: z.string().max(100).optional(),
+  source: z.enum(['browser_extension', 'manual', 'api', 'all']).default('all'),
+})
+
 export type AdminLoginInput = z.infer<typeof adminLoginSchema>
 export type AdminPostQueryInput = z.infer<typeof adminPostQuerySchema>
 export type AdminPostUpdateInput = z.infer<typeof adminPostUpdateSchema>
 export type AdminCommentQueryInput = z.infer<typeof adminCommentQuerySchema>
 export type AdminCommentModerationInput = z.infer<typeof adminCommentModerationSchema>
 export type AdminMediaQueryInput = z.infer<typeof adminMediaQuerySchema>
+export type AdminBookmarkQueryInput = z.infer<typeof adminBookmarkQuerySchema>
