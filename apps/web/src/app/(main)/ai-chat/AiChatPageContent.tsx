@@ -244,6 +244,8 @@ export default function AiChatPageContent() {
   const activeChatJobRef = useRef<ChatQueueItem | null>(null)
   const activeWorkflowAbortRef = useRef<AbortController | null>(null)
   const activeWorkflowJobRef = useRef<WorkflowQueueItem | null>(null)
+  const currentIdRef = useRef<string | null>(null)
+  const hasLoadedConversationsRef = useRef(false)
   const previousConversationIdRef = useRef<string | null>(null)
   const creatingConversationRef = useRef(false)
   const immediateMessageSubmitRef = useRef(false)
@@ -331,22 +333,28 @@ export default function AiChatPageContent() {
   }, [useKnowledgeBase])
 
   useEffect(() => {
+    currentIdRef.current = initialConversationId
     setCurrentId(initialConversationId)
   }, [initialConversationId])
+
+  useEffect(() => {
+    currentIdRef.current = currentId
+  }, [currentId])
 
   const refreshConversations = useCallback(async () => {
     const list = await listConversations()
     setConversations(list)
     setActiveConversation((prev) => {
-      if (!currentId) {
+      const activeId = currentIdRef.current
+      if (!activeId) {
         return prev
       }
 
-      const nextActiveConversation = list.find((conversation) => conversation.id === currentId)
+      const nextActiveConversation = list.find((conversation) => conversation.id === activeId)
       return nextActiveConversation ?? prev
     })
     return list
-  }, [currentId])
+  }, [])
 
   const isCurrentConversationOwner =
     Boolean(activeConversation?.userId) && activeConversation?.userId === user?.id
@@ -367,8 +375,12 @@ export default function AiChatPageContent() {
     }
 
     let cancelled = false
-    setLoadingConversations(true)
+    setLoadingConversations(!hasLoadedConversationsRef.current)
     refreshConversations()
+      .then(() => {
+        if (cancelled) return
+        hasLoadedConversationsRef.current = true
+      })
       .catch((err: unknown) => {
         if (cancelled) return
         if (err instanceof ChatApiError && err.status === 401) {
