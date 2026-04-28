@@ -222,6 +222,7 @@ export default function AiChatPageContent() {
   const [inputMode, setInputMode] = useState<ChatInputMode>('text')
   const [loadingConversations, setLoadingConversations] = useState(true)
   const [loadingMessages, setLoadingMessages] = useState(false)
+  const [creatingConversation, setCreatingConversation] = useState(false)
   const [sending, setSending] = useState(false)
   const [runningWorkflow, setRunningWorkflow] = useState(false)
   const [workflowFollowupMode, setWorkflowFollowupMode] = useState(false)
@@ -244,6 +245,26 @@ export default function AiChatPageContent() {
   const activeWorkflowAbortRef = useRef<AbortController | null>(null)
   const activeWorkflowJobRef = useRef<WorkflowQueueItem | null>(null)
   const previousConversationIdRef = useRef<string | null>(null)
+  const creatingConversationRef = useRef(false)
+  const immediateMessageSubmitRef = useRef(false)
+  const queuedChatSubmitRef = useRef(false)
+  const queuedWorkflowSubmitRef = useRef(false)
+
+  function setConversationCreationPending(pending: boolean) {
+    creatingConversationRef.current = pending
+    setCreatingConversation(pending)
+  }
+
+  function releaseSubmitLockAfterStateFlush(lockRef: { current: boolean }) {
+    if (typeof window === 'undefined') {
+      lockRef.current = false
+      return
+    }
+
+    window.setTimeout(() => {
+      lockRef.current = false
+    }, 0)
+  }
 
   const focusTextInput = useCallback(() => {
     if (typeof window === 'undefined') {
@@ -529,18 +550,28 @@ export default function AiChatPageContent() {
       return currentId
     }
 
+    if (creatingConversationRef.current) {
+      throw new Error('正在创建会话，请稍候')
+    }
+
     if (authChecked && !isAuthenticated) {
       throw new Error('请先登录后开始对话')
     }
 
-    const conversation = await createConversation()
-    setConversations((prev) => [conversation, ...prev])
-    setActiveConversation(conversation)
-    setCurrentId(conversation.id)
-    startTransition(() => {
-      router.push(buildConversationRoute(conversation.id) as Route)
-    })
-    return conversation.id
+    setConversationCreationPending(true)
+
+    try {
+      const conversation = await createConversation()
+      setConversations((prev) => [conversation, ...prev])
+      setActiveConversation(conversation)
+      setCurrentId(conversation.id)
+      startTransition(() => {
+        router.push(buildConversationRoute(conversation.id) as Route)
+      })
+      return conversation.id
+    } finally {
+      setConversationCreationPending(false)
+    }
   }
 
   function handleStartEditingConversation(conversationId: string, title: string) {
@@ -782,7 +813,14 @@ export default function AiChatPageContent() {
   }
 
   async function handleRetryAssistantMessage(messageId: string) {
-    if (!currentId || sending || runningWorkflow || chatQueue.length > 0 || workflowQueue.length > 0) {
+    if (
+      !currentId ||
+      immediateMessageSubmitRef.current ||
+      sending ||
+      runningWorkflow ||
+      chatQueue.length > 0 ||
+      workflowQueue.length > 0
+    ) {
       return
     }
 
@@ -796,6 +834,7 @@ export default function AiChatPageContent() {
     }
 
     const originalContent = targetMessage.content
+    immediateMessageSubmitRef.current = true
     setSending(true)
     setError(null)
     setMessages((prev) =>
@@ -916,14 +955,24 @@ export default function AiChatPageContent() {
       if (activeChatAbortRef.current === controller) {
         activeChatAbortRef.current = null
       }
+      immediateMessageSubmitRef.current = false
       setSending(false)
     }
   }
 
   async function handleSend() {
-    if (!input.trim() || sending || chatQueue.length > 0 || runningWorkflow || workflowQueue.length > 0) {
+    if (
+      !input.trim() ||
+      immediateMessageSubmitRef.current ||
+      creatingConversationRef.current ||
+      sending ||
+      chatQueue.length > 0 ||
+      runningWorkflow ||
+      workflowQueue.length > 0
+    ) {
       return
     }
+    immediateMessageSubmitRef.current = true
     try {
       const content = input.trim()
       const conversationId = await ensureConversationSelected()
@@ -932,6 +981,8 @@ export default function AiChatPageContent() {
       await executeChatJob(job)
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
+    } finally {
+      immediateMessageSubmitRef.current = false
     }
   }
 
@@ -939,16 +990,19 @@ export default function AiChatPageContent() {
     if (
       !currentId ||
       !input.trim() ||
+      queuedChatSubmitRef.current ||
       !sending ||
       runningWorkflow ||
       workflowQueue.length > 0
     ) {
       return
     }
+    queuedChatSubmitRef.current = true
     const content = input.trim()
     setInput('')
     const job = buildChatQueueItem(currentId, content, '已加入队列，等待当前回复结束…')
     setChatQueue((prev) => [...prev, job])
+    releaseSubmitLockAfterStateFlush(queuedChatSubmitRef)
   }
 
   function handleInterruptCurrentReply() {
@@ -1173,15 +1227,29 @@ export default function AiChatPageContent() {
     assistantContent: string,
     options?: { clearInput?: boolean }
   ) {
-    if (!content.trim() || sending || chatQueue.length > 0 || runningWorkflow || workflowQueue.length > 0) {
+    if (
+      !content.trim() ||
+      immediateMessageSubmitRef.current ||
+      creatingConversationRef.current ||
+      sending ||
+      chatQueue.length > 0 ||
+      runningWorkflow ||
+      workflowQueue.length > 0
+    ) {
       return
     }
-    const conversationId = await ensureConversationSelected()
-    if (options?.clearInput !== false) {
-      setInput('')
+    immediateMessageSubmitRef.current = true
+
+    try {
+      const conversationId = await ensureConversationSelected()
+      if (options?.clearInput !== false) {
+        setInput('')
+      }
+      const job = buildWorkflowQueueItem(conversationId, content.trim(), assistantContent)
+      await executeWorkflowJob(job)
+    } finally {
+      immediateMessageSubmitRef.current = false
     }
-    const job = buildWorkflowQueueItem(conversationId, content.trim(), assistantContent)
-    await executeWorkflowJob(job)
   }
 
   function queueWorkflowFromInput(
@@ -1189,7 +1257,8 @@ export default function AiChatPageContent() {
     assistantContent: string,
     options?: { clearInput?: boolean; prepend?: boolean }
   ) {
-    if (!currentId || !content.trim() || !runningWorkflow) return
+    if (!currentId || !content.trim() || queuedWorkflowSubmitRef.current || !runningWorkflow) return
+    queuedWorkflowSubmitRef.current = true
     if (options?.clearInput !== false) {
       setInput('')
     }
@@ -1197,6 +1266,7 @@ export default function AiChatPageContent() {
       queued: true,
     })
     setWorkflowQueue((prev) => (options?.prepend ? [job, ...prev] : [...prev, job]))
+    releaseSubmitLockAfterStateFlush(queuedWorkflowSubmitRef)
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
@@ -1254,6 +1324,8 @@ export default function AiChatPageContent() {
   async function sendChatOperationMessage(content: string) {
     if (
       !content.trim() ||
+      immediateMessageSubmitRef.current ||
+      creatingConversationRef.current ||
       sending ||
       chatQueue.length > 0 ||
       runningWorkflow ||
@@ -1262,9 +1334,15 @@ export default function AiChatPageContent() {
       return
     }
 
-    const conversationId = await ensureConversationSelected()
-    const job = buildChatQueueItem(conversationId, content.trim())
-    await executeChatJob(job)
+    immediateMessageSubmitRef.current = true
+
+    try {
+      const conversationId = await ensureConversationSelected()
+      const job = buildChatQueueItem(conversationId, content.trim())
+      await executeChatJob(job)
+    } finally {
+      immediateMessageSubmitRef.current = false
+    }
   }
 
   async function handleShareChange(nextShared: boolean) {
@@ -1512,14 +1590,15 @@ export default function AiChatPageContent() {
     return `文章已生成并保存为草稿。\n\n标题：${result.post.title}\n链接：[点击查看](${result.postUrl})`
   }
 
-  const hasPendingChatJobs = sending || chatQueue.length > 0
+  const hasPendingChatJobs = creatingConversation || sending || chatQueue.length > 0
   const hasPendingWorkflowJobs = runningWorkflow || workflowQueue.length > 0
   const cannotStartConversation = authChecked && !isAuthenticated
   const canUseWorkflowActions =
     Boolean(currentId) && !hasPendingChatJobs && !isReadonlySharedConversation
   const canUseChatActions =
-    Boolean(currentId) && !hasPendingWorkflowJobs && !isReadonlySharedConversation
-  const voiceInputDisabled = cannotStartConversation || isReadonlySharedConversation || sending || runningWorkflow
+    Boolean(currentId) && !hasPendingWorkflowJobs && !isReadonlySharedConversation && !creatingConversation
+  const voiceInputDisabled =
+    cannotStartConversation || isReadonlySharedConversation || creatingConversation || sending || runningWorkflow
   const voiceToggleDisabled = inputMode === 'voice' ? false : voiceInputDisabled
 
   const currentConversation = activeConversation
@@ -1532,6 +1611,30 @@ export default function AiChatPageContent() {
     !currentId && !currentConversation && messages.length === 0 && !showFullMessagesLoading
   const panelClass =
     'rounded-[1.5rem] border border-line-glass bg-surface-glass/88 shadow-[0_18px_48px_rgba(15,23,42,0.06)] backdrop-blur-lg'
+  let inputPlaceholder = '输入你的问题，按 Enter 发送，Shift+Enter 换行…'
+  if (sending) {
+    inputPlaceholder = '继续输入内容，按 Enter 加入队列，或点击中断并发送…'
+  }
+  if (workflowFollowupMode) {
+    inputPlaceholder = '补充生成要求，按 Enter 继续生成，Shift+Enter 换行…'
+  }
+  if (runningWorkflow) {
+    inputPlaceholder = '继续输入内容，按 Enter 加入队列…'
+  }
+  if (creatingConversation) {
+    inputPlaceholder = '正在创建会话…'
+  }
+
+  let sendButtonLabel = '发送'
+  if (sending) {
+    sendButtonLabel = '加入队列'
+  }
+  if (workflowFollowupMode) {
+    sendButtonLabel = '继续生成'
+  }
+  if (creatingConversation) {
+    sendButtonLabel = '创建中'
+  }
 
   return (
     <main
@@ -2197,15 +2300,7 @@ export default function AiChatPageContent() {
                     ref={inputRef}
                     className="hide-scrollbar max-h-32 w-full resize-none overflow-y-auto rounded-2xl border border-line-glass bg-surface-tertiary/40 px-3 py-3 text-sm leading-6 text-content-primary placeholder:text-content-tertiary focus:outline-none focus:ring-2 focus:ring-accent-primary/50"
                     rows={1}
-                    placeholder={
-                      runningWorkflow
-                        ? '继续输入内容，按 Enter 加入队列…'
-                        : workflowFollowupMode
-                          ? '补充生成要求，按 Enter 继续生成，Shift+Enter 换行…'
-                          : sending
-                            ? '继续输入内容，按 Enter 加入队列，或点击中断并发送…'
-                            : '输入你的问题，按 Enter 发送，Shift+Enter 换行…'
-                    }
+                    placeholder={inputPlaceholder}
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
                     onCompositionStart={() => {
@@ -2215,7 +2310,7 @@ export default function AiChatPageContent() {
                       isComposingRef.current = false
                     }}
                     onKeyDown={handleKeyDown}
-                    disabled={cannotStartConversation || isReadonlySharedConversation}
+                    disabled={cannotStartConversation || isReadonlySharedConversation || creatingConversation}
                   />
                 )}
               </div>
@@ -2290,14 +2385,19 @@ export default function AiChatPageContent() {
                   !input.trim() ||
                   isReadonlySharedConversation ||
                   cannotStartConversation ||
+                  creatingConversation ||
                   hasPendingWorkflowJobs ||
                   (!sending && chatQueue.length > 0)
                 }
                 className="ml-auto inline-flex h-12 shrink-0 items-center justify-center gap-2 rounded-2xl bg-accent-primary px-4 text-sm font-medium text-white shadow-md transition-colors disabled:cursor-not-allowed disabled:opacity-50 hover:bg-accent-primary/90"
               >
-                <Send className="h-4 w-4" />
+                {creatingConversation ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Send className="h-4 w-4" />
+                )}
                 <span className="hidden sm:inline">
-                  {workflowFollowupMode ? '继续生成' : sending ? '加入队列' : '发送'}
+                  {sendButtonLabel}
                 </span>
               </button>
             </div>
