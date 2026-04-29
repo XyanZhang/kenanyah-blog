@@ -139,6 +139,34 @@ posts.get('/published-dates', async (c) => {
   return c.json({ success: true, data: dates })
 })
 
+// Public aggregate stats for dashboard cards
+posts.get('/stats', async (c) => {
+  const [postStats, commentsCount] = await Promise.all([
+    prisma.post.aggregate({
+      where: { published: true },
+      _count: { _all: true },
+      _sum: { viewCount: true },
+    }),
+    prisma.comment.count({
+      where: {
+        approved: true,
+        post: {
+          published: true,
+        },
+      },
+    }),
+  ])
+
+  return c.json({
+    success: true,
+    data: {
+      posts: postStats._count._all,
+      views: postStats._sum.viewCount ?? 0,
+      comments: commentsCount,
+    },
+  })
+})
+
 // Get post by id (for edit page)
 posts.get('/by-id/:id', async (c) => {
   const { id } = c.req.param()

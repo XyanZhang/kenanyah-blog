@@ -1,56 +1,73 @@
 'use client'
 
+import { useCallback, useEffect, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { format } from 'date-fns'
 import { zhCN } from 'date-fns/locale'
 import { DashboardCard, RandomPostsCardConfig } from '@blog/types'
 import { Calendar, Shuffle } from 'lucide-react'
+import { getApiErrorMessage } from '@/lib/api-error'
+import { getRecentDashboardPosts, type DashboardPostSummary } from '@/lib/dashboard-content-api'
+import { buildDynamicImageUrl, isStaticsSource } from '@/lib/image-service'
+import { CardLoadingState } from './CardLoadingState'
 
 interface RandomPostsCardProps {
   card: DashboardCard
 }
 
-interface PostItem {
-  id: string
-  title: string
-  slug: string
-  excerpt: string
-  coverImage: string
-  publishedAt: Date
+function shufflePosts(posts: DashboardPostSummary[]): DashboardPostSummary[] {
+  return [...posts].sort(() => Math.random() - 0.5)
+}
+
+function resolveCardImage(src: string): string {
+  if (!src) return src
+  if (!isStaticsSource(src)) return src
+  return buildDynamicImageUrl(src, {
+    width: 160,
+    height: 160,
+    quality: 70,
+    fit: 'cover',
+    format: 'webp',
+  })
 }
 
 export function RandomPostsCard({ card }: RandomPostsCardProps) {
   const config = card.config as RandomPostsCardConfig
+  const [sourcePosts, setSourcePosts] = useState<DashboardPostSummary[]>([])
+  const [displayPosts, setDisplayPosts] = useState<DashboardPostSummary[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-  const posts: PostItem[] = [
-    {
-      id: '1',
-      title: '构建可扩展的前端架构',
-      slug: 'scalable-frontend-architecture',
-      excerpt: '从项目结构到状态管理，分享构建大型前端应用的实战经验和最佳实践。',
-      coverImage: '/images/posts/architecture.jpg',
-      publishedAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
-    },
-    {
-      id: '2',
-      title: 'CSS Container Queries 实战',
-      slug: 'css-container-queries',
-      excerpt: '了解 CSS Container Queries 如何改变响应式设计的方式，让组件真正实现自适应。',
-      coverImage: '/images/posts/css.jpg',
-      publishedAt: new Date(Date.now() - 45 * 24 * 60 * 60 * 1000),
-    },
-    {
-      id: '3',
-      title: 'Node.js 性能优化指南',
-      slug: 'nodejs-performance',
-      excerpt: '从内存管理到异步优化，全面提升 Node.js 应用的性能表现。',
-      coverImage: '/images/posts/nodejs.jpg',
-      publishedAt: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000),
-    },
-  ]
+  const refreshRandomPosts = useCallback(() => {
+    setDisplayPosts(shufflePosts(sourcePosts).slice(0, config.limit))
+  }, [config.limit, sourcePosts])
 
-  const displayPosts = posts.slice(0, config.limit)
+  useEffect(() => {
+    let cancelled = false
+    setLoading(true)
+    setError(null)
+
+    getRecentDashboardPosts(Math.max(config.limit * 4, 12))
+      .then((posts) => {
+        if (cancelled) return
+        setSourcePosts(posts)
+        setDisplayPosts(shufflePosts(posts).slice(0, config.limit))
+      })
+      .catch((err) => {
+        if (cancelled) return
+        setError(getApiErrorMessage(err))
+        setSourcePosts([])
+        setDisplayPosts([])
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [config.limit])
 
   return (
     <div className="flex h-full flex-col">
@@ -60,6 +77,7 @@ export function RandomPostsCard({ card }: RandomPostsCardProps) {
           className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs text-content-muted backdrop-blur-sm transition-colors hover:bg-surface-glass/60 hover:text-accent-primary"
           onClick={(e) => {
             e.preventDefault()
+            refreshRandomPosts()
           }}
         >
           <Shuffle className="h-3 w-3" />
@@ -68,7 +86,13 @@ export function RandomPostsCard({ card }: RandomPostsCardProps) {
       </div>
 
       <div className="flex-1 space-y-3 overflow-auto">
-        {displayPosts.map((post) => (
+        {loading ? (
+          <CardLoadingState />
+        ) : error ? (
+          <p className="text-sm text-red-500">{error}</p>
+        ) : displayPosts.length === 0 ? (
+          <p className="text-sm text-content-tertiary">暂无文章</p>
+        ) : displayPosts.map((post) => (
           <Link
             key={post.id}
             href={`/posts/${post.slug}` as any}
@@ -76,15 +100,17 @@ export function RandomPostsCard({ card }: RandomPostsCardProps) {
           >
             {config.showImage && (
               <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-lg bg-gradient-to-br from-accent-tertiary-light to-accent-primary-light">
-                <Image
-                  src={post.coverImage}
-                  alt={post.title}
-                  fill
-                  className="object-cover transition-transform group-hover:scale-105"
-                  onError={(e) => {
-                    e.currentTarget.style.display = 'none'
-                  }}
-                />
+                {post.coverImage ? (
+                  <Image
+                    src={resolveCardImage(post.coverImage)}
+                    alt={post.title}
+                    fill
+                    className="object-cover transition-transform group-hover:scale-105"
+                    onError={(e) => {
+                      e.currentTarget.style.display = 'none'
+                    }}
+                  />
+                ) : null}
               </div>
             )}
 

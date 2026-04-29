@@ -1,9 +1,13 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { formatDistanceToNow } from 'date-fns'
 import { DashboardCard, RecentPostsCardConfig } from '@blog/types'
 import { Calendar } from 'lucide-react'
+import { getApiErrorMessage } from '@/lib/api-error'
+import { getRecentDashboardPosts, type DashboardPostSummary } from '@/lib/dashboard-content-api'
+import { CardLoadingState } from './CardLoadingState'
 
 interface RecentPostsCardProps {
   card: DashboardCard
@@ -11,54 +15,61 @@ interface RecentPostsCardProps {
 
 export function RecentPostsCard({ card }: RecentPostsCardProps) {
   const config = card.config as RecentPostsCardConfig
+  const [posts, setPosts] = useState<DashboardPostSummary[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-  // Mock data - replace with actual API data
-  const posts = [
-    {
-      id: '1',
-      title: 'Getting Started with Next.js 15',
-      slug: 'getting-started-nextjs-15',
-      excerpt: 'Learn how to build modern web applications with the latest version of Next.js.',
-      publishedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
-    },
-    {
-      id: '2',
-      title: 'TypeScript Best Practices',
-      slug: 'typescript-best-practices',
-      excerpt: 'Discover essential TypeScript patterns and practices for better code quality.',
-      publishedAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
-    },
-    {
-      id: '3',
-      title: 'Building a Dashboard with React',
-      slug: 'building-dashboard-react',
-      excerpt: 'Step-by-step guide to creating an interactive dashboard component.',
-      publishedAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
-    },
-    {
-      id: '4',
-      title: 'Understanding Zustand State Management',
-      slug: 'understanding-zustand',
-      excerpt: 'A comprehensive guide to using Zustand for state management in React.',
-      publishedAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000),
-    },
-    {
-      id: '5',
-      title: 'Framer Motion Animation Guide',
-      slug: 'framer-motion-guide',
-      excerpt: 'Create beautiful animations in React with Framer Motion.',
-      publishedAt: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000),
-    },
-  ]
+  useEffect(() => {
+    let cancelled = false
+    setLoading(true)
+    setError(null)
+
+    getRecentDashboardPosts(config.limit)
+      .then((items) => {
+        if (!cancelled) setPosts(items)
+      })
+      .catch((err) => {
+        if (cancelled) return
+        setError(getApiErrorMessage(err))
+        setPosts([])
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [config.limit])
 
   const displayPosts = posts.slice(0, config.limit)
+
+  if (loading) {
+    return (
+      <div className="flex h-full flex-col">
+        <h3 className="mb-4 text-lg font-semibold text-content-primary">Recent Posts</h3>
+        <CardLoadingState />
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="flex h-full flex-col">
+        <h3 className="mb-4 text-lg font-semibold text-content-primary">Recent Posts</h3>
+        <p className="text-sm text-red-500">{error}</p>
+      </div>
+    )
+  }
 
   return (
     <div className="flex h-full flex-col">
       <h3 className="mb-4 text-lg font-semibold text-content-primary">Recent Posts</h3>
 
       <div className="flex-1 space-y-3 overflow-auto">
-        {displayPosts.map((post) => (
+        {displayPosts.length === 0 ? (
+          <p className="text-sm text-content-tertiary">暂无文章</p>
+        ) : displayPosts.map((post) => (
           <Link
             key={post.id}
             href={`/posts/${post.slug}` as any}

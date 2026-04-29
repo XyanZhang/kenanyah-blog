@@ -1,7 +1,11 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import { FileText, Eye, MessageCircle } from 'lucide-react'
 import { DashboardCard, StatsCardConfig } from '@blog/types'
+import { getDashboardStats, type DashboardStats } from '@/lib/dashboard-content-api'
+import { getApiErrorMessage } from '@/lib/api-error'
+import { CardLoadingState } from './CardLoadingState'
 
 interface StatsCardProps {
   card: DashboardCard
@@ -9,12 +13,48 @@ interface StatsCardProps {
 
 export function StatsCard({ card }: StatsCardProps) {
   const config = card.config as StatsCardConfig
+  const [stats, setStats] = useState<DashboardStats | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-  // Mock data - replace with actual API data
-  const stats = {
-    posts: 42,
-    views: 12543,
-    comments: 387,
+  useEffect(() => {
+    let cancelled = false
+    setLoading(true)
+    setError(null)
+
+    getDashboardStats()
+      .then((nextStats) => {
+        if (!cancelled) setStats(nextStats)
+      })
+      .catch((err) => {
+        if (cancelled) return
+        setError(getApiErrorMessage(err))
+        setStats(null)
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  if (loading) {
+    return (
+      <div className="flex h-full flex-col justify-center">
+        <CardLoadingState />
+      </div>
+    )
+  }
+
+  if (error || !stats) {
+    return (
+      <div className="flex h-full flex-col justify-center">
+        <h3 className="text-center text-lg font-semibold text-content-primary">Statistics</h3>
+        <p className="mt-3 text-center text-sm text-red-500">{error ?? '统计加载失败'}</p>
+      </div>
+    )
   }
 
   const metricConfig = {

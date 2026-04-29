@@ -1,7 +1,11 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { DashboardCard, CategoriesCardConfig } from '@blog/types'
+import { getApiErrorMessage } from '@/lib/api-error'
+import { getDashboardTaxonomyItems, type DashboardTaxonomyItem } from '@/lib/dashboard-content-api'
+import { CardLoadingState } from './CardLoadingState'
 
 interface CategoriesCardProps {
   card: DashboardCard
@@ -9,29 +13,35 @@ interface CategoriesCardProps {
 
 export function CategoriesCard({ card }: CategoriesCardProps) {
   const config = card.config as CategoriesCardConfig
+  const [items, setItems] = useState<DashboardTaxonomyItem[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-  // Mock data - replace with actual API data
-  const categories = [
-    { id: '1', name: 'Technology', slug: 'technology', count: 15 },
-    { id: '2', name: 'Design', slug: 'design', count: 8 },
-    { id: '3', name: 'Development', slug: 'development', count: 12 },
-    { id: '4', name: 'Tutorial', slug: 'tutorial', count: 6 },
-    { id: '5', name: 'News', slug: 'news', count: 4 },
-  ]
+  useEffect(() => {
+    let cancelled = false
+    setLoading(true)
+    setError(null)
 
-  const tags = [
-    { id: '1', name: 'React', slug: 'react', count: 10 },
-    { id: '2', name: 'TypeScript', slug: 'typescript', count: 8 },
-    { id: '3', name: 'Next.js', slug: 'nextjs', count: 7 },
-    { id: '4', name: 'CSS', slug: 'css', count: 5 },
-    { id: '5', name: 'JavaScript', slug: 'javascript', count: 12 },
-    { id: '6', name: 'Node.js', slug: 'nodejs', count: 4 },
-    { id: '7', name: 'API', slug: 'api', count: 3 },
-  ]
+    getDashboardTaxonomyItems(config.type)
+      .then((nextItems) => {
+        if (!cancelled) setItems(nextItems)
+      })
+      .catch((err) => {
+        if (cancelled) return
+        setError(getApiErrorMessage(err))
+        setItems([])
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
 
-  const items = config.type === 'categories' ? categories : tags
+    return () => {
+      cancelled = true
+    }
+  }, [config.type])
+
   const displayItems = items.slice(0, config.limit)
-  const maxCount = Math.max(...items.map((item) => item.count))
+  const maxCount = Math.max(1, ...items.map((item) => item.count))
 
   const getTagSize = (count: number) => {
     const ratio = count / maxCount
@@ -46,7 +56,17 @@ export function CategoriesCard({ card }: CategoriesCardProps) {
         {config.type === 'categories' ? 'Categories' : 'Tags'}
       </h3>
 
-      {config.type === 'categories' ? (
+      {loading ? (
+        <div className="flex-1">
+          <CardLoadingState />
+        </div>
+      ) : error ? (
+        <p className="text-sm text-red-500">{error}</p>
+      ) : displayItems.length === 0 ? (
+        <p className="text-sm text-content-tertiary">
+          暂无{config.type === 'categories' ? '分类' : '标签'}
+        </p>
+      ) : config.type === 'categories' ? (
         <div className="flex-1 space-y-2 overflow-auto">
           {displayItems.map((item) => (
             <Link
