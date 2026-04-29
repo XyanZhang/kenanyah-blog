@@ -94,6 +94,49 @@ test('tick updates state, appends journal, and rewrites handoff', () => {
   assert.match(handoff, /Wire Codex skill/)
 })
 
+test('done marks a matching backlog item complete and appends journal', () => {
+  const root = makeTempRoot()
+  runCli(['init', '--name', 'Project Optimization', '--goal', 'Optimize'], root)
+
+  const result = runCli(
+    ['done', '--name', 'Project Optimization', '--item', 'Inspect current code'],
+    root
+  )
+
+  assert.equal(result.status, 0, result.stderr)
+  assert.match(result.stdout, /Marked backlog item done: Inspect current code and constraints/)
+
+  const dir = loopDir(root)
+  const backlog = fs.readFileSync(path.join(dir, 'backlog.md'), 'utf8')
+  assert.match(backlog, /- \[ \] Confirm scope/)
+  assert.match(backlog, /- \[x\] Inspect current code and constraints/)
+
+  const journal = fs.readFileSync(path.join(dir, 'journal.md'), 'utf8')
+  assert.match(journal, /Backlog done: Inspect current code and constraints/)
+})
+
+test('done can mark the nth unchecked backlog item complete', () => {
+  const root = makeTempRoot()
+  runCli(['init', '--name', 'Project Optimization', '--goal', 'Optimize'], root)
+
+  const result = runCli(['done', '--name', 'Project Optimization', '--index', '2'], root)
+
+  assert.equal(result.status, 0, result.stderr)
+  const backlog = fs.readFileSync(path.join(loopDir(root), 'backlog.md'), 'utf8')
+  assert.match(backlog, /- \[ \] Confirm scope/)
+  assert.match(backlog, /- \[x\] Inspect current code and constraints/)
+})
+
+test('done reports a useful error when the target is missing', () => {
+  const root = makeTempRoot()
+  runCli(['init', '--name', 'Project Optimization', '--goal', 'Optimize'], root)
+
+  const result = runCli(['done', '--name', 'Project Optimization', '--item', 'Missing item'], root)
+
+  assert.notEqual(result.status, 0)
+  assert.match(result.stderr, /Could not find unchecked backlog item matching "Missing item"/)
+})
+
 test('status, list, next, and handoff report existing loops', () => {
   const root = makeTempRoot()
   runCli(['init', '--name', 'Project Optimization', '--goal', 'Optimize'], root)

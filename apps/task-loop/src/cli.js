@@ -100,6 +100,55 @@ function findFirstBacklogItem(backlogPath) {
   return line ? line.replace(/^\s*-\s+\[\s\]\s+/, '').trim() : null
 }
 
+function parsePositiveIndex(value) {
+  const index = Number.parseInt(String(value), 10)
+  if (!Number.isInteger(index) || index < 1) {
+    throw new Error('--index must be a positive number.')
+  }
+  return index
+}
+
+function markBacklogItemDone(backlogPath, { item, index }) {
+  if (!fs.existsSync(backlogPath)) {
+    throw new Error(`Backlog not found: ${backlogPath}`)
+  }
+
+  const content = fs.readFileSync(backlogPath, 'utf8')
+  const lines = content.split(/\r?\n/)
+  const uncheckedLinePattern = /^(\s*-\s+)\[\s\](\s+.*)$/
+  let uncheckedCount = 0
+  let matchedLineIndex = -1
+
+  for (let lineIndex = 0; lineIndex < lines.length; lineIndex += 1) {
+    const line = lines[lineIndex]
+    const match = line.match(uncheckedLinePattern)
+    if (!match) continue
+
+    uncheckedCount += 1
+    const text = match[2].trim()
+    const matchesIndex = index ? uncheckedCount === index : false
+    const matchesItem = item ? text.toLowerCase().includes(item.toLowerCase()) : false
+
+    if (matchesIndex || matchesItem) {
+      matchedLineIndex = lineIndex
+      break
+    }
+  }
+
+  if (matchedLineIndex === -1) {
+    const target = index ? `unchecked backlog item #${index}` : `unchecked backlog item matching "${item}"`
+    throw new Error(`Could not find ${target}.`)
+  }
+
+  const originalLine = lines[matchedLineIndex]
+  const markedLine = originalLine.replace(uncheckedLinePattern, '$1[x]$2')
+  const completedItem = markedLine.replace(/^\s*-\s+\[x\]\s+/, '').trim()
+  lines[matchedLineIndex] = markedLine
+  fs.writeFileSync(backlogPath, lines.join('\n'), 'utf8')
+
+  return completedItem
+}
+
 function getLoopSummaries(root) {
   const loopRoot = getLoopRoot(root)
   if (!fs.existsSync(loopRoot)) return []
@@ -335,12 +384,43 @@ function commandHandoff(args) {
   process.stdout.write(fs.readFileSync(handoffPath, 'utf8'))
 }
 
+function commandDone(args) {
+  const name = requireArg(args, 'name')
+  const item = args.item && args.item !== true ? String(args.item) : ''
+  const index = args.index && args.index !== true ? parsePositiveIndex(args.index) : null
+  if (!item && !index) {
+    throw new Error('Provide either --item <text> or --index <number>.')
+  }
+  if (item && index) {
+    throw new Error('Use only one target: --item <text> or --index <number>.')
+  }
+
+  const root = resolveRoot(args)
+  const { loopDir } = getLoopDir(root, name)
+  ensureLoopExists(loopDir)
+
+  const completedItem = markBacklogItemDone(path.join(loopDir, 'backlog.md'), { item, index })
+  const now = new Date().toISOString()
+  fs.appendFileSync(
+    path.join(loopDir, 'journal.md'),
+    `
+## ${now}
+
+- Backlog done: ${completedItem}
+`,
+    'utf8'
+  )
+
+  console.log(`Marked backlog item done: ${completedItem}`)
+}
+
 function printHelp() {
   console.log(`task-loop
 
 Usage:
   task-loop init --name <name> --goal <goal> [--owner codex] [--force] [--root <path>]
   task-loop tick --name <name> --summary <text> --next <text> [--status active|blocked|done] [--root <path>]
+  task-loop done --name <name> (--item <text> | --index <number>) [--root <path>]
   task-loop status [--name <name>] [--root <path>]
   task-loop next --name <name> [--root <path>]
   task-loop handoff --name <name> [--root <path>]
@@ -357,6 +437,9 @@ function main(argv = process.argv.slice(2)) {
       break
     case 'tick':
       commandTick(args)
+      break
+    case 'done':
+      commandDone(args)
       break
     case 'status':
       commandStatus(args)
@@ -393,6 +476,7 @@ if (require.main === module) {
 module.exports = {
   findFirstBacklogItem,
   main,
+  markBacklogItemDone,
   parseArgs,
   slugify,
 }
