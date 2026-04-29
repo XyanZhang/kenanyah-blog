@@ -28,6 +28,7 @@ import {
   createConversation,
   deleteConversation,
   getConversation,
+  streamEditAndResendUserMessage,
   streamRetryChatMessage,
   streamChatMessage,
   streamBlogWorkflow,
@@ -228,6 +229,7 @@ export default function AiChatPageContent() {
   const [workflowFollowupMode, setWorkflowFollowupMode] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [editingId, setEditingId] = useState<string | null>(null)
+  const [editResendMessageId, setEditResendMessageId] = useState<string | null>(null)
   const [editingTitle, setEditingTitle] = useState('')
   const [useKnowledgeBase, setUseKnowledgeBase] = useState(false)
   const [followupDrafts, setFollowupDrafts] = useState<Record<string, Record<string, FollowupAnswerDraft>>>({})
@@ -339,6 +341,7 @@ export default function AiChatPageContent() {
 
   useEffect(() => {
     currentIdRef.current = currentId
+    setEditResendMessageId(null)
   }, [currentId])
 
   const refreshConversations = useCallback(async () => {
@@ -354,6 +357,22 @@ export default function AiChatPageContent() {
       return nextActiveConversation ?? prev
     })
     return list
+  }, [])
+
+  const refreshCurrentConversationMessages = useCallback(async () => {
+    const activeId = currentIdRef.current
+    if (!activeId) return
+
+    const detail = await getConversation(activeId)
+    if (currentIdRef.current !== activeId) return
+
+    setActiveConversation(detail.conversation)
+    const loaded = detail.messages as UiMessage[]
+    setMessages(loaded)
+    const lastAssistant = [...loaded].reverse().find((message) => message.role === 'assistant')
+    setWorkflowFollowupMode(
+      lastAssistant ? isWorkflowFollowupMessage(lastAssistant.content || '') : false
+    )
   }, [])
 
   const isCurrentConversationOwner =
@@ -809,9 +828,12 @@ export default function AiChatPageContent() {
       if (isAbortError(err)) {
         markChatJobInterrupted(job)
         refreshConversations().catch(() => undefined)
+        refreshCurrentConversationMessages().catch(() => undefined)
       } else {
         setError(err instanceof Error ? err.message : String(err))
         removeChatJob(job)
+        refreshConversations().catch(() => undefined)
+        refreshCurrentConversationMessages().catch(() => undefined)
       }
     } finally {
       if (activeChatAbortRef.current === controller) {
@@ -972,7 +994,244 @@ export default function AiChatPageContent() {
     }
   }
 
+  function getEditResendCandidate(
+    messageId: string,
+    sourceMessages: UiMessage[] = messages
+  ): { userMessage: UiMessage; userIndex: number; assistantMessage: UiMessage | null } | null {
+    const userIndex = sourceMessages.findIndex((message) => message.id === messageId)
+    const userMessage = sourceMessages[userIndex]
+
+    if (
+      userIndex < 0 ||
+      !userMessage ||
+      userMessage.role !== 'user' ||
+      userMessage.pending ||
+      userMessage.queued ||
+      isReadonlySharedConversation
+    ) {
+      return null
+    }
+
+    const nextMessage = sourceMessages[userIndex + 1] ?? null
+    const isLastUserMessage = userIndex === sourceMessages.length - 1
+    const hasInterruptedAssistantReply =
+      nextMessage?.role === 'assistant' &&
+      userIndex + 1 === sourceMessages.length - 1 &&
+      (nextMessage.interrupted === true || !nextMessage.content.trim())
+
+    if (!isLastUserMessage && !hasInterruptedAssistantReply) {
+      return null
+    }
+
+    return {
+      userMessage,
+      userIndex,
+      assistantMessage: nextMessage?.role === 'assistant' ? nextMessage : null,
+    }
+  }
+
+  function cancelEditResend() {
+    setEditResendMessageId(null)
+    setInput('')
+    switchToTextInput()
+  }
+
+  async function handleEditResendUserMessage(messageId: string) {
+    if (
+      !currentId ||
+      !input.trim() ||
+      immediateMessageSubmitRef.current ||
+      creatingConversationRef.current ||
+      sending ||
+      chatQueue.length > 0 ||
+      runningWorkflow ||
+      workflowQueue.length > 0
+    ) {
+      return
+    }
+
+    const candidate = getEditResendCandidate(messageId)
+    if (!candidate) {
+      setEditResendMessageId(null)
+      return
+    }
+
+    const conversationId = currentId
+    const content = input.trim()
+    const previousMessages = messages
+    const assistantMsgId = candidate.assistantMessage?.id ?? `local-edit-resend-assistant-${Date.now()}`
+    immediateMessageSubmitRef.current = true
+    setSending(true)
+    setError(null)
+    setEditResendMessageId(null)
+    setInput('')
+    setMessages((prev) => {
+      const currentCandidate = getEditResendCandidate(messageId, prev)
+      if (!currentCandidate) return prev
+
+      const nextMessages = prev.slice(0, currentCandidate.userIndex + 1).map((message) =>
+        message.id === messageId
+          ? {
+              ...message,
+              content,
+              pending: true,
+              queued: false,
+            }
+          : message
+      )
+
+      nextMessages.push({
+        id: assistantMsgId,
+        conversationId,
+        role: 'assistant',
+        content: '',
+        createdAt: new Date().toISOString(),
+        pending: true,
+        queued: false,
+        interrupted: false,
+        progress: null,
+      })
+
+      return nextMessages
+    })
+
+    const controller = new AbortController()
+    activeChatAbortRef.current = controller
+    let receivedContent = false
+    let finalAssistantContent = ''
+
+    try {
+      await streamEditAndResendUserMessage(
+        conversationId,
+        messageId,
+        content,
+        (chunk) => {
+          const isFirstChunk = !receivedContent
+          receivedContent = true
+          finalAssistantContent = isFirstChunk ? chunk : finalAssistantContent + chunk
+          setMessages((prev) =>
+            prev.map((message) =>
+              message.id === assistantMsgId
+                ? {
+                    ...message,
+                    progress: {
+                      mode: 'chat',
+                      status: 'responding',
+                      label: '我正在重新回复你',
+                    },
+                    content: isFirstChunk ? chunk : (message.content ?? '') + chunk,
+                  }
+                : message.id === messageId
+                  ? { ...message, pending: true, queued: false }
+                  : message
+            )
+          )
+        },
+        (err) => {
+          setError(err)
+        },
+        {
+          useKnowledgeBase,
+          signal: controller.signal,
+          onEvent: (event) => {
+            const progress = toChatProgressState(event)
+            if (!progress || receivedContent) {
+              return
+            }
+
+            setMessages((prev) =>
+              prev.map((message) =>
+                message.id === assistantMsgId
+                  ? { ...message, progress }
+                  : message
+              )
+            )
+          },
+        }
+      )
+
+      if (!finalAssistantContent.trim()) {
+        finalAssistantContent = '我重新尝试了一次，但这次没有生成可展示内容。你可以补充更多细节后再试。'
+      }
+
+      setMessages((prev) =>
+        prev.map((message) => {
+          if (message.id === messageId) {
+            return {
+              ...message,
+              content,
+              pending: false,
+              queued: false,
+            }
+          }
+
+          if (message.id === assistantMsgId) {
+            return {
+              ...message,
+              content: finalAssistantContent,
+              pending: false,
+              queued: false,
+              interrupted: false,
+              progress: null,
+            }
+          }
+
+          return message
+        })
+      )
+      setWorkflowFollowupMode(isWorkflowFollowupMessage(finalAssistantContent))
+      refreshConversations().catch(() => undefined)
+      refreshCurrentConversationMessages().catch(() => undefined)
+    } catch (err) {
+      if (isAbortError(err)) {
+        setMessages((prev) =>
+          prev.map((message) => {
+            if (message.id === messageId) {
+              return {
+                ...message,
+                pending: false,
+                queued: false,
+              }
+            }
+
+            if (message.id === assistantMsgId) {
+              const interruptedContent = message.content.trim()
+                ? `${message.content.trim()}\n\n[本次回答已中断]`
+                : '本次回答已中断。'
+              return {
+                ...message,
+                content: interruptedContent,
+                pending: false,
+                queued: false,
+                interrupted: true,
+                progress: null,
+              }
+            }
+
+            return message
+          })
+        )
+        refreshConversations().catch(() => undefined)
+        refreshCurrentConversationMessages().catch(() => undefined)
+      } else {
+        setError(err instanceof Error ? err.message : String(err))
+        setMessages(previousMessages)
+      }
+    } finally {
+      if (activeChatAbortRef.current === controller) {
+        activeChatAbortRef.current = null
+      }
+      immediateMessageSubmitRef.current = false
+      setSending(false)
+    }
+  }
+
   async function handleSend() {
+    if (editResendMessageId) {
+      await handleEditResendUserMessage(editResendMessageId)
+      return
+    }
+
     if (
       !input.trim() ||
       immediateMessageSubmitRef.current ||
@@ -1462,6 +1721,7 @@ export default function AiChatPageContent() {
       return
     }
 
+    setEditResendMessageId(getEditResendCandidate(messageId) ? messageId : null)
     setInput(targetMessage.content)
     switchToTextInput()
     window.requestAnimationFrame(() => {
@@ -1636,6 +1896,9 @@ export default function AiChatPageContent() {
   if (creatingConversation) {
     inputPlaceholder = '正在创建会话…'
   }
+  if (editResendMessageId) {
+    inputPlaceholder = '修改这条问题，按 Enter 编辑重发…'
+  }
 
   let sendButtonLabel = '发送'
   if (sending) {
@@ -1646,6 +1909,9 @@ export default function AiChatPageContent() {
   }
   if (creatingConversation) {
     sendButtonLabel = '创建中'
+  }
+  if (editResendMessageId) {
+    sendButtonLabel = '重发'
   }
 
   return (
@@ -1842,7 +2108,12 @@ export default function AiChatPageContent() {
                       !sending &&
                       !runningWorkflow
                     const canEditMessage =
-                      msg.role === 'user' && !msg.pending && !isReadonlySharedConversation
+                      msg.role === 'user' &&
+                      !msg.pending &&
+                      !isReadonlySharedConversation &&
+                      !sending &&
+                      !runningWorkflow
+                    const canEditResendMessage = Boolean(getEditResendCandidate(msg.id))
                     const canRetryMessage =
                       msg.role === 'assistant' &&
                       isLatestResolvedAssistantMessage &&
@@ -1874,8 +2145,8 @@ export default function AiChatPageContent() {
                                     handleEditUserMessage(msg.id)
                                   }}
                                   className="inline-flex h-6 w-6 items-center justify-center rounded-md bg-transparent text-content-tertiary transition-colors hover:text-content-primary"
-                                  aria-label="编辑消息"
-                                  title="编辑消息"
+                                  aria-label={canEditResendMessage ? '编辑重发' : '编辑消息'}
+                                  title={canEditResendMessage ? '编辑重发' : '编辑消息'}
                                 >
                                   <Pencil className="h-3 w-3" />
                                 </button>
@@ -2298,6 +2569,20 @@ export default function AiChatPageContent() {
               <p className="text-sm text-red-500" role="alert">
                 {error}
               </p>
+            )}
+            {editResendMessageId && (
+              <div className="flex items-center justify-between gap-3 rounded-2xl border border-ui-warning/25 bg-ui-warning-light px-3 py-2 text-xs text-ui-warning-text">
+                <span>正在编辑上一条未完成的问题，发送后会重新生成回复。</span>
+                <button
+                  type="button"
+                  onClick={cancelEditResend}
+                  className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-ui-warning-text transition-colors hover:bg-ui-warning/12"
+                  aria-label="取消编辑重发"
+                  title="取消编辑重发"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
             )}
             <div className="flex w-full min-w-0 items-end gap-2.5">
               <div className="min-w-0 flex-1">

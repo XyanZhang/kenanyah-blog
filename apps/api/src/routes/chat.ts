@@ -545,6 +545,159 @@ chat.post('/conversations/:id/messages/stream', async (c) => {
   })
 })
 
+chat.post('/conversations/:id/messages/:messageId/edit-resend/stream', async (c) => {
+  const user = getAuthenticatedUser(c)
+  if (!user) {
+    return c.json({ success: false, error: '请先登录后编辑重发消息' }, 401)
+  }
+
+  const { id, messageId } = c.req.param()
+  const body = await c.req.json().catch(() => ({} as any))
+  const content = typeof body.content === 'string' ? body.content.trim() : ''
+  const useKnowledgeBase = body.useKnowledgeBase === true
+
+  if (!content) {
+    return c.json({ success: false, error: '消息内容不能为空' }, 400)
+  }
+
+  if (content.length > MAX_MESSAGE_LEN) {
+    return c.json(
+      { success: false, error: `消息过长，请控制在 ${MAX_MESSAGE_LEN} 字以内` },
+      400
+    )
+  }
+
+  const conversation = await getConversationById(id)
+
+  if (!conversation) {
+    return c.json({ success: false, error: '会话不存在' }, 404)
+  }
+
+  if (!canWriteConversation(conversation, user.userId)) {
+    return c.json({ success: false, error: '你无权在这个会话中编辑重发' }, 403)
+  }
+
+  const visibleMessages = await getVisibleConversationMessages(id)
+  const userMessageIndex = visibleMessages.findIndex((message) => message.id === messageId)
+
+  if (userMessageIndex < 0) {
+    return c.json({ success: false, error: '目标消息不存在' }, 404)
+  }
+
+  const userMessage = visibleMessages[userMessageIndex]
+  if (!userMessage || userMessage.role !== 'user') {
+    return c.json({ success: false, error: '只能编辑重发用户消息' }, 400)
+  }
+
+  const nextMessage = visibleMessages[userMessageIndex + 1]
+  const canReplaceTail =
+    userMessageIndex === visibleMessages.length - 1 ||
+    (nextMessage?.role === 'assistant' && userMessageIndex + 1 === visibleMessages.length - 1)
+
+  if (!canReplaceTail) {
+    return c.json({ success: false, error: '目前仅支持编辑重发最后一轮对话' }, 400)
+  }
+
+  const allMessages = await prisma.chatMessage.findMany({
+    where: { conversationId: id },
+    orderBy: { createdAt: 'asc' },
+  })
+
+  const deleteStartIndex = allMessages.findIndex((message) => message.id === messageId)
+  if (deleteStartIndex < 0) {
+    return c.json({ success: false, error: '目标消息不存在' }, 404)
+  }
+
+  const messageIdsToReplace = allMessages.slice(deleteStartIndex).map((message) => message.id)
+  const historyMessages = visibleMessages
+    .slice(0, userMessageIndex)
+    .map((message) => ({
+      role: message.role,
+      content: message.content,
+    }))
+
+  await prisma.$transaction(async (tx) => {
+    await tx.chatMessage.deleteMany({
+      where: {
+        id: {
+          in: messageIdsToReplace,
+        },
+      },
+    })
+    await tx.chatMessage.create({
+      data: {
+        conversationId: id,
+        role: 'user',
+        content,
+      },
+    })
+    const messageCount = await tx.chatMessage.count({
+      where: {
+        conversationId: id,
+        role: {
+          not: 'system',
+        },
+      },
+    })
+    await tx.chatConversation.update({
+      where: { id },
+      data: {
+        messageCount,
+        lastMessageAt: new Date(),
+        ...(userMessageIndex === 0 ? { title: content.slice(0, 50) } : {}),
+      },
+    })
+  })
+
+  return streamAssistantReply(c, {
+    conversationId: id,
+    conversation,
+    user,
+    latestUserMessage: content,
+    useKnowledgeBase,
+    historyMessages,
+    persistAssistant: async ({ assistantContent, systemMessages, intentStateJson }) => {
+      await prisma.$transaction(async (tx) => {
+        await tx.chatMessage.create({
+          data: {
+            conversationId: id,
+            role: 'assistant',
+            content: assistantContent,
+          },
+        })
+        if (systemMessages.length > 0) {
+          await tx.chatMessage.createMany({
+            data: systemMessages.map((systemContent) => ({
+              conversationId: id,
+              role: 'system',
+              content: systemContent,
+            })),
+          })
+        }
+        const messageCount = await tx.chatMessage.count({
+          where: {
+            conversationId: id,
+            role: {
+              not: 'system',
+            },
+          },
+        })
+        await tx.chatConversation.update({
+          where: { id },
+          data: {
+            messageCount,
+            lastMessageAt: new Date(),
+            intentStateJson,
+          },
+        })
+      })
+      indexConversation(id).catch((err) =>
+        logger.warn({ err, conversationId: id }, 'chat.semantic_search.index_conversation_failed')
+      )
+    },
+  })
+})
+
 chat.post('/conversations/:id/messages/:messageId/retry/stream', async (c) => {
   const user = getAuthenticatedUser(c)
   if (!user) {
