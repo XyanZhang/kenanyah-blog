@@ -8,6 +8,7 @@ import adminTags from './admin-tags'
 import adminMedia from './admin-media'
 import adminBookmarks from './admin-bookmarks'
 import adminThoughts from './admin-thoughts'
+import adminProjects from './admin-projects'
 
 const admin = new Hono()
 
@@ -20,5 +21,6 @@ admin.route('/tags', adminTags)
 admin.route('/media', adminMedia)
 admin.route('/bookmarks', adminBookmarks)
 admin.route('/thoughts', adminThoughts)
+admin.route('/projects', adminProjects)
 
 export default admin

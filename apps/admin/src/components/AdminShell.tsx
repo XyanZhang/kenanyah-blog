@@ -10,6 +10,7 @@ const items = [
   { to: '/comments', label: 'Comments' },
   { to: '/bookmarks', label: 'Bookmarks' },
   { to: '/thoughts', label: 'Thoughts' },
+  { to: '/projects', label: 'Projects' },
   { to: '/taxonomy', label: 'Taxonomy' },
   { to: '/media', label: 'Media' },
 ]

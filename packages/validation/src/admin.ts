@@ -63,6 +63,27 @@ export const adminThoughtCreateSchema = z.object({
 
 export const adminThoughtUpdateSchema = adminThoughtCreateSchema.partial()
 
+export const adminProjectQuerySchema = z.object({
+  page: z.coerce.number().int().positive().default(1),
+  limit: z.coerce.number().int().positive().max(100).default(20),
+  search: z.string().max(100).optional(),
+  status: z.enum(['planned', 'active', 'completed', 'archived', 'all']).default('all'),
+  category: z.string().max(100).optional(),
+})
+
+export const adminProjectCreateSchema = z.object({
+  title: z.string().min(1).max(120),
+  description: z.string().max(5000).nullable().optional(),
+  href: z.string().url().nullable().optional(),
+  coverImage: z.string().url().nullable().optional(),
+  category: z.string().max(80).nullable().optional(),
+  tags: z.array(z.string().min(1).max(30)).max(10).optional(),
+  status: z.enum(['planned', 'active', 'completed', 'archived']).default('active'),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
+})
+
+export const adminProjectUpdateSchema = adminProjectCreateSchema.partial()
+
 export type AdminLoginInput = z.infer<typeof adminLoginSchema>
 export type AdminPostQueryInput = z.infer<typeof adminPostQuerySchema>
 export type AdminPostUpdateInput = z.infer<typeof adminPostUpdateSchema>
@@ -73,3 +94,6 @@ export type AdminBookmarkQueryInput = z.infer<typeof adminBookmarkQuerySchema>
 export type AdminThoughtQueryInput = z.infer<typeof adminThoughtQuerySchema>
 export type AdminThoughtCreateInput = z.infer<typeof adminThoughtCreateSchema>
 export type AdminThoughtUpdateInput = z.infer<typeof adminThoughtUpdateSchema>
+export type AdminProjectQueryInput = z.infer<typeof adminProjectQuerySchema>
+export type AdminProjectCreateInput = z.infer<typeof adminProjectCreateSchema>
+export type AdminProjectUpdateInput = z.infer<typeof adminProjectUpdateSchema>

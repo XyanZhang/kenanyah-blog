@@ -9,6 +9,7 @@ import type {
   AdminUser,
   ApiResponse,
   PaginationMeta,
+  ProjectEntryDto,
 } from '@blog/types'
 
 type FetchOptions = RequestInit & {
@@ -224,6 +225,51 @@ export async function updateAdminThought(
 
 export async function deleteAdminThought(id: string) {
   return request<{ message: string }>(`/admin/thoughts/${id}`, {
+    method: 'DELETE',
+  })
+}
+
+export async function getAdminProjects(params: URLSearchParams) {
+  return request<ProjectEntryDto[]>(`/admin/projects?${params.toString()}`)
+}
+
+export async function createAdminProject(payload: {
+  title: string
+  description?: string | null
+  href?: string | null
+  coverImage?: string | null
+  category?: string | null
+  tags?: string[]
+  status?: 'planned' | 'active' | 'completed' | 'archived'
+  date?: string | null
+}) {
+  return request<ProjectEntryDto>('/admin/projects', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+}
+
+export async function updateAdminProject(
+  id: string,
+  payload: {
+    title?: string
+    description?: string | null
+    href?: string | null
+    coverImage?: string | null
+    category?: string | null
+    tags?: string[]
+    status?: 'planned' | 'active' | 'completed' | 'archived'
+    date?: string | null
+  }
+) {
+  return request<ProjectEntryDto>(`/admin/projects/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  })
+}
+
+export async function deleteAdminProject(id: string) {
+  return request<{ message: string }>(`/admin/projects/${id}`, {
     method: 'DELETE',
   })
 }
