@@ -1,222 +1,232 @@
 # API Reference
 
-## Authentication
+The Hono API is mounted under `/api`. Uploaded files and static files are served
+outside the API prefix:
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | /auth/register | Register with email/password |
-| POST | /auth/login | Login |
-| POST | /auth/logout | Logout |
-| POST | /auth/refresh | Refresh token |
-| GET | /auth/google | Google OAuth |
-| GET | /auth/github | GitHub OAuth |
+- API: `/api/*`
+- Uploads: `/uploads/*`
+- Statics: `/statics/*`
 
-### Register
+Most endpoints return:
+
 ```json
-POST /auth/register
 {
-  "email": "user@example.com",
-  "username": "johndoe",
-  "password": "securepassword",
-  "name": "John Doe"
+  "success": true,
+  "data": {},
+  "meta": {}
 }
 ```
 
-### Login
-```json
-POST /auth/login
-{
-  "email": "user@example.com",
-  "password": "securepassword"
-}
-```
+## Health
+
+| Method | Endpoint      | Auth | Description                |
+| ------ | ------------- | ---- | -------------------------- |
+| GET    | `/api/health` | No   | Health check               |
+| GET    | `/api/`       | No   | API root and route summary |
+
+## Public Auth
+
+| Method | Endpoint                  | Auth         | Description                  |
+| ------ | ------------------------- | ------------ | ---------------------------- |
+| POST   | `/api/auth/register`      | No           | Register with email/password |
+| POST   | `/api/auth/login`         | No           | Login                        |
+| POST   | `/api/auth/logout`        | User         | Logout                       |
+| POST   | `/api/auth/refresh`       | Cookie/token | Refresh tokens               |
+| GET    | `/api/auth/me`            | User         | Current user                 |
+| POST   | `/api/auth/send-code`     | No           | Send email verification code |
+| POST   | `/api/auth/verify-code`   | No           | Verify email code            |
+| POST   | `/api/auth/setup-profile` | User         | Complete profile setup       |
 
 ## Posts
 
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| GET | /posts | No | List posts (paginated) |
-| GET | /posts/by-id/:id | No | Get post by id (for edit) |
-| GET | /posts/:slug | No | Get post by slug |
-| POST | /posts | Yes | Create post |
-| PATCH | /posts/:id | Yes | Update post (author only) |
-| DELETE | /posts/:id | Yes | Delete post (author only) |
+| Method | Endpoint                     | Auth         | Description            |
+| ------ | ---------------------------- | ------------ | ---------------------- |
+| GET    | `/api/posts`                 | No           | List posts             |
+| GET    | `/api/posts/published-dates` | No           | Published date summary |
+| GET    | `/api/posts/stats`           | No           | Public post stats      |
+| GET    | `/api/posts/by-id/:id`       | No           | Get post by id         |
+| GET    | `/api/posts/:slug`           | No           | Get post by slug       |
+| POST   | `/api/posts`                 | User         | Create post            |
+| PATCH  | `/api/posts/:id`             | Author/Admin | Update post            |
+| DELETE | `/api/posts/:id`             | Author/Admin | Delete post            |
 
-### Query Parameters (GET /posts)
-- `page`: Page number (default: 1)
-- `limit`: Items per page (default: 10)
-- `category`: Filter by category slug
-- `tag`: Filter by tag slug
-- `published`: Filter by status
+Common list query parameters include `page`, `limit`, `category`, `tag`, and
+`published`.
 
-### Create Post
-```json
-POST /posts
-{
-  "title": "My Blog Post",
-  "content": "Post content...",
-  "excerpt": "Short description",
-  "published": false,
-  "categoryIds": ["cat1"],
-  "tagIds": ["tag1"]
-}
-```
+## Categories, Tags, Comments, Users
 
-## Comments
+| Method | Endpoint                     | Auth            | Description                |
+| ------ | ---------------------------- | --------------- | -------------------------- |
+| GET    | `/api/categories`            | No              | List categories            |
+| GET    | `/api/categories/:slug`      | No              | Category detail with posts |
+| POST   | `/api/categories`            | Admin           | Create category            |
+| PATCH  | `/api/categories/:id`        | Admin           | Update category            |
+| DELETE | `/api/categories/:id`        | Admin           | Delete category            |
+| GET    | `/api/tags`                  | No              | List tags                  |
+| GET    | `/api/tags/:slug`            | No              | Tag detail with posts      |
+| POST   | `/api/tags`                  | Admin           | Create tag                 |
+| PATCH  | `/api/tags/:id`              | Admin           | Update tag                 |
+| DELETE | `/api/tags/:id`              | Admin           | Delete tag                 |
+| GET    | `/api/comments/post/:postId` | No              | List comments for post     |
+| POST   | `/api/comments`              | User            | Create comment             |
+| PATCH  | `/api/comments/:id`          | Author/Admin    | Update comment             |
+| DELETE | `/api/comments/:id`          | Author/Admin    | Delete comment             |
+| PATCH  | `/api/comments/:id/approve`  | Admin/Moderator | Moderate comment           |
+| GET    | `/api/users/:username`       | No              | User profile               |
+| GET    | `/api/users/:username/posts` | No              | User posts                 |
+| PATCH  | `/api/users/:id`             | Owner/Admin     | Update user                |
 
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| GET | /posts/:postId/comments | No | List comments |
-| POST | /posts/:postId/comments | Yes | Create comment |
-| PATCH | /comments/:id | Yes | Update (author only) |
-| DELETE | /comments/:id | Yes | Delete (author only) |
+## Home Dashboard
 
-### Create Comment
-```json
-POST /posts/:postId/comments
-{
-  "content": "Great post!",
-  "parentId": "optional-parent-id"
-}
-```
+| Method | Endpoint                  | Auth | Description                                   |
+| ------ | ------------------------- | ---- | --------------------------------------------- |
+| GET    | `/api/home/config`        | No   | Load dashboard layout, nav, canvas, and theme |
+| PUT    | `/api/home/config`        | User | Save dashboard config                         |
+| GET    | `/api/home/templates`     | User | List saved layout templates                   |
+| GET    | `/api/home/templates/:id` | User | Load a template                               |
+| POST   | `/api/home/templates`     | User | Save a new template                           |
+| DELETE | `/api/home/templates/:id` | User | Delete a template                             |
 
-## Categories & Tags
+## AI Writing
 
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| GET | /categories | No | List all |
-| GET | /categories/:slug | No | Get with posts |
-| POST | /categories | Admin | Create |
-| GET | /tags | No | List all |
-| GET | /tags/:slug | No | Get with posts |
-| POST | /tags | Admin | Create |
+AI writing endpoints are rate-limited and support normal JSON responses. Some
+routes also support streaming.
 
-## Users
+| Method | Endpoint                   | Description              |
+| ------ | -------------------------- | ------------------------ |
+| POST   | `/api/ai/rewrite`          | Rewrite text             |
+| POST   | `/api/ai/expand`           | Expand text              |
+| POST   | `/api/ai/shrink`           | Shorten text             |
+| POST   | `/api/ai/headings`         | Generate headings        |
+| POST   | `/api/ai/summary`          | Generate summary         |
+| POST   | `/api/ai/generate-article` | Generate a draft article |
+| POST   | `/api/ai/recommend-theme`  | Recommend article theme  |
+| POST   | `/api/ai/generate-cover`   | Generate cover image     |
 
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| GET | /users/:username | No | Get profile |
-| PATCH | /users/:id | Yes | Update (own only) |
+## Chat and Blog Workflow
 
-## AI（写作助手）
+| Method | Endpoint                                                             | Auth     | Description            |
+| ------ | -------------------------------------------------------------------- | -------- | ---------------------- |
+| GET    | `/api/chat/conversations`                                            | Optional | List conversations     |
+| POST   | `/api/chat/conversations`                                            | Optional | Create conversation    |
+| PATCH  | `/api/chat/conversations/:id`                                        | Optional | Update conversation    |
+| DELETE | `/api/chat/conversations/:id`                                        | Optional | Delete conversation    |
+| GET    | `/api/chat/conversations/:id`                                        | Optional | Get conversation       |
+| GET    | `/api/chat/conversations/:id/messages/:messageId/share-preview`      | Optional | Message share preview  |
+| POST   | `/api/chat/conversations/:id/branch`                                 | Optional | Branch conversation    |
+| POST   | `/api/chat/conversations/:id/messages/stream`                        | Optional | Stream chat response   |
+| POST   | `/api/chat/conversations/:id/messages/:messageId/edit-resend/stream` | Optional | Edit and resend        |
+| POST   | `/api/chat/conversations/:id/messages/:messageId/retry/stream`       | Optional | Retry message          |
+| POST   | `/api/blog-workflow/run`                                             | Optional | Run blog workflow      |
+| POST   | `/api/blog-workflow/run/stream`                                      | Optional | Stream blog workflow   |
+| POST   | `/api/blog-workflow/cancel`                                          | Optional | Cancel active workflow |
 
-所有接口需要登录（Cookie 或 Bearer Token）。限流：每 IP 每分钟最多 30 次。
+## Search
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | /ai/rewrite | 段落改写 |
-| POST | /ai/expand | 段落扩写 |
-| POST | /ai/shrink | 段落缩写 |
-| POST | /ai/headings | 根据正文生成小标题列表 |
-| POST | /ai/summary | 根据正文生成摘要 |
+| Method | Endpoint               | Auth | Description                  |
+| ------ | ---------------------- | ---- | ---------------------------- |
+| GET    | `/api/search/semantic` | No   | Semantic search across posts |
 
-### 流式与非流式
+Query parameters:
 
-- 不加 query：返回 JSON `{ success, data: { text } }`。
-- 加 `?stream=true`：响应为 SSE（`text/event-stream`），每行 `data: <文本块>` 逐块推送；错误时推送 `data: {"error":"..."}`。
+- `q`: search text.
+- `limit`: optional result limit.
 
-### 请求体示例
+Embeddings require a configured embedding provider and pgvector.
 
-**改写** `POST /ai/rewrite`
-```json
-{ "text": "待改写的段落", "style": "可选：更正式/更口语" }
-```
+## PDF Agent
 
-**扩写** `POST /ai/expand`
-```json
-{ "text": "简短段落" }
-```
+| Method | Endpoint                              | Auth     | Description                  |
+| ------ | ------------------------------------- | -------- | ---------------------------- |
+| GET    | `/api/pdf/documents`                  | Optional | List documents               |
+| POST   | `/api/pdf/documents`                  | Optional | Upload document              |
+| POST   | `/api/pdf/documents/:id/parse`        | Optional | Parse document               |
+| DELETE | `/api/pdf/documents/:id`              | Optional | Delete document              |
+| POST   | `/api/pdf/documents/:id/index`        | Optional | Index chunks                 |
+| GET    | `/api/pdf/documents/:id/search`       | Optional | Search document              |
+| POST   | `/api/pdf/documents/:id/generate-doc` | Optional | Generate draft from document |
+| POST   | `/api/pdf/documents/:id/save-post`    | User     | Save generated draft as post |
 
-**缩写** `POST /ai/shrink`
-```json
-{ "text": "长段落", "maxLength": 200 }
-```
+## Bookmarks
 
-**小标题** `POST /ai/headings`
-```json
-{ "content": "文章正文" }
-```
+| Method | Endpoint                   | Auth | Description                 |
+| ------ | -------------------------- | ---- | --------------------------- |
+| GET    | `/api/bookmarks`           | No   | List bookmarks              |
+| GET    | `/api/bookmarks/metadata`  | No   | Bookmark metadata           |
+| POST   | `/api/bookmarks/sync`      | No   | Sync from browser extension |
+| POST   | `/api/bookmarks`           | No   | Create bookmark             |
+| GET    | `/api/bookmarks/:id/check` | No   | Check bookmark URL          |
+| PATCH  | `/api/bookmarks/:id`       | No   | Update bookmark             |
+| DELETE | `/api/bookmarks/:id`       | No   | Delete bookmark             |
 
-**摘要** `POST /ai/summary`
-```json
-{ "content": "文章正文" }
-```
+## Thoughts, Pictures, Projects
 
-## 语义搜索（Semantic Search）
+| Method | Endpoint                  | Auth         | Description                     |
+| ------ | ------------------------- | ------------ | ------------------------------- |
+| GET    | `/api/thoughts`           | No           | List thoughts                   |
+| POST   | `/api/thoughts`           | User         | Create thought                  |
+| GET    | `/api/thoughts/semantic`  | No           | Semantic thought search         |
+| POST   | `/api/thoughts/rag`       | No           | Thought RAG answer              |
+| POST   | `/api/thoughts/images`    | User         | Upload thought image            |
+| POST   | `/api/thoughts/ai/assist` | User         | Generate or polish thought text |
+| GET    | `/api/thoughts/:id`       | No           | Thought detail                  |
+| PATCH  | `/api/thoughts/:id`       | Author/Admin | Update thought                  |
+| DELETE | `/api/thoughts/:id`       | Author/Admin | Delete thought                  |
+| GET    | `/api/pictures`           | No           | Public pictures summary         |
+| GET    | `/api/pictures/entries`   | No           | List picture entries            |
+| POST   | `/api/pictures/entries`   | User         | Create picture entry            |
+| POST   | `/api/pictures/upload`    | User         | Upload picture                  |
+| GET    | `/api/projects`           | No           | List projects                   |
+| POST   | `/api/projects`           | User         | Create project                  |
 
-基于文章向量化（pgvector + OpenAI Embedding）的语义检索，无需登录。
+## Calendar, Countdown, Weather, Voice
 
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| GET | /search/semantic | No | 按关键词语义搜索博客文章 |
+| Method | Endpoint                            | Auth     | Description                    |
+| ------ | ----------------------------------- | -------- | ------------------------------ |
+| GET    | `/api/calendar/annotations`         | User     | List calendar annotations      |
+| POST   | `/api/calendar/annotations`         | User     | Create annotation              |
+| PATCH  | `/api/calendar/annotations/:id`     | User     | Update annotation              |
+| DELETE | `/api/calendar/annotations/:id`     | User     | Delete annotation              |
+| GET    | `/api/calendar/events/summary`      | Optional | Event summary                  |
+| GET    | `/api/calendar/events`              | Optional | List events                    |
+| GET    | `/api/calendar/day/:date`           | Optional | Day detail                     |
+| POST   | `/api/calendar/events`              | User     | Create event                   |
+| PATCH  | `/api/calendar/events/:id`          | User     | Update event                   |
+| DELETE | `/api/calendar/events/:id`          | User     | Delete event                   |
+| POST   | `/api/calendar/events/quick-create` | User     | Natural-language quick create  |
+| GET    | `/api/countdown/events`             | User     | List countdown events          |
+| POST   | `/api/countdown/events`             | User     | Create countdown event         |
+| PATCH  | `/api/countdown/events/:id`         | User     | Update countdown event         |
+| DELETE | `/api/countdown/events/:id`         | User     | Delete countdown event         |
+| GET    | `/api/weather`                      | No       | Weather lookup                 |
+| GET    | `/api/weather/geocode`              | No       | Geocode lookup                 |
+| POST   | `/api/voice/upload`                 | User     | Upload voice file              |
+| POST   | `/api/voice/transcribe`             | User     | Transcribe uploaded voice file |
 
-### Query 参数
+## Admin API
 
-- `q`（必填）：搜索关键词，1～500 字符。
-- `limit`（可选）：返回条数，默认 10，最大 20。
+Admin endpoints are mounted under `/api/admin` and use admin authentication.
 
-### 响应示例
+| Area       | Main Endpoints                                           |
+| ---------- | -------------------------------------------------------- |
+| Auth       | `/api/admin/auth/login`, `/logout`, `/refresh`, `/me`    |
+| Dashboard  | `/api/admin/dashboard/*`                                 |
+| Posts      | `/api/admin/posts`, `/api/admin/posts/:id`               |
+| Comments   | `/api/admin/comments`, `/api/admin/comments/:id`         |
+| Categories | `/api/admin/categories`, `/api/admin/categories/:id`     |
+| Tags       | `/api/admin/tags`, `/api/admin/tags/:id`                 |
+| Media      | `/api/admin/media`, `/api/admin/media/upload`            |
+| Bookmarks  | `/api/admin/bookmarks`, metadata, check, enrich, convert |
+| Thoughts   | `/api/admin/thoughts`, `/api/admin/thoughts/:id`         |
+| Projects   | `/api/admin/projects`, `/api/admin/projects/:id`         |
+| Photos     | `/api/admin/photos`, upload, update, delete              |
 
-```json
-{
-  "success": true,
-  "data": [
-    {
-      "postId": "clxx...",
-      "title": "文章标题",
-      "slug": "article-slug",
-      "snippet": "匹配到的摘要或正文片段",
-      "score": 0.92
-    }
-  ]
-}
-```
+## Files
 
-**说明**：需配置 `OPENAI_API_KEY` 与（可选）`OPENAI_EMBEDDING_MODEL`（默认 `text-embedding-3-small`）。数据库需启用 pgvector 扩展（见 docker-compose 使用 `pgvector/pgvector:pg16` 镜像）。新文章发布/更新时会自动建索引；已有文章可运行 `pnpm --filter api index-posts` 全量建索引。
+| Method | Endpoint     | Auth | Description                                       |
+| ------ | ------------ | ---- | ------------------------------------------------- |
+| GET    | `/uploads/*` | No   | Serve uploaded files                              |
+| GET    | `/statics/*` | No   | Serve static files, with optional transform query |
 
-## 首页配置与模板（Home）
-
-当前通过环境变量 `DEFAULT_HOME_USER_ID` 写死用户；未设置时使用 `userId = null`（全局单条配置）。后期可改为从登录用户关联。
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | /home/config | 拉取当前首页配置（layout + nav + canvas） |
-| PUT | /home/config | 同步当前布局与导航到数据库 |
-| GET | /home/templates | 用户保存的模板列表 |
-| GET | /home/templates/:id | 获取单个模板（含 layout 用于应用） |
-| POST | /home/templates | 另存为模板 |
-| DELETE | /home/templates/:id | 删除模板 |
-
-### PUT /home/config 请求体
-
-```json
-{
-  "layout": { "id": "...", "cards": [...], "version": 2, "createdAt": "...", "updatedAt": "..." },
-  "nav": { "horizontalPosition": {...}, "verticalPosition": {...}, "layout": "auto", "customSize": null, "visibleItems": ["..."] },
-  "canvas": { "scale": 1 }
-}
-```
-
-### POST /home/templates 请求体
-
-```json
-{
-  "name": "模板名称",
-  "description": "可选描述",
-  "layout": { "id": "...", "cards": [...], "version": 2, ... }
-}
-```
-
-## Response Format
-
-```json
-{
-  "success": true,
-  "data": {...},
-  "meta": {
-    "total": 100,
-    "page": 1,
-    "limit": 10
-  }
-}
-```
+Static transforms support parameters such as width, height, quality, fit, and
+format where implemented by the route.

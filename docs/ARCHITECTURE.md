@@ -1,98 +1,163 @@
 # Architecture
 
-## Monorepo Structure
+## Overview
 
-```
+This repository is a pnpm/Turborepo workspace for a personal publishing and
+knowledge app. The main runtime is split into:
+
+- `apps/web`: public Next.js app and personal dashboard.
+- `apps/api`: Hono API with Prisma, PostgreSQL, file storage, AI, and search.
+- `apps/admin`: Vite admin console for private content management.
+- `apps/browser-extension`: unpacked Chrome extension MVP for bookmarks.
+- `apps/task-loop`: local CLI for persistent task-loop notes and handoffs.
+- `apps/codex-observability`: local helper for indexing/querying Codex work data.
+
+## Repository Structure
+
+```text
 blog/
 ├── apps/
-│   ├── web/              # Next.js 15 frontend
-│   └── api/              # Hono backend
+│   ├── admin/
+│   ├── api/
+│   ├── browser-extension/
+│   ├── codex-observability/
+│   ├── task-loop/
+│   └── web/
 ├── packages/
-│   ├── types/            # Shared TypeScript types
-│   ├── validation/       # Zod schemas
-│   ├── utils/            # Utility functions
-│   └── config/           # ESLint, TS, Prettier configs
-├── pnpm-workspace.yaml
-├── turbo.json
-└── package.json
+│   ├── config/
+│   ├── types/
+│   ├── utils/
+│   └── validation/
+├── docs/
+├── nginx/
+├── scripts/
+├── docker-compose.yml
+├── docker-compose.test.yml
+├── docker-compose.prod.yml
+└── turbo.json
 ```
 
-## Frontend (apps/web)
+## Web App
 
-```
+`apps/web` uses Next.js App Router.
+
+Important route groups and pages:
+
+- `(main)`: public shell, navigation, dashboard, blog, search, about, pictures,
+  projects, tools, works, thoughts, bookmarks, AI chat, and PDF agent.
+- `(auth)`: login and setup-profile flows.
+- `app/api/geocode` and `app/api/weather`: Next route handlers used by web UI
+  helpers.
+
+Important client areas:
+
+- `components/dashboard`: draggable/resizable home cards, card config dialogs,
+  saved templates, navigation config, and layout helpers.
+- `components/navigation`: configurable navigation shell and item definitions.
+- `components/music`, `components/pictures`, `components/thoughts`,
+  `components/bookmarks`, `components/projects`: feature-specific UI.
+- `lib/*-api.ts`: web-side API clients for feature routes.
+- `store`: Zustand stores for dashboard, navigation, theme, music, and canvas.
+
+## API App
+
+`apps/api` exposes a root Hono app:
+
+- `/api/*`: JSON API.
+- `/uploads/*`: uploaded file serving.
+- `/statics/*`: static image/file serving with optional transforms.
+
+The API is organized around route modules, shared libs, middleware, agents, and
+orchestrators:
+
+```text
 src/
-├── app/                  # Next.js App Router
-│   ├── (auth)/          # Auth pages (login, register, oauth)
-│   ├── (blog)/          # Blog pages (posts, categories, tags)
-│   ├── layout.tsx
-│   └── page.tsx
-├── components/
-│   ├── posts/
-│   ├── comments/
-│   ├── layout/
-│   └── ui/              # shadcn/ui
-├── hooks/               # Custom hooks
+├── routes/
+├── middleware/
 ├── lib/
-│   └── api-client.ts    # ky-based API client
-└── styles/
+├── agents/
+├── orchestrators/
+├── tools/
+├── generated/prisma/
+├── env.ts
+└── index.ts
 ```
 
-**Key Patterns**:
-- App Router with route groups
-- React Server Components by default
-- Client components for interactivity
-- Static generation with ISR for posts
+Main route domains:
 
-## Backend (apps/api)
+- Auth and users
+- Posts, categories, tags, comments
+- Home dashboard config and templates
+- AI writing tools, chat, and blog workflow
+- Semantic search
+- PDF document upload, parsing, indexing, and generation
+- Bookmarks and browser-extension sync
+- Thoughts, pictures, projects, calendar, countdown, weather, voice
+- Admin APIs for dashboard, posts, comments, taxonomy, media, bookmarks,
+  thoughts, projects, and photos
 
-```
-src/
-├── routes/              # HTTP handlers
-├── services/            # Business logic (immutable)
-├── repositories/        # Data access (Prisma)
-├── middleware/          # Auth, error, rate-limit
-├── lib/                 # Utilities (db, jwt, oauth)
-├── index.ts             # Entry point
-└── env.ts               # Environment validation
-```
+## Admin App
 
-**Layered Architecture**:
-```
-Routes → Services → Repositories → Prisma → PostgreSQL
-```
+`apps/admin` is a Vite/React app with TanStack Router. It has protected admin
+routes for:
 
-- **Routes**: HTTP endpoint handlers, request/response
-- **Services**: Business logic, validation, immutable patterns
-- **Repositories**: Data access, Prisma queries
-- **Middleware**: Cross-cutting concerns
+- Dashboard
+- Posts
+- Comments
+- Bookmarks
+- Thoughts
+- Projects
+- Photos
+- Taxonomy
+- Media
 
-## Shared Packages
-
-| Package | Purpose |
-|---------|---------|
-| @blog/types | TypeScript interfaces (User, Post, etc.) |
-| @blog/validation | Zod schemas for input validation |
-| @blog/utils | Utilities (slug, date, pagination) |
-| @blog/config | Shared ESLint, TS, Prettier configs |
+Admin authentication is separate from public user authentication and uses the
+`AdminUser` model plus `/api/admin/auth/*` routes.
 
 ## Data Flow
 
-```
-Client Request
-     ↓
-Middleware (auth, rate-limit)
-     ↓
-Route Handler
-     ↓
-Service (business logic)
-     ↓
-Repository (data access)
-     ↓
-Prisma → PostgreSQL
+```text
+Browser
+  -> apps/web or apps/admin
+  -> apps/api Hono routes
+  -> middleware
+  -> route handlers and feature libs
+  -> Prisma
+  -> PostgreSQL / pgvector
 ```
 
-## Authentication Flow
+Uploaded and generated files are stored under the configured upload/static
+directories and served through `/uploads` or `/statics`.
 
-1. **Local**: Email/password → bcrypt verify → JWT tokens
-2. **OAuth**: Provider redirect → callback → user upsert → JWT tokens
-3. **Tokens**: Access token (15m) + Refresh token (7d) in httpOnly cookies
+## Shared Packages
+
+| Package            | Purpose                        |
+| ------------------ | ------------------------------ |
+| `@blog/types`      | Shared TypeScript interfaces   |
+| `@blog/validation` | Shared Zod schemas             |
+| `@blog/utils`      | Shared utility functions       |
+| `@blog/config`     | Shared TypeScript/config files |
+
+## Authentication
+
+Public users use JWT access/refresh cookies or bearer tokens through the auth
+middleware. Supported flows include:
+
+- Register/login
+- Logout/refresh
+- Current user lookup
+- Email verification code send/verify
+- Setup profile
+
+Admin users use a separate admin JWT flow and protected admin middleware.
+
+## AI and Search
+
+The API supports:
+
+- OpenAI-compatible chat and embedding providers.
+- DashScope/Qwen text and image-generation integration.
+- Post, thought, conversation, and PDF embeddings through pgvector-backed
+  tables.
+- AI writing endpoints, chat streaming, blog workflow orchestration, and PDF
+  document generation.

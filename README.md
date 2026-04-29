@@ -1,129 +1,145 @@
-# Blog Monorepo
+# Blog Workspace
 
-A modern, full-stack blog application built with Next.js, Hono, and PostgreSQL.
+A personal knowledge and publishing workspace built as a pnpm monorepo. The
+current app is more than a simple blog: it includes a public site, an admin
+console, AI-assisted writing and chat, PDF knowledge tools, bookmarks,
+photography, project entries, thoughts, uploads, and production deployment
+scripts.
 
-## Features
+## Apps
 
-- 🔐 **Authentication** - JWT + OAuth (Google, GitHub)
-- 📝 **Blog Posts** - Create, edit, publish posts with categories and tags
-- 💬 **Comments** - Nested comment system with moderation
-- 👥 **User Management** - Profiles, roles (User, Admin, Moderator)
-- 🎨 **Modern Stack** - Next.js 15, React 19, TypeScript, Prisma
-- 📦 **Monorepo** - pnpm workspaces + Turborepo
-- 🐳 **Docker** - PostgreSQL setup included
-- ✅ **Type-Safe** - End-to-end type safety with TypeScript and Zod
+| App                 | Path                       | Purpose                                                 |
+| ------------------- | -------------------------- | ------------------------------------------------------- |
+| Web                 | `apps/web`                 | Next.js public site and personal dashboard              |
+| API                 | `apps/api`                 | Hono API, Prisma data layer, file handling, AI services |
+| Admin               | `apps/admin`               | Vite admin console for content and media management     |
+| Browser extension   | `apps/browser-extension`   | Chrome extension MVP for bookmark capture               |
+| Task loop           | `apps/task-loop`           | Local CLI for persistent engineering task loops         |
+| Codex observability | `apps/codex-observability` | Local indexing/query helper for Codex work logs         |
+
+## Current User-Facing Features
+
+- Public home dashboard with configurable cards, navigation, saved templates,
+  weather, countdowns, calendar, music, profile, stats, and post lists.
+- Blog reading and editing flows with posts, categories, tags, comments,
+  featured posts, published dates, and semantic search.
+- AI features for rewriting, expanding, shrinking, summarizing, heading
+  generation, full article generation, theme recommendation, cover generation,
+  chat conversations, workflow runs, and voice transcription.
+- PDF agent for upload, parsing, chunk indexing, document search, draft
+  generation, and saving generated content as posts.
+- Bookmarks from the web UI, API, and browser extension, with metadata,
+  health checks, enrichment, and conversion to other content.
+- Thoughts, photography entries, project entries, works/tools pages, public
+  search, and static/uploaded media serving.
+- Admin console for dashboard metrics, posts, comments, taxonomy, media,
+  bookmarks, thoughts, projects, and photos.
+
+## Tech Stack
+
+- Workspace: pnpm 9, Turborepo, TypeScript
+- Web: Next.js 15, React 19, Tailwind CSS 4, Zustand, dnd-kit, Three.js
+- Admin: Vite, React 19, TanStack Router, Recharts, Tailwind CSS 4
+- API: Hono, Prisma 7, PostgreSQL with pgvector, Zod, JWT, Nodemailer, Sharp
+- AI: OpenAI-compatible chat/embedding providers, DashScope/Qwen support,
+  LangChain helpers, Whisper integration
+- Testing: Vitest, Playwright, Node test runner
+- Deployment: Docker Compose, Nginx, local preflight checks, image export scripts
 
 ## Quick Start
 
 ```bash
-# One-command setup
-pnpm setup
-
-# Start development
+pnpm install
+pnpm docker:up
+pnpm db:generate
+pnpm db:migrate:test
+pnpm db:seed
 pnpm dev
 ```
 
-See [QUICKSTART.md](QUICKSTART.md) for detailed instructions.
+Typical local URLs:
+
+| Service             | URL                                                                         |
+| ------------------- | --------------------------------------------------------------------------- |
+| Web                 | `http://localhost:3000`                                                     |
+| API                 | `http://localhost:3001/api`                                                 |
+| API health          | `http://localhost:3001/api/health`                                          |
+| Upload/static files | `http://localhost:3001/uploads/...` and `http://localhost:3001/statics/...` |
+| Admin               | Vite dev URL shown by `pnpm dev:admin`                                      |
+
+See [QUICKSTART.md](QUICKSTART.md) for the local setup flow.
+
+## Common Commands
+
+```bash
+pnpm dev                 # Start all workspace dev tasks through Turbo
+pnpm dev:blog            # Start only the public web app
+pnpm dev:admin           # Start only the admin app
+pnpm dev:api             # Start only the API
+pnpm build               # Build all packages/apps
+pnpm test                # Run tests
+pnpm type-check          # Run TypeScript checks
+pnpm lint                # Run lint tasks where configured
+pnpm format              # Format source and docs
+```
+
+Database and production helpers:
+
+```bash
+pnpm docker:up
+pnpm docker:down
+pnpm db:migrate:test
+pnpm db:seed
+pnpm db:studio
+pnpm predeploy:prod
+pnpm predeploy:prod:docker
+./scripts/build-save.sh
+```
 
 ## Documentation
 
-- [📖 QUICKSTART.md](QUICKSTART.md) - Get started in 5 minutes
-- [📚 CLAUDE.md](CLAUDE.md) - Complete project documentation
-- [🗄️ DATABASE.md](DATABASE.md) - Database setup and management
+- [Quick start](QUICKSTART.md)
+- [Database guide](DATABASE.md)
+- [Architecture](docs/ARCHITECTURE.md)
+- [API reference](docs/API.md)
+- [Schema overview](docs/SCHEMA.md)
+- [Environment variables](docs/ENV.md)
+- [Deployment](docs/DEPLOYMENT.md)
+- [AI capability contracts](docs/AI-CAPABILITY-CONTRACTS.md)
 
-## Tech Stack
+## Repository Layout
 
-### Frontend (Coming Soon)
-- Next.js 15 with App Router
-- React 19
-- TypeScript 5.7+
-- Tailwind CSS 4
-- shadcn/ui
-
-### Backend
-- Hono 4.x (Fast web framework)
-- Prisma 6.x (ORM)
-- PostgreSQL 16+
-- JWT Authentication
-- Zod Validation
-
-### Development
-- pnpm 9.x (Package manager)
-- Turborepo (Build system)
-- Vitest (Testing)
-- Playwright (E2E testing)
-- ESLint + Prettier
-
-## Project Status
-
-- ✅ Phase 1: Foundation Setup
-- ✅ Phase 2: Shared Packages
-- ✅ Phase 3: Backend Core
-- ✅ Phase 4: Backend API Routes
-- ⏳ Phase 5: Backend Testing
-- 📋 Phase 6: Frontend Foundation
-- 📋 Phase 7: Frontend Features
-- 📋 Phase 8: Frontend Testing
-- 📋 Phase 9: Security & Deployment
-
-## API Endpoints
-
-### Authentication
-- `POST /auth/register` - Register new user
-- `POST /auth/login` - Login with email/password
-- `POST /auth/logout` - Logout
-- `GET /auth/me` - Get current user
-
-### Posts
-- `GET /posts` - List posts (with pagination)
-- `GET /posts/:slug` - Get post by slug
-- `POST /posts` - Create post (auth required)
-- `PATCH /posts/:id` - Update post (author/admin)
-- `DELETE /posts/:id` - Delete post (author/admin)
-
-### Categories & Tags
-- `GET /categories` - List all categories
-- `GET /tags` - List all tags
-- `POST /categories` - Create category (admin only)
-- `POST /tags` - Create tag (admin only)
-
-### Comments
-- `GET /comments/post/:postId` - Get post comments
-- `POST /comments` - Create comment (auth required)
-- `PATCH /comments/:id` - Update comment (author/admin)
-- `DELETE /comments/:id` - Delete comment (author/admin)
-
-See [CLAUDE.md](CLAUDE.md) for complete API documentation.
-
-## Development
-
-```bash
-# Install dependencies
-pnpm install
-
-# Start PostgreSQL
-pnpm docker:up
-
-# Run migrations
-pnpm db:migrate
-
-# Seed database
-pnpm db:seed
-
-# Start development servers
-pnpm dev
-
-# Run tests
-pnpm test
-
-# Build for production
-pnpm build
+```text
+blog/
+├── apps/
+│   ├── admin/
+│   ├── api/
+│   ├── browser-extension/
+│   ├── codex-observability/
+│   ├── task-loop/
+│   └── web/
+├── packages/
+│   ├── config/
+│   ├── types/
+│   ├── utils/
+│   └── validation/
+├── docs/
+├── nginx/
+├── scripts/
+├── docker-compose.yml
+├── docker-compose.test.yml
+├── docker-compose.prod.yml
+└── package.json
 ```
 
-## License
+## Production
 
-MIT
+Production deployment is documented in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
+Before a production release, run:
 
-## Contributing
+```bash
+pnpm predeploy:prod
+```
 
-Contributions are welcome! Please read the documentation before submitting PRs.
+Use `pnpm predeploy:prod:docker` when Dockerfiles, native dependencies, or
+build-time environment variables changed.

@@ -1,85 +1,307 @@
 # Database Schema
 
-## Models
+The source of truth is `apps/api/prisma/schema.prisma`. This document is a
+human-readable overview of the current models.
+
+## Core Users and Auth
 
 ### User
-| Field | Type | Notes |
-|-------|------|-------|
-| id | CUID | Primary key |
-| email | String | Unique |
-| username | String | Unique |
-| passwordHash | String? | Null for OAuth |
-| name | String? | |
-| bio | String? | |
-| avatar | String? | |
-| role | Enum | USER, ADMIN, MODERATOR |
-| provider | Enum | local, google, github |
-| providerId | String? | OAuth provider ID |
-| createdAt | DateTime | |
-| updatedAt | DateTime | |
+
+Public site user. Owns posts, comments, countdown events, calendar annotations,
+thoughts, projects, photos, media assets, and event items.
+
+Important fields:
+
+- `email`, `username`
+- `passwordHash`
+- `name`, `bio`, `avatar`
+- `role`: `USER`, `ADMIN`, `MODERATOR`
+- `provider`: `local`, `google`, `github`
+- `emailVerified`
+
+### AdminUser
+
+Separate admin-console account.
+
+Important fields:
+
+- `email`
+- `passwordHash`
+- `role`: `ADMIN`
+- `isActive`
+- `lastLoginAt`
+
+### VerificationCode
+
+Email codes for login, registration, and password-reset style flows.
+
+Important fields:
+
+- `email`
+- `code`
+- `type`: `LOGIN`, `REGISTER`, `RESET_PASSWORD`
+- `attempts`
+- `expiresAt`
+- `usedAt`
+
+## Blog Content
 
 ### Post
-| Field | Type | Notes |
-|-------|------|-------|
-| id | CUID | Primary key |
-| slug | String | Unique, SEO-friendly |
-| title | String | |
-| excerpt | String? | |
-| content | Text | |
-| coverImage | String? | |
-| published | Boolean | |
-| publishedAt | DateTime? | |
-| viewCount | Integer | |
-| authorId | FK | → User |
-| createdAt | DateTime | |
-| updatedAt | DateTime | |
 
-### Category
-| Field | Type | Notes |
-|-------|------|-------|
-| id | CUID | Primary key |
-| slug | String | Unique |
-| name | String | |
-| description | String? | |
-| createdAt | DateTime | |
-| updatedAt | DateTime | |
+Main blog article.
 
-### Tag
-| Field | Type | Notes |
-|-------|------|-------|
-| id | CUID | Primary key |
-| slug | String | Unique |
-| name | String | |
-| createdAt | DateTime | |
-| updatedAt | DateTime | |
+Important fields:
+
+- `slug`, `title`, `excerpt`, `content`
+- `coverImage`
+- `published`, `publishedAt`
+- `isFeatured`
+- `viewCount`
+- `authorId`
+
+Relations:
+
+- Author: `User`
+- Many-to-many categories through `PostCategory`
+- Many-to-many tags through `PostTag`
+- Comments
+- Embeddings
+
+### Category and Tag
+
+Taxonomy for posts.
+
+Important fields:
+
+- `slug`
+- `name`
+- `description` on categories
 
 ### Comment
-| Field | Type | Notes |
-|-------|------|-------|
-| id | CUID | Primary key |
-| content | Text | |
-| approved | Boolean | For moderation |
-| postId | FK | → Post |
-| authorId | FK | → User |
-| parentId | FK? | → Comment (nested) |
-| createdAt | DateTime | |
-| updatedAt | DateTime | |
 
-## Relationships
+Nested comments on posts.
 
+Important fields:
+
+- `content`
+- `approved`
+- `postId`
+- `authorId`
+- `parentId`
+
+## Home Dashboard
+
+### HomeConfig
+
+Saved current dashboard state for a user or global fallback.
+
+Important fields:
+
+- `userId`
+- `layoutJson`
+- `navJson`
+- `canvasJson`
+- `themeJson`
+
+### HomeLayoutTemplate
+
+Saved dashboard layout templates.
+
+Important fields:
+
+- `userId`
+- `name`
+- `description`
+- `layoutJson`
+- `navJson`
+- `canvasJson`
+
+## AI, Chat, Search, and PDF
+
+### ChatConversation and ChatMessage
+
+Stores AI chat sessions and messages.
+
+Conversation fields:
+
+- `title`
+- `userId`
+- `isShared`
+- `intentStateJson`
+- `messageCount`
+- `lastMessageAt`
+
+Message fields:
+
+- `conversationId`
+- `role`
+- `content`
+
+### Embedding Tables
+
+Vector tables used by semantic search and RAG:
+
+- `PostEmbedding`
+- `ThoughtEmbedding`
+- `ConversationEmbedding`
+- `PdfChunkEmbedding`
+
+Post, thought, and PDF chunk embeddings use vector columns and are backed by
+PostgreSQL pgvector.
+
+### PdfDocument and PdfChunk
+
+Stores uploaded PDFs and parsed text chunks.
+
+Document fields:
+
+- `userId`
+- `filename`
+- `mimeType`
+- `size`
+- `fileUrl`
+- `status`
+
+Chunk fields:
+
+- `documentId`
+- `chunkIndex`
+- `pageStart`
+- `pageEnd`
+- `content`
+
+## Personal Knowledge Content
+
+### Bookmark
+
+Bookmark records from manual input, API, or browser extension sync.
+
+Important fields:
+
+- `title`
+- `url`
+- `notes`
+- `category`
+- `tags`
+- `source`
+- `favicon`
+
+### Thought
+
+Short-form thought stream entries.
+
+Important fields:
+
+- `authorId`
+- `content`
+- `images`
+- `likeCount`
+- `commentCount`
+
+### ProjectEntry
+
+Project/work entries displayed on the public site and managed in admin.
+
+Important fields:
+
+- `userId`
+- `title`
+- `description`
+- `href`
+- `coverImage`
+- `category`
+- `tags`
+- `status`
+- `startedAt`
+
+### PhotoEntry and MediaAsset
+
+Photography entries and reusable uploaded media records.
+
+Photo fields:
+
+- `userId`
+- `mediaAssetId`
+- `title`
+- `description`
+- `imageUrl`
+- `takenAt`
+
+Media fields:
+
+- `userId`
+- `url`
+- `storageKey`
+- `filename`
+- `mimeType`
+- `size`
+- `width`, `height`
+- `variants`
+- `source`
+- `status`
+
+## Calendar and Time
+
+### CountdownEvent
+
+User countdowns for birthdays, anniversaries, exams, activities, and similar
+dates.
+
+Important fields:
+
+- `userId`
+- `title`
+- `targetDate`
+- `type`
+
+### CalendarAnnotation
+
+User note attached to a calendar date.
+
+Important fields:
+
+- `userId`
+- `date`
+- `label`
+
+### EventItem
+
+General calendar event model used by manual and generated events.
+
+Important fields:
+
+- `userId`
+- `title`
+- `description`
+- `sourceType`: `manual`, `post`, `thought`, `project`, `photo`, `system`
+- `sourceId`
+- `status`: `planned`, `completed`, `canceled`
+- `eventDate`, `endDate`
+- `allDay`
+- `entryMethod`
+- `autoGenerated`
+- `payloadJson`
+
+## Relationship Summary
+
+```text
+User 1:N Post
+User 1:N Comment
+User 1:N Thought
+User 1:N ProjectEntry
+User 1:N PhotoEntry
+User 1:N MediaAsset
+User 1:N CountdownEvent
+User 1:N CalendarAnnotation
+User 1:N EventItem
+
+Post M:N Category through PostCategory
+Post M:N Tag through PostTag
+Post 1:N Comment
+Post 1:N PostEmbedding
+
+Thought 1:N ThoughtEmbedding
+PdfDocument 1:N PdfChunk
+PdfChunk 1:1 PdfChunkEmbedding
+ChatConversation 1:N ChatMessage
 ```
-User ──1:N──▶ Post
-User ──1:N──▶ Comment
-Post ──1:N──▶ Comment
-Post ──M:N──▶ Category (via PostCategory)
-Post ──M:N──▶ Tag (via PostTag)
-Comment ──1:N──▶ Comment (nested replies)
-```
-
-## Indexes
-
-- User: email, username
-- Post: slug, authorId, published
-- Category: slug
-- Tag: slug
-- Comment: postId, authorId, parentId
