@@ -13,15 +13,24 @@ ENV NPM_CONFIG_REGISTRY=https://registry.npmmirror.com
 # Install pnpm without corepack (more reliable behind firewalls)
 RUN npm config set registry https://registry.npmmirror.com \
   && npm i -g pnpm@9.15.4 \
-  && pnpm config set registry https://registry.npmmirror.com
+  && pnpm config set registry https://registry.npmmirror.com \
+  && pnpm config set store-dir /pnpm/store
 
 WORKDIR /app
-# Copy workspace config
+# Copy dependency manifests first so source changes do not invalidate dependency install cache.
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json turbo.json ./
+COPY packages/config/package.json ./packages/config/package.json
+COPY packages/types/package.json ./packages/types/package.json
+COPY packages/utils/package.json ./packages/utils/package.json
+COPY packages/validation/package.json ./packages/validation/package.json
+COPY apps/web/package.json ./apps/web/package.json
+
+# Install dependencies
+RUN --mount=type=cache,id=pnpm-web-store,target=/pnpm/store pnpm --filter web install --frozen-lockfile
+
+# Copy source after dependency install
 COPY packages ./packages
 COPY apps/web ./apps/web
-# Install dependencies
-RUN pnpm --filter web install --frozen-lockfile
 
 # Set Next.js public env vars for build time (must be ENV, not just ARG)
 ARG NEXT_PUBLIC_API_URL

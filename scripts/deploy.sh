@@ -156,8 +156,23 @@ ensure_postgres() {
 build() {
   check_prerequisites
   log_info "Building Docker images on the server using $BUILD_COMPOSE_FILE ..."
-  compose_cmd "$BUILD_COMPOSE_FILE" build
+  DOCKER_BUILDKIT=1 COMPOSE_DOCKER_CLI_BUILD=1 COMPOSE_BAKE=true \
+    compose_cmd "$BUILD_COMPOSE_FILE" build
   log_info "Build complete."
+}
+
+deploy_build() {
+  check_prerequisites
+  local services=("$@")
+
+  if [ "${#services[@]}" -eq 0 ]; then
+    services=(api web admin nginx)
+  fi
+
+  log_info "Building and starting production services: ${services[*]}"
+  DOCKER_BUILDKIT=1 COMPOSE_DOCKER_CLI_BUILD=1 COMPOSE_BAKE=true \
+    compose_cmd "$BUILD_COMPOSE_FILE" up -d --build "${services[@]}"
+  log_info "Build and deploy complete. Run ./scripts/deploy.sh verify next."
 }
 
 predeploy() {
@@ -403,6 +418,7 @@ Commands:
   check                    Check Docker and env prerequisites
   predeploy                Run pnpm predeploy:prod locally
   build                    Build production images on the server (legacy)
+  deploy-build [services]  Build and start api/web/admin/nginx, or selected services
   start                    Start postgres, run migrations, then start api/web/nginx
   stop                     Stop the current production stack
   restart                  Restart api/web/nginx
@@ -410,6 +426,7 @@ Commands:
   logs [service]           Tail logs
   backup [label]           Create a compressed production backup in backups/
   migrate [release-tag]    Run prisma migrate deploy via the dedicated migrate task
+  migrate-prod             Alias for: migrate
   deploy-app [target] [release-tag]
                            target: primary (default) or green
   green-up [release-tag]   Shortcut for: deploy-app green [release-tag]
@@ -434,6 +451,10 @@ case "${1:-help}" in
   build)
     build
     ;;
+  deploy-build)
+    shift || true
+    deploy_build "$@"
+    ;;
   start)
     start
     ;;
@@ -454,6 +475,9 @@ case "${1:-help}" in
     ;;
   migrate)
     migrate "${2:-}"
+    ;;
+  migrate-prod)
+    migrate
     ;;
   deploy-app)
     deploy_app "${2:-primary}" "${3:-}"

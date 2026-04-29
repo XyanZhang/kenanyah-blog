@@ -6,13 +6,22 @@ ENV NPM_CONFIG_REGISTRY=https://registry.npmmirror.com
 
 RUN npm config set registry https://registry.npmmirror.com \
   && npm i -g pnpm@9.15.4 \
-  && pnpm config set registry https://registry.npmmirror.com
+  && pnpm config set registry https://registry.npmmirror.com \
+  && pnpm config set store-dir /pnpm/store
 
+# Copy dependency manifests first so source changes do not invalidate dependency install cache.
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json turbo.json ./
+COPY packages/config/package.json ./packages/config/package.json
+COPY packages/types/package.json ./packages/types/package.json
+COPY packages/utils/package.json ./packages/utils/package.json
+COPY packages/validation/package.json ./packages/validation/package.json
+COPY apps/admin/package.json ./apps/admin/package.json
+
+RUN --mount=type=cache,id=pnpm-admin-store,target=/pnpm/store pnpm --filter admin install --frozen-lockfile
+
+# Copy source after dependency install
 COPY packages ./packages
 COPY apps/admin ./apps/admin
-
-RUN pnpm --filter admin install --frozen-lockfile
 
 ARG VITE_API_BASE_URL=/api
 ARG VITE_SITE_BASE_URL=https://www.xyan.store
