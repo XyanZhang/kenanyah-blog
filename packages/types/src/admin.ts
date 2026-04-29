@@ -165,6 +165,28 @@ export interface AdminBookmarkItem {
   updatedAt: Date
 }
 
+export interface BookmarkMetadataResult {
+  title: string | null
+  favicon: string | null
+  description: string | null
+  duplicate: AdminBookmarkItem | null
+}
+
+export interface BookmarkLinkCheckResult {
+  ok: boolean
+  status: number | null
+  statusText: string | null
+  finalUrl: string
+  checkedAt: string
+  error: string | null
+}
+
+export interface BookmarkConversionResult {
+  target: 'thought' | 'draft_post'
+  id: string
+  slug?: string
+}
+
 export interface AdminThoughtItem {
   id: string
   authorId: string | null

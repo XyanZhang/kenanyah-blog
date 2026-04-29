@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Loader2 } from 'lucide-react'
+import { Loader2, Wand2 } from 'lucide-react'
 
 interface AddBookmarkDialogProps {
   open: boolean
@@ -21,29 +21,81 @@ interface AddBookmarkDialogProps {
   onSuccess: () => void
 }
 
-export function AddBookmarkDialog({
-  open,
-  onOpenChange,
-  onSuccess,
-}: AddBookmarkDialogProps) {
+export function AddBookmarkDialog({ open, onOpenChange, onSuccess }: AddBookmarkDialogProps) {
   const [title, setTitle] = useState('')
   const [url, setUrl] = useState('')
   const [notes, setNotes] = useState('')
   const [category, setCategory] = useState('')
+  const [favicon, setFavicon] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [loadingMetadata, setLoadingMetadata] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
 
   const resetForm = () => {
     setTitle('')
     setUrl('')
     setNotes('')
     setCategory('')
+    setFavicon('')
     setError(null)
+    setNotice(null)
   }
 
   const handleOpenChange = (nextOpen: boolean) => {
     if (!nextOpen) resetForm()
     onOpenChange(nextOpen)
+  }
+
+  const fetchMetadata = async () => {
+    const trimmedUrl = url.trim()
+    if (!trimmedUrl) {
+      setError('请先填写地址')
+      return
+    }
+
+    try {
+      new URL(trimmedUrl)
+    } catch {
+      setError('请填写有效的 URL')
+      return
+    }
+
+    setLoadingMetadata(true)
+    setError(null)
+    setNotice(null)
+    try {
+      const res = await apiClient
+        .get('bookmarks/metadata', {
+          searchParams: { url: trimmedUrl },
+        })
+        .json<{
+          success: boolean
+          error?: string
+          data?: {
+            title: string | null
+            favicon: string | null
+            description: string | null
+            duplicate: { title: string } | null
+          }
+        }>()
+
+      if (!res.success || !res.data) {
+        setError(res.error ?? '补全失败')
+        return
+      }
+
+      setTitle((current) => current.trim() || res.data?.title || current)
+      setNotes((current) => current.trim() || res.data?.description || current)
+      setFavicon(res.data.favicon || '')
+      setNotice(
+        res.data.duplicate ? `这个链接已收藏：${res.data.duplicate.title}` : '已补全网页信息'
+      )
+    } catch (err) {
+      setError(getApiErrorMessage(err))
+    } finally {
+      setLoadingMetadata(false)
+    }
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -71,6 +123,7 @@ export function AddBookmarkDialog({
             url: trimmedUrl,
             notes: notes.trim() || undefined,
             category: category.trim() || undefined,
+            favicon: favicon || undefined,
             source: 'manual',
           },
         })
@@ -103,7 +156,10 @@ export function AddBookmarkDialog({
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4 px-4 py-5 sm:px-6">
           <div className="space-y-1.5">
-            <label htmlFor="add-bookmark-title" className="mb-1.5 block text-sm font-medium text-content-secondary">
+            <label
+              htmlFor="add-bookmark-title"
+              className="mb-1.5 block text-sm font-medium text-content-secondary"
+            >
               标题 *
             </label>
             <Input
@@ -117,23 +173,48 @@ export function AddBookmarkDialog({
             />
           </div>
           <div className="space-y-1.5">
-            <label htmlFor="add-bookmark-url" className="mb-1.5 block text-sm font-medium text-content-secondary">
+            <label
+              htmlFor="add-bookmark-url"
+              className="mb-1.5 block text-sm font-medium text-content-secondary"
+            >
               地址 *
             </label>
-            <Input
-              id="add-bookmark-url"
-              type="url"
-              value={url}
-              onChange={(e) => setUrl(e.target.value)}
-              placeholder="https://..."
-              required
-              className="h-11 rounded-lg"
-            />
-            <p className="text-xs text-content-tertiary">建议填写完整链接，方便后续插件去重与同步。</p>
+            <div className="flex gap-2">
+              <Input
+                id="add-bookmark-url"
+                type="url"
+                value={url}
+                onChange={(e) => setUrl(e.target.value)}
+                placeholder="https://..."
+                required
+                className="h-11 rounded-lg"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => void fetchMetadata()}
+                disabled={loadingMetadata || submitting}
+                className="h-11 shrink-0 rounded-lg px-3"
+                title="补全网页信息"
+                aria-label="补全网页信息"
+              >
+                {loadingMetadata ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Wand2 className="h-4 w-4" />
+                )}
+              </Button>
+            </div>
+            <p className="text-xs text-content-tertiary">
+              建议填写完整链接，方便后续插件去重与同步。
+            </p>
           </div>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="space-y-1.5 sm:col-span-1">
-              <label htmlFor="add-bookmark-category" className="mb-1.5 block text-sm font-medium text-content-secondary">
+              <label
+                htmlFor="add-bookmark-category"
+                className="mb-1.5 block text-sm font-medium text-content-secondary"
+              >
                 分类
               </label>
               <Input
@@ -155,7 +236,10 @@ export function AddBookmarkDialog({
             </div>
           </div>
           <div className="space-y-1.5">
-            <label htmlFor="add-bookmark-notes" className="mb-1.5 block text-sm font-medium text-content-secondary">
+            <label
+              htmlFor="add-bookmark-notes"
+              className="mb-1.5 block text-sm font-medium text-content-secondary"
+            >
               备注
             </label>
             <textarea
@@ -170,8 +254,16 @@ export function AddBookmarkDialog({
             <p className="text-xs text-content-tertiary">{notes.length}/2000</p>
           </div>
           {error && (
-            <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600" role="alert">
+            <p
+              className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600"
+              role="alert"
+            >
               {error}
+            </p>
+          )}
+          {notice && (
+            <p className="rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700">
+              {notice}
             </p>
           )}
           <DialogFooter className="gap-3 border-t border-line-glass/40 pt-4">
@@ -184,11 +276,7 @@ export function AddBookmarkDialog({
             >
               取消
             </Button>
-            <Button
-              type="submit"
-              disabled={submitting}
-              className="w-full rounded-lg sm:w-auto"
-            >
+            <Button type="submit" disabled={submitting} className="w-full rounded-lg sm:w-auto">
               {submitting ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />

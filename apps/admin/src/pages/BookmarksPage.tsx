@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import type { AdminBookmarkItem, PaginationMeta } from '@blog/types'
+import type { AdminBookmarkItem, BookmarkLinkCheckResult, PaginationMeta } from '@blog/types'
 import { EmptyState } from '@/components/EmptyState'
 import { PageHeader } from '@/components/PageHeader'
 import { SectionTable } from '@/components/SectionTable'
@@ -7,6 +7,10 @@ import { Badge, Button, Input } from '@/components/ui'
 import {
   createAdminBookmark,
   deleteAdminBookmark,
+  checkAdminBookmark,
+  convertAdminBookmark,
+  enrichAdminBookmark,
+  getAdminBookmarkMetadata,
   getAdminBookmarks,
   updateAdminBookmark,
 } from '@/lib/api'
@@ -65,7 +69,10 @@ export function BookmarksPage() {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
+  const [busyId, setBusyId] = useState<string | null>(null)
+  const [linkChecks, setLinkChecks] = useState<Record<string, BookmarkLinkCheckResult>>({})
 
   const editingBookmark = useMemo(
     () => items.find((item) => item.id === editingId),
@@ -75,6 +82,7 @@ export function BookmarksPage() {
   const load = async () => {
     try {
       setError(null)
+      setNotice(null)
       const params = new URLSearchParams({
         page: '1',
         limit: '20',
@@ -106,13 +114,45 @@ export function BookmarksPage() {
     setForm(emptyForm)
     setEditingId(null)
     setError(null)
+    setNotice(null)
     setIsFormOpen(true)
+  }
+
+  const fillMetadata = async () => {
+    const trimmedUrl = form.url.trim()
+    if (!trimmedUrl) {
+      setError('URL is required before enrichment')
+      return
+    }
+
+    try {
+      setIsSaving(true)
+      setError(null)
+      setNotice(null)
+      const result = await getAdminBookmarkMetadata(trimmedUrl)
+      setForm((current) => ({
+        ...current,
+        title: current.title.trim() || result.data.title || current.title,
+        notes: current.notes.trim() || result.data.description || current.notes,
+        favicon: current.favicon.trim() || result.data.favicon || current.favicon,
+      }))
+      setNotice(
+        result.data.duplicate
+          ? 'Duplicate URL found. Edit the existing bookmark instead of creating a new one.'
+          : 'Metadata loaded.'
+      )
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load metadata')
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   const saveBookmark = async () => {
     try {
       setIsSaving(true)
       setError(null)
+      setNotice(null)
       const payload = {
         title: form.title.trim(),
         url: form.url.trim(),
@@ -146,6 +186,7 @@ export function BookmarksPage() {
     setEditingId(bookmark.id)
     setForm(formFromBookmark(bookmark))
     setError(null)
+    setNotice(null)
     setIsFormOpen(true)
   }
 
@@ -156,6 +197,53 @@ export function BookmarksPage() {
       resetForm()
     }
     await load()
+  }
+
+  const enrichBookmark = async (bookmark: AdminBookmarkItem) => {
+    try {
+      setBusyId(bookmark.id)
+      setError(null)
+      setNotice(null)
+      await enrichAdminBookmark(bookmark.id)
+      setNotice(`Enriched "${bookmark.title}"`)
+      await load()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to enrich bookmark')
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  const checkBookmark = async (bookmark: AdminBookmarkItem) => {
+    try {
+      setBusyId(bookmark.id)
+      setError(null)
+      setNotice(null)
+      const result = await checkAdminBookmark(bookmark.id)
+      setLinkChecks((current) => ({ ...current, [bookmark.id]: result.data }))
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to check bookmark')
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  const convertBookmark = async (bookmark: AdminBookmarkItem, target: 'thought' | 'draft_post') => {
+    try {
+      setBusyId(bookmark.id)
+      setError(null)
+      setNotice(null)
+      const result = await convertAdminBookmark(bookmark.id, target)
+      setNotice(
+        target === 'thought'
+          ? `Created thought ${result.data.id}`
+          : `Created draft post ${result.data.slug ?? result.data.id}`
+      )
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to convert bookmark')
+    } finally {
+      setBusyId(null)
+    }
   }
 
   return (
@@ -176,9 +264,21 @@ export function BookmarksPage() {
         />
 
         <div className="admin-panel grid gap-2 rounded-2xl p-3 md:grid-cols-4">
-          <Input placeholder="Search title, URL, notes" value={search} onChange={(event) => setSearch(event.target.value)} />
-          <Input placeholder="Exact category" value={category} onChange={(event) => setCategory(event.target.value)} />
-          <select className="rounded-xl border border-[var(--border)] bg-[var(--surface-strong)] px-3 py-2 text-sm text-[var(--text)] outline-none" value={source} onChange={(event) => setSource(event.target.value)}>
+          <Input
+            placeholder="Search title, URL, notes"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+          />
+          <Input
+            placeholder="Exact category"
+            value={category}
+            onChange={(event) => setCategory(event.target.value)}
+          />
+          <select
+            className="rounded-xl border border-[var(--border)] bg-[var(--surface-strong)] px-3 py-2 text-sm text-[var(--text)] outline-none"
+            value={source}
+            onChange={(event) => setSource(event.target.value)}
+          >
             <option value="all">All sources</option>
             <option value="manual">Manual</option>
             <option value="browser_extension">Browser extension</option>
@@ -188,15 +288,34 @@ export function BookmarksPage() {
         </div>
       </div>
 
-      {error ? <p className="mb-4 rounded-xl border border-[var(--danger)]/20 bg-[var(--danger-soft)] px-3 py-2 text-sm text-[var(--danger)]">{error}</p> : null}
+      {error ? (
+        <p className="mb-4 rounded-xl border border-[var(--danger)]/20 bg-[var(--danger-soft)] px-3 py-2 text-sm text-[var(--danger)]">
+          {error}
+        </p>
+      ) : null}
+      {notice ? (
+        <p className="mb-4 rounded-xl border border-[var(--success)]/20 bg-[var(--success-soft)] px-3 py-2 text-sm text-[var(--success)]">
+          {notice}
+        </p>
+      ) : null}
 
       {isFormOpen ? (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-black/45 px-4 py-6 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="bookmark-form-title">
+        <div
+          className="fixed inset-0 z-50 grid place-items-center bg-black/45 px-4 py-6 backdrop-blur-sm"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="bookmark-form-title"
+        >
           <div className="admin-panel max-h-[calc(100vh-48px)] w-full max-w-xl overflow-y-auto rounded-2xl p-5 shadow-2xl">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <p className="font-['IBM_Plex_Mono'] text-[11px] uppercase tracking-[0.12em] text-[var(--text-muted)]">Bookmark</p>
-                <h2 id="bookmark-form-title" className="mt-1 text-lg font-semibold text-[var(--text)]">
+                <p className="font-['IBM_Plex_Mono'] text-[11px] uppercase tracking-[0.12em] text-[var(--text-muted)]">
+                  Bookmark
+                </p>
+                <h2
+                  id="bookmark-form-title"
+                  className="mt-1 text-lg font-semibold text-[var(--text)]"
+                >
                   {editingBookmark ? 'Edit bookmark' : 'New bookmark'}
                 </h2>
               </div>
@@ -206,13 +325,38 @@ export function BookmarksPage() {
             </div>
 
             <div className="mt-5 space-y-3">
-              <Input placeholder="Title" value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} />
-              <Input placeholder="URL" value={form.url} onChange={(event) => setForm({ ...form, url: event.target.value })} />
-              <div className="grid gap-3 md:grid-cols-2">
-                <Input placeholder="Category" value={form.category} onChange={(event) => setForm({ ...form, category: event.target.value })} />
-                <Input placeholder="Favicon URL" value={form.favicon} onChange={(event) => setForm({ ...form, favicon: event.target.value })} />
+              <Input
+                placeholder="Title"
+                value={form.title}
+                onChange={(event) => setForm({ ...form, title: event.target.value })}
+              />
+              <div className="flex gap-2">
+                <Input
+                  placeholder="URL"
+                  value={form.url}
+                  onChange={(event) => setForm({ ...form, url: event.target.value })}
+                />
+                <Button variant="ghost" disabled={isSaving} onClick={() => void fillMetadata()}>
+                  Enrich
+                </Button>
               </div>
-              <Input placeholder="Tags, separated by commas" value={form.tags} onChange={(event) => setForm({ ...form, tags: event.target.value })} />
+              <div className="grid gap-3 md:grid-cols-2">
+                <Input
+                  placeholder="Category"
+                  value={form.category}
+                  onChange={(event) => setForm({ ...form, category: event.target.value })}
+                />
+                <Input
+                  placeholder="Favicon URL"
+                  value={form.favicon}
+                  onChange={(event) => setForm({ ...form, favicon: event.target.value })}
+                />
+              </div>
+              <Input
+                placeholder="Tags, separated by commas"
+                value={form.tags}
+                onChange={(event) => setForm({ ...form, tags: event.target.value })}
+              />
               <textarea
                 className="min-h-28 w-full resize-y rounded-xl border border-[var(--border)] bg-[var(--surface-strong)] px-3 py-2 text-sm text-[var(--text)] outline-none placeholder:text-[var(--text-muted)] focus:border-[var(--accent)]"
                 placeholder="Notes"
@@ -255,19 +399,48 @@ export function BookmarksPage() {
                     <td className="max-w-[420px] px-5 py-4 align-top">
                       <div className="flex items-start gap-3">
                         {bookmark.favicon ? (
-                          <img className="mt-0.5 size-5 shrink-0 rounded" src={bookmark.favicon} alt="" />
+                          <img
+                            className="mt-0.5 size-5 shrink-0 rounded"
+                            src={bookmark.favicon}
+                            alt=""
+                          />
                         ) : null}
                         <div className="min-w-0">
                           <p className="font-medium text-[var(--text)]">{bookmark.title}</p>
-                          <p className="mt-1 truncate text-xs text-[var(--text-muted)]">{bookmark.url}</p>
-                          {bookmark.notes ? <p className="mt-2 line-clamp-2 text-sm text-[var(--text-soft)]">{bookmark.notes}</p> : null}
+                          <p className="mt-1 truncate text-xs text-[var(--text-muted)]">
+                            {bookmark.url}
+                          </p>
+                          {bookmark.notes ? (
+                            <p className="mt-2 line-clamp-2 text-sm text-[var(--text-soft)]">
+                              {bookmark.notes}
+                            </p>
+                          ) : null}
+                          {linkChecks[bookmark.id] ? (
+                            <p
+                              className={
+                                linkChecks[bookmark.id].ok
+                                  ? 'mt-2 text-xs text-[var(--success)]'
+                                  : 'mt-2 text-xs text-[var(--danger)]'
+                              }
+                            >
+                              {linkChecks[bookmark.id].ok ? 'Link OK' : 'Link issue'}
+                              {linkChecks[bookmark.id].status
+                                ? ` · ${linkChecks[bookmark.id].status}`
+                                : ''}
+                              {linkChecks[bookmark.id].error
+                                ? ` · ${linkChecks[bookmark.id].error}`
+                                : ''}
+                            </p>
+                          ) : null}
                         </div>
                       </div>
                     </td>
                     <td className="px-5 py-4 align-top">
                       <div className="flex flex-wrap gap-2">
                         <Badge>{bookmark.source}</Badge>
-                        {bookmark.category ? <Badge tone="success">{bookmark.category}</Badge> : null}
+                        {bookmark.category ? (
+                          <Badge tone="success">{bookmark.category}</Badge>
+                        ) : null}
                         {bookmark.tags.map((tag) => (
                           <Badge key={tag} tone="warning">
                             #{tag}
@@ -275,13 +448,46 @@ export function BookmarksPage() {
                         ))}
                       </div>
                     </td>
-                    <td className="px-5 py-4 align-top text-[var(--text-soft)]">{formatDate(bookmark.updatedAt)}</td>
+                    <td className="px-5 py-4 align-top text-[var(--text-soft)]">
+                      {formatDate(bookmark.updatedAt)}
+                    </td>
                     <td className="px-5 py-4 align-top">
                       <div className="flex flex-wrap gap-2">
                         <Button variant="ghost" onClick={() => startEditing(bookmark)}>
                           Edit
                         </Button>
-                        <Button variant="ghost" onClick={() => window.open(bookmark.url, '_blank', 'noopener,noreferrer')}>
+                        <Button
+                          variant="ghost"
+                          disabled={busyId === bookmark.id}
+                          onClick={() => void enrichBookmark(bookmark)}
+                        >
+                          Enrich
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          disabled={busyId === bookmark.id}
+                          onClick={() => void checkBookmark(bookmark)}
+                        >
+                          Check
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          disabled={busyId === bookmark.id}
+                          onClick={() => void convertBookmark(bookmark, 'thought')}
+                        >
+                          To thought
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          disabled={busyId === bookmark.id}
+                          onClick={() => void convertBookmark(bookmark, 'draft_post')}
+                        >
+                          To draft
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          onClick={() => window.open(bookmark.url, '_blank', 'noopener,noreferrer')}
+                        >
                           Open
                         </Button>
                         <Button variant="danger" onClick={() => void removeBookmark(bookmark)}>

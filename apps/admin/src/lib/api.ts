@@ -2,6 +2,9 @@ import type {
   AdminCommentItem,
   AdminDashboardData,
   AdminBookmarkItem,
+  BookmarkConversionResult,
+  BookmarkLinkCheckResult,
+  BookmarkMetadataResult,
   AdminThoughtItem,
   AdminMediaItem,
   AdminPostListItem,
@@ -19,9 +22,14 @@ type FetchOptions = RequestInit & {
 }
 
 const API_BASE = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? '/api'
-export const SITE_BASE_URL = ((import.meta.env.VITE_SITE_BASE_URL as string | undefined) ?? 'https://www.xyan.store').replace(/\/$/, '')
+export const SITE_BASE_URL = (
+  (import.meta.env.VITE_SITE_BASE_URL as string | undefined) ?? 'https://www.xyan.store'
+).replace(/\/$/, '')
 
-async function request<T>(path: string, options: FetchOptions = {}): Promise<{ data: T; meta?: PaginationMeta }> {
+async function request<T>(
+  path: string,
+  options: FetchOptions = {}
+): Promise<{ data: T; meta?: PaginationMeta }> {
   const response = await fetch(`${API_BASE}${path}`, {
     credentials: 'include',
     headers: {
@@ -107,7 +115,10 @@ export async function createAdminCategory(payload: { name: string; description?:
   })
 }
 
-export async function updateAdminCategory(id: string, payload: { name?: string; description?: string }) {
+export async function updateAdminCategory(
+  id: string,
+  payload: { name?: string; description?: string }
+) {
   return request<AdminTaxonomyItem>(`/admin/categories/${id}`, {
     method: 'PATCH',
     body: JSON.stringify(payload),
@@ -169,6 +180,28 @@ export async function createAdminBookmark(payload: {
   return request<AdminBookmarkItem>('/admin/bookmarks', {
     method: 'POST',
     body: JSON.stringify(payload),
+  })
+}
+
+export async function getAdminBookmarkMetadata(url: string) {
+  const params = new URLSearchParams({ url })
+  return request<BookmarkMetadataResult>(`/admin/bookmarks/metadata?${params.toString()}`)
+}
+
+export async function enrichAdminBookmark(id: string) {
+  return request<AdminBookmarkItem>(`/admin/bookmarks/${id}/enrich`, {
+    method: 'POST',
+  })
+}
+
+export async function checkAdminBookmark(id: string) {
+  return request<BookmarkLinkCheckResult>(`/admin/bookmarks/${id}/check`)
+}
+
+export async function convertAdminBookmark(id: string, target: 'thought' | 'draft_post') {
+  return request<BookmarkConversionResult>(`/admin/bookmarks/${id}/convert`, {
+    method: 'POST',
+    body: JSON.stringify({ target }),
   })
 }
 

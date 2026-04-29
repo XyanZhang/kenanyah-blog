@@ -131,11 +131,15 @@ export {
 export {
   createBookmarkSchema,
   updateBookmarkSchema,
+  bookmarkMetadataSchema,
   bookmarkSyncSchema,
+  bookmarkConversionSchema,
+  type BookmarkMetadataInput,
   type CreateBookmarkInput,
   type UpdateBookmarkInput,
   type BookmarkSyncInput,
   type BookmarkSyncItemInput,
+  type BookmarkConversionInput,
 } from './bookmark'
 
 export {

@@ -96,6 +96,9 @@ export type {
   AdminTaxonomyItem,
   AdminMediaItem,
   AdminBookmarkItem,
+  BookmarkMetadataResult,
+  BookmarkLinkCheckResult,
+  BookmarkConversionResult,
   AdminThoughtItem,
 } from './admin'
 

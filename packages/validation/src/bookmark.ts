@@ -1,6 +1,11 @@
 import { z } from 'zod'
 
 const bookmarkSourceSchema = z.enum(['browser_extension', 'manual', 'api'])
+const bookmarkConversionTargetSchema = z.enum(['thought', 'draft_post'])
+
+export const bookmarkMetadataSchema = z.object({
+  url: z.string().url('请填写有效 URL'),
+})
 
 export const createBookmarkSchema = z.object({
   title: z.string().min(1, '标题不能为空').max(500, '标题最多 500 字'),
@@ -34,7 +39,13 @@ export const bookmarkSyncSchema = z.object({
   items: z.array(bookmarkSyncItemSchema).min(1).max(100),
 })
 
+export const bookmarkConversionSchema = z.object({
+  target: bookmarkConversionTargetSchema,
+})
+
+export type BookmarkMetadataInput = z.infer<typeof bookmarkMetadataSchema>
 export type CreateBookmarkInput = z.infer<typeof createBookmarkSchema>
 export type UpdateBookmarkInput = z.infer<typeof updateBookmarkSchema>
 export type BookmarkSyncItemInput = z.infer<typeof bookmarkSyncItemSchema>
 export type BookmarkSyncInput = z.infer<typeof bookmarkSyncSchema>
+export type BookmarkConversionInput = z.infer<typeof bookmarkConversionSchema>

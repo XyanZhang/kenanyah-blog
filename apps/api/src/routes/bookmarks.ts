@@ -3,14 +3,17 @@ import { Prisma } from '../generated/prisma/client/client'
 import { prisma } from '../lib/db'
 import { validateBody } from '../middleware/validation'
 import {
+  bookmarkMetadataSchema,
   createBookmarkSchema,
   updateBookmarkSchema,
   bookmarkSyncSchema,
+  type BookmarkMetadataInput,
   type CreateBookmarkInput,
   type UpdateBookmarkInput,
   type BookmarkSyncInput,
 } from '@blog/validation'
 import { NotFoundError } from '../middleware/error'
+import { checkBookmarkLink, fetchBookmarkMetadata } from '../lib/bookmark-workflow'
 
 type BookmarkVariables = {
   validatedBody?: unknown
@@ -44,6 +47,23 @@ function bookmarkToResponse(b: {
   }
 }
 
+async function enrichBookmarkInput(body: CreateBookmarkInput) {
+  const metadata =
+    !body.title.trim() || !body.favicon?.trim()
+      ? await fetchBookmarkMetadata(body.url).catch(() => null)
+      : null
+
+  return {
+    title: body.title.trim() || metadata?.title || body.url,
+    url: body.url,
+    notes: body.notes?.trim() || metadata?.description || null,
+    category: body.category?.trim() || null,
+    tags: body.tags ?? Prisma.JsonNull,
+    source: body.source ?? 'manual',
+    favicon: body.favicon?.trim() || metadata?.favicon || null,
+  }
+}
+
 // GET /bookmarks — 列表，支持 category、limit、offset
 bookmarks.get('/', async (c) => {
   const category = c.req.query('category')
@@ -68,6 +88,28 @@ bookmarks.get('/', async (c) => {
     success: true,
     data: items.map(bookmarkToResponse),
     meta: { total, limit: limitNum, offset: offsetNum },
+  })
+})
+
+// GET /bookmarks/metadata?url=... — 获取网页标题和 favicon 预览
+bookmarks.get('/metadata', async (c) => {
+  const parsed = bookmarkMetadataSchema.safeParse({ url: c.req.query('url') })
+  if (!parsed.success) {
+    return c.json({ success: false, error: parsed.error.flatten().fieldErrors }, 400)
+  }
+
+  const { url } = parsed.data as BookmarkMetadataInput
+  const [metadata, existing] = await Promise.all([
+    fetchBookmarkMetadata(url),
+    prisma.bookmark.findUnique({ where: { url } }),
+  ])
+
+  return c.json({
+    success: true,
+    data: {
+      ...metadata,
+      duplicate: existing ? bookmarkToResponse(existing) : null,
+    },
   })
 })
 
@@ -114,22 +156,36 @@ bookmarks.post('/sync', validateBody(bookmarkSyncSchema), async (c) => {
 // POST /bookmarks — 创建
 bookmarks.post('/', validateBody(createBookmarkSchema), async (c) => {
   const body = c.get('validatedBody') as CreateBookmarkInput
-
-  const created = await prisma.bookmark.create({
-    data: {
-      title: body.title.trim(),
-      url: body.url,
-      notes: body.notes?.trim() || null,
-      category: body.category?.trim() || null,
-      tags: body.tags ?? Prisma.JsonNull,
-      source: body.source ?? 'manual',
-      favicon: body.favicon?.trim() || null,
-    },
+  const data = await enrichBookmarkInput(body)
+  const existing = await prisma.bookmark.findUnique({
+    where: { url: data.url },
   })
+
+  const saved = existing
+    ? await prisma.bookmark.update({
+        where: { id: existing.id },
+        data,
+      })
+    : await prisma.bookmark.create({ data })
 
   return c.json({
     success: true,
-    data: bookmarkToResponse(created),
+    data: {
+      ...bookmarkToResponse(saved),
+      duplicateHandled: Boolean(existing),
+    },
+  })
+})
+
+// GET /bookmarks/:id/check — 检查收藏链接是否仍可访问
+bookmarks.get('/:id/check', async (c) => {
+  const id = c.req.param('id')
+  const existing = await prisma.bookmark.findUnique({ where: { id } })
+  if (!existing) throw new NotFoundError('收藏不存在')
+
+  return c.json({
+    success: true,
+    data: await checkBookmarkLink(existing.url),
   })
 })
 
