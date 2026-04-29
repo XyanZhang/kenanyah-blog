@@ -73,9 +73,10 @@ function DialogTrigger({ children, asChild }: DialogTriggerProps) {
 interface DialogContentProps {
   children: React.ReactNode
   className?: string
+  overlayClassName?: string
 }
 
-function DialogContent({ children, className }: DialogContentProps) {
+function DialogContent({ children, className, overlayClassName }: DialogContentProps) {
   const { open, onOpenChange } = useDialogContext()
 
   if (!open) return null
@@ -87,12 +88,12 @@ function DialogContent({ children, className }: DialogContentProps) {
   const dialogContent = (
     <div className="fixed inset-0 z-[100] flex items-end justify-center p-3 sm:items-center sm:p-6">
       <div
-        className="fixed inset-0 bg-black/50"
+        className={cn('fixed inset-0 bg-black/50', overlayClassName)}
         onClick={() => onOpenChange(false)}
       />
       <div
         className={cn(
-          'relative z-[101] max-h-[calc(100vh-1.5rem)] w-full max-w-lg overflow-hidden rounded-2xl bg-surface-primary p-5 shadow-lg sm:max-h-[calc(100vh-3rem)] sm:p-6',
+          'relative z-[101] max-h-[calc(100vh-1.5rem)] w-full max-w-lg overflow-hidden rounded-2xl bg-surface-primary p-5 shadow-lg sm:max-h-[calc(100vh-3rem)]',
           className
         )}
         onClick={stopPropagation}

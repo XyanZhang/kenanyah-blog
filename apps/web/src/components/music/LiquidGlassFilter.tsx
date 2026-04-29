@@ -28,6 +28,8 @@ export interface LiquidGlassFilterProps {
   specularOpacity?: number
   /** 高光饱和度 */
   specularSaturation?: number
+  /** CSS backdrop-filter 的饱和度 */
+  backdropSaturation?: number
   /** 高光角度 (弧度) */
   specularAngle?: number
   children: React.ReactNode
@@ -55,6 +57,7 @@ export function LiquidGlassFilter({
   scaleRatio = DEFAULT_SCALE,
   specularOpacity = DEFAULT_SPECULAR_OPACITY,
   specularSaturation = DEFAULT_SPECULAR_SATURATION,
+  backdropSaturation = 1.2,
   specularAngle = DEFAULT_SPECULAR_ANGLE,
   children,
   className,
@@ -203,8 +206,8 @@ export function LiquidGlassFilter({
 
   const backdropFilterValue =
     displacementDataUrl && specularDataUrl && scale > 0
-      ? `url(#${filterId}) saturate(1.2)`
-      : `blur(8px) saturate(1.2)`
+      ? `url(#${filterId}) saturate(${backdropSaturation})`
+      : `blur(8px) saturate(${backdropSaturation})`
 
   return (
     <>
