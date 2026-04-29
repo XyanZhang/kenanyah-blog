@@ -16,6 +16,10 @@ export function isPicturesSource(src: string): boolean {
   return src.startsWith('/pictures/') || src.includes('/pictures/')
 }
 
+export function isUploadsSource(src: string): boolean {
+  return src.startsWith('/uploads/') || src.includes('/uploads/')
+}
+
 function normalizePicturesPath(src: string): string {
   // 约定：前端 /pictures/** 对应磁盘 apps/api/statics/pictures/**
   // 例如 /pictures/seed/a.jpg -> /statics/pictures/seed/a.jpg
@@ -23,6 +27,18 @@ function normalizePicturesPath(src: string): string {
     return `/statics/pictures/${src.replace(/^\/pictures\//, '')}`
   }
   return src.replace('/pictures/', '/statics/pictures/')
+}
+
+function getApiAssetBaseUrl(): string {
+  const apiBase = getApiBaseUrl()
+  if (apiBase.startsWith('http://') || apiBase.startsWith('https://')) {
+    return apiBase.replace(/\/api$/, '')
+  }
+  if (typeof window !== 'undefined') {
+    return window.location.origin
+  }
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, '')
+  return appUrl || ''
 }
 
 function getStaticsBaseUrl(): string {
@@ -83,4 +99,15 @@ export function buildPicturesImageUrl(src: string, options?: DynamicImageOptions
     return buildDynamicImageUrl(staticsSrc)
   }
   return buildDynamicImageUrl(staticsSrc, options)
+}
+
+export function buildUploadImageUrl(src: string): string {
+  if (!isUploadsSource(src)) return src
+  if (src.startsWith('http://') || src.startsWith('https://')) return src
+
+  const base = getApiAssetBaseUrl()
+  if (!base) return src
+
+  const url = new URL(src, base)
+  return url.toString()
 }

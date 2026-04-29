@@ -6,6 +6,7 @@ import type {
   EventItem,
   EventSourceType,
   EventStatus,
+  MediaAsset,
   PhotoEntry,
   Post,
   ProjectEntry,
@@ -144,12 +145,37 @@ export function serializeProjectEntry(project: ProjectEntry) {
   }
 }
 
-export function serializePhotoEntry(photo: PhotoEntry) {
+function normalizeMediaVariants(value: unknown) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null
+  return value as Record<string, unknown>
+}
+
+export function serializeMediaAsset(asset: MediaAsset) {
+  return {
+    id: asset.id,
+    url: asset.url,
+    storageKey: asset.storageKey,
+    filename: asset.filename,
+    mimeType: asset.mimeType,
+    size: asset.size,
+    width: asset.width ?? null,
+    height: asset.height ?? null,
+    variants: normalizeMediaVariants(asset.variants),
+    source: asset.source,
+    status: asset.status,
+    createdAt: asset.createdAt.toISOString(),
+    updatedAt: asset.updatedAt.toISOString(),
+  }
+}
+
+export function serializePhotoEntry(photo: PhotoEntry & { mediaAsset?: MediaAsset | null }) {
   return {
     id: photo.id,
     title: photo.title ?? null,
     description: photo.description ?? null,
-    imageUrl: photo.imageUrl ?? null,
+    imageUrl: photo.imageUrl ?? photo.mediaAsset?.url ?? null,
+    mediaAssetId: photo.mediaAssetId ?? null,
+    mediaAsset: photo.mediaAsset ? serializeMediaAsset(photo.mediaAsset) : null,
     takenAt: toIsoOrNull(photo.takenAt),
     createdAt: photo.createdAt.toISOString(),
     updatedAt: photo.updatedAt.toISOString(),

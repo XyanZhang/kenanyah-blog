@@ -66,6 +66,7 @@ model User {
   thoughts            Thought[]
   projectEntries      ProjectEntry[]
   photoEntries        PhotoEntry[]
+  mediaAssets         MediaAsset[]
   eventItems          EventItem[]
 
   @@index([email])
@@ -451,6 +452,7 @@ model ProjectEntry {
 model PhotoEntry {
   id          String   @id @default(cuid())
   userId      String?  @map("user_id")
+  mediaAssetId String?  @map("media_asset_id")
   title       String?
   description String?  @db.Text
   imageUrl    String?  @map("image_url") @db.Text
@@ -459,11 +461,39 @@ model PhotoEntry {
   updatedAt   DateTime @updatedAt @map("updated_at")
 
   user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+  mediaAsset MediaAsset? @relation(fields: [mediaAssetId], references: [id], onDelete: SetNull)
 
   @@index([userId])
+  @@index([mediaAssetId])
   @@index([createdAt])
   @@index([takenAt])
   @@map("photo_entries")
+}
+
+model MediaAsset {
+  id         String   @id @default(cuid())
+  userId     String?  @map("user_id")
+  url        String   @db.Text
+  storageKey String   @unique @map("storage_key")
+  filename   String
+  mimeType   String   @map("mime_type")
+  size       Int
+  width      Int?
+  height     Int?
+  variants   Json?
+  source     String   @default("admin")
+  status     String   @default("ready")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+  photoEntries PhotoEntry[]
+
+  @@index([userId])
+  @@index([source])
+  @@index([status])
+  @@index([createdAt])
+  @@map("media_assets")
 }
 
 model EventItem {

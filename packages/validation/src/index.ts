@@ -152,6 +152,9 @@ export {
   adminProjectQuerySchema,
   adminProjectCreateSchema,
   adminProjectUpdateSchema,
+  adminPhotoQuerySchema,
+  adminPhotoCreateSchema,
+  adminPhotoUpdateSchema,
   type AdminLoginInput,
   type AdminPostQueryInput,
   type AdminPostUpdateInput,
@@ -165,4 +168,7 @@ export {
   type AdminProjectQueryInput,
   type AdminProjectCreateInput,
   type AdminProjectUpdateInput,
+  type AdminPhotoQueryInput,
+  type AdminPhotoCreateInput,
+  type AdminPhotoUpdateInput,
 } from './admin'

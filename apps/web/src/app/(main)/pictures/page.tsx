@@ -42,12 +42,21 @@ async function loadDatabasePhotoItems(): Promise<PictureStackItem[]> {
     const json = (await res.json()) as PhotoEntriesApiResponse
     if (!json.success || !Array.isArray(json.data)) return []
     return json.data
-      .filter((item) => Boolean(item.imageUrl))
-      .map((item) => ({
-        id: `db-${item.id}`,
-        src: item.imageUrl!,
-        date: (item.takenAt ?? item.createdAt).slice(0, 10),
-      }))
+      .map((item) => {
+        const src =
+          item.mediaAsset?.variants?.medium?.url ??
+          item.mediaAsset?.url ??
+          item.imageUrl
+
+        if (!src) return null
+
+        return {
+          id: `db-${item.id}`,
+          src,
+          date: (item.takenAt ?? item.createdAt).slice(0, 10),
+        }
+      })
+      .filter((item): item is PictureStackItem => Boolean(item))
   } catch {
     return []
   }

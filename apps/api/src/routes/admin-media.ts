@@ -2,10 +2,13 @@ import { readdir, stat } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { Hono } from 'hono'
+import { Prisma } from '../generated/prisma/client/client'
 import { adminAuthMiddleware, requireAdminRole } from '../middleware/admin-auth'
 import { validateQuery } from '../middleware/validation'
 import { env } from '../env'
-import { savePictureImageBuffer } from '../lib/storage'
+import { prisma } from '../lib/db'
+import { serializeMediaAsset } from '../lib/calendar-events'
+import { saveMediaImageSet } from '../lib/storage'
 import { adminMediaQuerySchema, type AdminMediaQueryInput } from '@blog/validation'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -38,6 +41,31 @@ adminMedia.use('*', adminAuthMiddleware, requireAdminRole('ADMIN'))
 
 adminMedia.get('/', validateQuery(adminMediaQuerySchema), async (c) => {
   const query = c.get('validatedQuery') as AdminMediaQueryInput
+  const dbAssets = await prisma.mediaAsset.findMany({
+    where: query.subdir?.trim()
+      ? {
+          storageKey: {
+            startsWith: `${query.subdir.trim()}/`,
+          },
+        }
+      : undefined,
+    orderBy: { updatedAt: 'desc' },
+  })
+
+  if (dbAssets.length > 0) {
+    return c.json({
+      success: true,
+      data: dbAssets.map((asset) => {
+        const storageParts = asset.storageKey.split('/')
+        return {
+          ...serializeMediaAsset(asset),
+          name: asset.filename,
+          subdir: storageParts[0] ?? 'media',
+        }
+      }),
+    })
+  }
+
   const root = getUploadDir()
   const subdirFilter = query.subdir?.trim()
   const subdirs = subdirFilter ? [subdirFilter] : await readdir(root).catch(() => [])
@@ -84,8 +112,22 @@ adminMedia.post('/upload', async (c) => {
   }
   const ext = path.extname(file.name || '').toLowerCase() || '.jpg'
   const buffer = Buffer.from(await file.arrayBuffer())
-  const url = await savePictureImageBuffer(buffer, ext)
-  return c.json({ success: true, data: { url } }, 201)
+  const saved = await saveMediaImageSet(buffer, ext)
+  const asset = await prisma.mediaAsset.create({
+    data: {
+      url: saved.url,
+      storageKey: saved.storageKey,
+      filename: saved.filename,
+      mimeType: saved.mimeType,
+      size: saved.size,
+      width: saved.width,
+      height: saved.height,
+      variants: saved.variants as Prisma.InputJsonValue,
+      source: 'admin',
+      status: 'ready',
+    },
+  })
+  return c.json({ success: true, data: serializeMediaAsset(asset) }, 201)
 })
 
 export default adminMedia

@@ -11,7 +11,12 @@ import * as THREE from 'three'
 import Image from 'next/image'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
-import { buildPicturesImageUrl, isPicturesSource } from '@/lib/image-service'
+import {
+  buildPicturesImageUrl,
+  buildUploadImageUrl,
+  isPicturesSource,
+  isUploadsSource,
+} from '@/lib/image-service'
 import { OrbitControls as ThreeOrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 
 interface GalleryImage {
@@ -41,6 +46,7 @@ type OrbitControlsHandle = {
 }
 
 function resolveGalleryTextureSrc(src: string): string {
+  if (isUploadsSource(src)) return buildUploadImageUrl(src)
   if (!isPicturesSource(src)) return src
   return buildPicturesImageUrl(src, {
     width: 768,
@@ -52,6 +58,7 @@ function resolveGalleryTextureSrc(src: string): string {
 }
 
 function resolveGalleryDetailSrc(src: string): string {
+  if (isUploadsSource(src)) return buildUploadImageUrl(src)
   if (!isPicturesSource(src)) return src
   return buildPicturesImageUrl(src, {
     width: 1600,

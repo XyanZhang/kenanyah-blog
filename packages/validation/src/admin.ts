@@ -84,6 +84,29 @@ export const adminProjectCreateSchema = z.object({
 
 export const adminProjectUpdateSchema = adminProjectCreateSchema.partial()
 
+const mediaUrlSchema = z
+  .string()
+  .refine((value) => value.startsWith('/uploads/') || z.string().url().safeParse(value).success, {
+    message: '请输入有效图片地址',
+  })
+
+export const adminPhotoQuerySchema = z.object({
+  page: z.coerce.number().int().positive().default(1),
+  limit: z.coerce.number().int().positive().max(100).default(20),
+  search: z.string().max(100).optional(),
+  hasImage: z.enum(['true', 'false', 'all']).default('all'),
+})
+
+export const adminPhotoCreateSchema = z.object({
+  title: z.string().max(120).nullable().optional(),
+  description: z.string().max(5000).nullable().optional(),
+  imageUrl: mediaUrlSchema.nullable().optional(),
+  mediaAssetId: z.string().cuid().nullable().optional(),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
+})
+
+export const adminPhotoUpdateSchema = adminPhotoCreateSchema.partial()
+
 export type AdminLoginInput = z.infer<typeof adminLoginSchema>
 export type AdminPostQueryInput = z.infer<typeof adminPostQuerySchema>
 export type AdminPostUpdateInput = z.infer<typeof adminPostUpdateSchema>
@@ -97,3 +120,6 @@ export type AdminThoughtUpdateInput = z.infer<typeof adminThoughtUpdateSchema>
 export type AdminProjectQueryInput = z.infer<typeof adminProjectQuerySchema>
 export type AdminProjectCreateInput = z.infer<typeof adminProjectCreateSchema>
 export type AdminProjectUpdateInput = z.infer<typeof adminProjectUpdateSchema>
+export type AdminPhotoQueryInput = z.infer<typeof adminPhotoQuerySchema>
+export type AdminPhotoCreateInput = z.infer<typeof adminPhotoCreateSchema>
+export type AdminPhotoUpdateInput = z.infer<typeof adminPhotoUpdateSchema>

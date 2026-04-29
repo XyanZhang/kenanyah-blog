@@ -8,7 +8,9 @@ import type {
   AdminTaxonomyItem,
   AdminUser,
   ApiResponse,
+  MediaAssetDto,
   PaginationMeta,
+  PhotoEntryDto,
   ProjectEntryDto,
 } from '@blog/types'
 
@@ -145,7 +147,7 @@ export async function getAdminMedia() {
 export async function uploadAdminMedia(file: File) {
   const form = new FormData()
   form.append('file', file)
-  return request<{ url: string }>('/admin/media/upload', {
+  return request<MediaAssetDto>('/admin/media/upload', {
     method: 'POST',
     body: form,
   })
@@ -271,5 +273,65 @@ export async function updateAdminProject(
 export async function deleteAdminProject(id: string) {
   return request<{ message: string }>(`/admin/projects/${id}`, {
     method: 'DELETE',
+  })
+}
+
+export async function getAdminPhotos(params: URLSearchParams) {
+  return request<PhotoEntryDto[]>(`/admin/photos?${params.toString()}`)
+}
+
+export async function createAdminPhoto(payload: {
+  title?: string | null
+  description?: string | null
+  imageUrl?: string | null
+  mediaAssetId?: string | null
+  date?: string | null
+}) {
+  return request<PhotoEntryDto>('/admin/photos', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+}
+
+export async function updateAdminPhoto(
+  id: string,
+  payload: {
+    title?: string | null
+    description?: string | null
+    imageUrl?: string | null
+    mediaAssetId?: string | null
+    date?: string | null
+  }
+) {
+  return request<PhotoEntryDto>(`/admin/photos/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  })
+}
+
+export async function deleteAdminPhoto(id: string) {
+  return request<{ message: string }>(`/admin/photos/${id}`, {
+    method: 'DELETE',
+  })
+}
+
+export async function uploadAdminPhoto(payload: {
+  file: File
+  title?: string
+  description?: string
+  date?: string
+}) {
+  const form = new FormData()
+  form.append('file', payload.file)
+  if (payload.title) form.append('title', payload.title)
+  if (payload.description) form.append('description', payload.description)
+  if (payload.date) form.append('date', payload.date)
+
+  return request<{
+    photo: PhotoEntryDto
+    mediaAsset: NonNullable<PhotoEntryDto['mediaAsset']>
+  }>('/admin/photos/upload', {
+    method: 'POST',
+    body: form,
   })
 }

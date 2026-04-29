@@ -3,8 +3,8 @@ import { Readable } from 'node:stream'
 import { createReadStream } from 'node:fs'
 import { stat } from 'node:fs/promises'
 import path from 'node:path'
-import { env } from '../env'
 import { fileURLToPath } from 'node:url'
+import { env } from '../env'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const apiRoot = path.resolve(__dirname, '..', '..')
@@ -15,74 +15,48 @@ function getUploadDir(): string {
   return path.isAbsolute(dir) ? dir : path.resolve(apiRoot, dir)
 }
 
+function getMimeType(filename: string): string {
+  const ext = path.extname(filename).toLowerCase()
+  if (ext === '.png') return 'image/png'
+  if (ext === '.jpg' || ext === '.jpeg') return 'image/jpeg'
+  if (ext === '.gif') return 'image/gif'
+  if (ext === '.webp') return 'image/webp'
+  if (ext === '.avif') return 'image/avif'
+  if (ext === '.pdf') return 'application/pdf'
+  return 'application/octet-stream'
+}
+
+function parseSafeUploadPath(rawPath: string): string[] | null {
+  const segments = rawPath
+    .split('/')
+    .map((segment) => decodeURIComponent(segment).trim())
+    .filter(Boolean)
+
+  if (segments[0] === 'uploads') {
+    segments.shift()
+  }
+  if (segments.length < 2) return null
+  if (segments.some((segment) => segment === '.' || segment === '..' || segment.includes('\\'))) {
+    return null
+  }
+
+  return segments
+}
+
 const uploads = new Hono()
 
-/** GET /uploads/:subdir/:filename — 提供已上传文件的访问 */
-uploads.get('/:subdir/:filename', async (c) => {
-  const subdir = c.req.param('subdir')
-  const filename = c.req.param('filename')
-  if (!subdir || !filename) {
+uploads.get('*', async (c) => {
+  const segments = parseSafeUploadPath(c.req.path)
+  if (!segments) {
     return c.json({ success: false, error: 'Invalid path' }, 400)
   }
-  // 防止路径穿越
-  if (subdir.includes('..') || filename.includes('..')) {
-    return c.json({ success: false, error: 'Invalid path' }, 400)
-  }
-  const root = getUploadDir()
-  const filePath = path.join(root, subdir, filename)
-  const resolved = path.resolve(filePath)
-  if (!resolved.startsWith(path.resolve(root))) {
-    return c.json({ success: false, error: 'Invalid path' }, 400)
-  }
-  try {
-    const st = await stat(resolved)
-    if (!st.isFile()) {
-      return c.json({ success: false, error: 'Not found' }, 404)
-    }
-  } catch {
-    return c.json({ success: false, error: 'Not found' }, 404)
-  }
-  const ext = path.extname(filename).toLowerCase()
-  const mime =
-    ext === '.png'
-      ? 'image/png'
-      : ext === '.jpg' || ext === '.jpeg'
-        ? 'image/jpeg'
-        : ext === '.gif'
-          ? 'image/gif'
-          : ext === '.webp'
-            ? 'image/webp'
-            : ext === '.pdf'
-              ? 'application/pdf'
-            : 'application/octet-stream'
-  const stream = createReadStream(resolved)
-  const webStream = Readable.toWeb(stream) as ReadableStream
-  return new Response(webStream, {
-    headers: {
-      'Content-Type': mime,
-      'Cache-Control': 'public, max-age=86400',
-    },
-  })
-})
 
-/** GET /uploads/:subdir/:subsubdir/:filename — 提供两级目录文件访问（如 pdfs/:id/:filename） */
-uploads.get('/:subdir/:subsubdir/:filename', async (c) => {
-  const subdir = c.req.param('subdir')
-  const subsubdir = c.req.param('subsubdir')
-  const filename = c.req.param('filename')
-  if (!subdir || !subsubdir || !filename) {
+  const root = path.resolve(getUploadDir())
+  const resolved = path.resolve(root, ...segments)
+  if (!resolved.startsWith(root)) {
     return c.json({ success: false, error: 'Invalid path' }, 400)
   }
-  // 防止路径穿越
-  if (subdir.includes('..') || subsubdir.includes('..') || filename.includes('..')) {
-    return c.json({ success: false, error: 'Invalid path' }, 400)
-  }
-  const root = getUploadDir()
-  const filePath = path.join(root, subdir, subsubdir, filename)
-  const resolved = path.resolve(filePath)
-  if (!resolved.startsWith(path.resolve(root))) {
-    return c.json({ success: false, error: 'Invalid path' }, 400)
-  }
+
   try {
     const st = await stat(resolved)
     if (!st.isFile()) {
@@ -91,24 +65,12 @@ uploads.get('/:subdir/:subsubdir/:filename', async (c) => {
   } catch {
     return c.json({ success: false, error: 'Not found' }, 404)
   }
-  const ext = path.extname(filename).toLowerCase()
-  const mime =
-    ext === '.png'
-      ? 'image/png'
-      : ext === '.jpg' || ext === '.jpeg'
-        ? 'image/jpeg'
-        : ext === '.gif'
-          ? 'image/gif'
-          : ext === '.webp'
-            ? 'image/webp'
-            : ext === '.pdf'
-              ? 'application/pdf'
-            : 'application/octet-stream'
+
   const stream = createReadStream(resolved)
   const webStream = Readable.toWeb(stream) as ReadableStream
   return new Response(webStream, {
     headers: {
-      'Content-Type': mime,
+      'Content-Type': getMimeType(segments.at(-1) ?? ''),
       'Cache-Control': 'public, max-age=86400',
     },
   })

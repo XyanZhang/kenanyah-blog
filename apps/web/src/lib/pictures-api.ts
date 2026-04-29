@@ -11,6 +11,7 @@ export async function createPhotoEntry(body: {
   title?: string
   description?: string
   imageUrl?: string
+  mediaAssetId?: string
   date?: string
 }): Promise<PhotoEntryDto> {
   const res = await apiClient
@@ -20,7 +21,10 @@ export async function createPhotoEntry(body: {
   return res.data
 }
 
-export async function uploadPictureFile(file: File): Promise<string> {
+export async function uploadPictureFile(file: File): Promise<{
+  url: string
+  mediaAssetId: string
+}> {
   const formData = new FormData()
   formData.append('file', file)
 
@@ -30,9 +34,12 @@ export async function uploadPictureFile(file: File): Promise<string> {
     credentials: 'include',
     body: formData,
   })
-  const json = (await res.json()) as ApiResponse<{ url: string }>
-  if (!json.success || !json.data?.url) {
+  const json = (await res.json()) as ApiResponse<{ url: string; mediaAssetId: string }>
+  if (!json.success || !json.data?.url || !json.data.mediaAssetId) {
     throw new Error(json.error ?? '图片上传失败')
   }
-  return json.data.url
+  return {
+    url: json.data.url,
+    mediaAssetId: json.data.mediaAssetId,
+  }
 }

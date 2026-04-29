@@ -3,16 +3,18 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { Hono } from 'hono'
 import { z } from 'zod'
+import { Prisma } from '../generated/prisma/client/client'
 import { env } from '../env'
 import { prisma } from '../lib/db'
 import { logger } from '../lib/logger'
 import { authMiddleware } from '../middleware/auth'
 import {
   dateStringToUtcDate,
+  serializeMediaAsset,
   serializePhotoEntry,
   syncPhotoEvent,
 } from '../lib/calendar-events'
-import { savePictureImageBuffer } from '../lib/storage'
+import { saveMediaImageSet } from '../lib/storage'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const apiRoot = path.resolve(__dirname, '..', '..')
@@ -56,7 +58,13 @@ const ALLOWED_IMAGE_MIME = new Set([
 const createPictureEntrySchema = z.object({
   title: z.string().max(120).optional(),
   description: z.string().max(5000).optional(),
-  imageUrl: z.string().url('图片地址格式无效').optional(),
+  imageUrl: z
+    .string()
+    .refine((value) => value.startsWith('/uploads/') || z.string().url().safeParse(value).success, {
+      message: '图片地址格式无效',
+    })
+    .optional(),
+  mediaAssetId: z.string().cuid().optional(),
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, '请填写 YYYY-MM-DD 格式日期').optional(),
 })
 
@@ -95,6 +103,7 @@ pictures.get('/entries', async (c) => {
   try {
     const list = await prisma.photoEntry.findMany({
       orderBy: [{ takenAt: 'desc' }, { createdAt: 'desc' }],
+      include: { mediaAsset: true },
     })
 
     return c.json({
@@ -124,15 +133,25 @@ pictures.post('/entries', authMiddleware, async (c) => {
 
   const { userId } = c.get('user')!
   const body = parsed.data
+  const mediaAsset = body.mediaAssetId
+    ? await prisma.mediaAsset.findFirst({
+        where: {
+          id: body.mediaAssetId,
+          OR: [{ userId }, { userId: null }],
+        },
+      })
+    : null
 
   const entry = await prisma.photoEntry.create({
     data: {
       userId,
+      mediaAssetId: body.mediaAssetId ?? null,
       title: body.title?.trim() || null,
       description: body.description?.trim() || null,
-      imageUrl: body.imageUrl?.trim() || null,
+      imageUrl: body.imageUrl?.trim() || mediaAsset?.url || null,
       takenAt: body.date ? dateStringToUtcDate(body.date) : new Date(),
     },
+    include: { mediaAsset: true },
   })
 
   await syncPhotoEvent(entry)
@@ -169,8 +188,31 @@ pictures.post('/upload', authMiddleware, async (c) => {
 
   const buf = Buffer.from(await file.arrayBuffer())
   try {
-    const url = await savePictureImageBuffer(buf, ext)
-    return c.json({ success: true, data: { url } })
+    const saved = await saveMediaImageSet(buf, ext)
+    const { userId } = c.get('user')!
+    const asset = await prisma.mediaAsset.create({
+      data: {
+        userId,
+        url: saved.url,
+        storageKey: saved.storageKey,
+        filename: saved.filename,
+        mimeType: saved.mimeType,
+        size: saved.size,
+        width: saved.width,
+        height: saved.height,
+        variants: saved.variants as Prisma.InputJsonValue,
+        source: 'picture',
+        status: 'ready',
+      },
+    })
+    return c.json({
+      success: true,
+      data: {
+        url: asset.url,
+        mediaAssetId: asset.id,
+        mediaAsset: serializeMediaAsset(asset),
+      },
+    })
   } catch (error) {
     const message = error instanceof Error ? error.message : '上传失败'
     return c.json({ success: false, error: message }, 500)

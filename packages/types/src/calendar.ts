@@ -80,11 +80,42 @@ export interface ProjectEntryDto {
   updatedAt: string
 }
 
+export interface MediaAssetVariantDto {
+  url: string
+  storageKey: string
+  width: number | null
+  height: number | null
+  mimeType: string
+  size: number
+}
+
+export interface MediaAssetDto {
+  id: string
+  url: string
+  storageKey: string
+  filename: string
+  mimeType: string
+  size: number
+  width: number | null
+  height: number | null
+  variants: {
+    original?: MediaAssetVariantDto
+    medium?: MediaAssetVariantDto
+    thumb?: MediaAssetVariantDto
+  } | null
+  source: string
+  status: string
+  createdAt: string
+  updatedAt: string
+}
+
 export interface PhotoEntryDto {
   id: string
   title: string | null
   description: string | null
   imageUrl: string | null
+  mediaAssetId: string | null
+  mediaAsset?: MediaAssetDto | null
   takenAt: string | null
   createdAt: string
   updatedAt: string

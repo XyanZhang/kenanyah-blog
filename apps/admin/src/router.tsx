@@ -16,6 +16,7 @@ import { MediaPage } from './pages/MediaPage'
 import { BookmarksPage } from './pages/BookmarksPage'
 import { ThoughtsPage } from './pages/ThoughtsPage'
 import { ProjectsPage } from './pages/ProjectsPage'
+import { PhotosPage } from './pages/PhotosPage'
 import { AdminShell } from './components/AdminShell'
 
 function RootLayout() {
@@ -118,6 +119,12 @@ const projectsRoute = createRoute({
   component: ProjectsPage,
 })
 
+const photosRoute = createRoute({
+  getParentRoute: () => protectedRoute,
+  path: '/photos',
+  component: PhotosPage,
+})
+
 const taxonomyRoute = createRoute({
   getParentRoute: () => protectedRoute,
   path: '/taxonomy',
@@ -139,6 +146,7 @@ const routeTree = rootRoute.addChildren([
     bookmarksRoute,
     thoughtsRoute,
     projectsRoute,
+    photosRoute,
     taxonomyRoute,
     mediaRoute,
   ]),

@@ -65,6 +65,8 @@ export type {
   CalendarDayResponse,
   CalendarQuickCreateResult,
   ProjectEntryDto,
+  MediaAssetVariantDto,
+  MediaAssetDto,
   PhotoEntryDto,
 } from './calendar'
 

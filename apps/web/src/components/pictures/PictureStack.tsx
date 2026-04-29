@@ -5,7 +5,12 @@ import { useMemo, useState } from 'react'
 import Image from 'next/image'
 import { motion } from 'framer-motion'
 import { cn } from '@/lib/utils'
-import { buildPicturesImageUrl, isPicturesSource } from '@/lib/image-service'
+import {
+  buildPicturesImageUrl,
+  buildUploadImageUrl,
+  isPicturesSource,
+  isUploadsSource,
+} from '@/lib/image-service'
 import Lightbox from 'yet-another-react-lightbox'
 import Zoom from 'yet-another-react-lightbox/plugins/zoom'
 import 'yet-another-react-lightbox/styles.css'
@@ -24,6 +29,7 @@ interface PictureStackProps {
 const aspectPattern = ['4 / 5', '5 / 7', '1 / 1', '4 / 3', '3 / 4', '5 / 6']
 
 function resolvePictureListSrc(src: string): string {
+  if (isUploadsSource(src)) return buildUploadImageUrl(src)
   if (!isPicturesSource(src)) return src
   return buildPicturesImageUrl(src, {
     width: 1200,
@@ -35,6 +41,7 @@ function resolvePictureListSrc(src: string): string {
 }
 
 function resolvePictureDetailSrc(src: string): string {
+  if (isUploadsSource(src)) return buildUploadImageUrl(src)
   if (!isPicturesSource(src)) return src
   return buildPicturesImageUrl(src)
 }

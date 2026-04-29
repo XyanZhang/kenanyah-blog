@@ -332,11 +332,12 @@ export function CalendarDayView({ date }: { date: string }) {
     setError(null)
     setPhotoSaving(true)
     try {
-      const imageUrl = photoFile ? await uploadPictureFile(photoFile) : undefined
+      const uploaded = photoFile ? await uploadPictureFile(photoFile) : undefined
       await createPhotoEntry({
         title: photoTitle.trim() || undefined,
         description: photoDescription.trim() || undefined,
-        imageUrl,
+        imageUrl: uploaded?.url,
+        mediaAssetId: uploaded?.mediaAssetId,
         date,
       })
       resetForms()

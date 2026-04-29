@@ -139,8 +139,14 @@ export interface AdminMediaItem {
   id: string
   name: string
   url: string
+  storageKey?: string
   size: number
   mimeType: string
+  width?: number | null
+  height?: number | null
+  variants?: Record<string, unknown> | null
+  source?: string
+  status?: string
   updatedAt: string
   subdir: string
 }
