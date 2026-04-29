@@ -75,7 +75,7 @@ export function BlogEditor({ initialData, onSubmit }: BlogEditorProps) {
     }
     return new Date().toISOString().slice(0, 16)
   })
-  const [isFeatured, setIsFeatured] = useState(false)
+  const [isFeatured, setIsFeatured] = useState(initialData?.isFeatured ?? false)
   const [aiLoading, setAiLoading] = useState(false)
   const [aiResult, setAiResult] = useState('')
   const [aiError, setAiError] = useState<string | null>(null)
@@ -93,6 +93,7 @@ export function BlogEditor({ initialData, onSubmit }: BlogEditorProps) {
     setCoverImage(initialData.coverImage ?? undefined)
     setImages(initialData.images ?? [])
     setPublished(initialData.published ?? true)
+    setIsFeatured(initialData.isFeatured ?? false)
     if (initialData.publishedAt) {
       setPublishedAt(new Date(initialData.publishedAt).toISOString().slice(0, 16))
     }
