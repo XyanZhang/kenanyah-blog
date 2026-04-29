@@ -2212,10 +2212,12 @@ export default function AiChatPageContent() {
                           )}
                         <div className="order-2 min-w-0 flex-1">
                         <div
-                          className={`overflow-x-hidden break-words rounded-2xl px-3 py-2 text-sm shadow-sm ${
+                          className={`overflow-x-hidden break-words text-sm shadow-sm ${
                             msg.role === 'user'
-                              ? 'bg-accent-primary text-white'
-                              : 'bg-surface-tertiary/90 text-content-primary'
+                              ? 'rounded-2xl bg-accent-primary px-3 py-2 text-white'
+                              : operationCard
+                                ? 'rounded-[1.15rem] bg-surface-tertiary/95 px-4 py-3 text-content-primary shadow-[0_10px_28px_rgba(15,23,42,0.045)]'
+                                : 'rounded-2xl bg-surface-tertiary/90 px-3 py-2 text-content-primary'
                           }`}
                         >
                         {msg.queued && (
@@ -2237,33 +2239,29 @@ export default function AiChatPageContent() {
                         )}
                         {msg.role === 'assistant' ? (
                           operationCard ? (
-                            <div
-                              className={`rounded-2xl border p-3 ${
-                                operationCard.kind === 'confirm' && operationCard.emphasis === 'danger'
-                                  ? 'border-red-500/20 bg-red-500/6'
-                                  : 'border-line-glass/70 bg-surface-glass/60'
-                              }`}
-                            >
-                              <div className="text-[11px] font-semibold tracking-[0.18em] text-content-tertiary">
-                                {operationCard.kind === 'confirm' ? '操作确认卡片' : '操作卡片'}
-                              </div>
-                              <div className="mt-2 text-sm font-semibold text-content-primary">
+                            <div className="space-y-3">
+                              {operationCard.kind === 'confirm' && operationCard.emphasis === 'danger' && (
+                                <div className="rounded-xl border border-red-500/20 bg-red-500/6 px-3 py-2 text-[11px] font-medium text-ui-destructive">
+                                  操作确认卡片
+                                </div>
+                              )}
+                              <div className="text-sm font-semibold leading-6 text-content-primary">
                                 {operationCard.title}
                               </div>
                               {operationCard.description && (
-                                <div className="mt-1 text-xs leading-5 text-content-secondary">
+                                <div className="-mt-2 text-xs leading-5 text-content-secondary">
                                   {operationCard.description}
                                 </div>
                               )}
 
                               {operationCard.kind === 'followup' && operationCard.questions.length > 0 && (
-                                <div className="mt-3 space-y-2">
+                                <div className="space-y-2">
                                   {operationCard.questions.map((question, questionIndex) => (
                                     <div
                                       key={`${msg.id}-question-${questionIndex}`}
-                                      className="rounded-xl border border-line-glass/70 bg-surface-glass/55 px-3 py-2"
+                                      className="rounded-xl border border-line-glass/35 bg-content-primary/[0.035] px-3 py-2"
                                     >
-                                      <div className="text-[11px] font-medium text-content-tertiary">
+                                      <div className="text-[11px] font-medium text-content-tertiary/85">
                                         问题 {questionIndex + 1}
                                       </div>
                                       <div className="mt-1 text-xs leading-5 text-content-primary">
@@ -2276,13 +2274,13 @@ export default function AiChatPageContent() {
 
                               {operationCard.kind === 'confirm' && (
                                 <>
-                                  <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                                  <div className="grid gap-2 sm:grid-cols-2">
                                     {operationCard.details.map((detail) => (
                                       <div
                                         key={`${msg.id}-${detail.label}`}
-                                        className="rounded-xl border border-line-glass/70 bg-surface-glass/55 px-3 py-2"
+                                        className="rounded-xl border border-line-glass/35 bg-content-primary/[0.035] px-3 py-2"
                                       >
-                                        <div className="text-[11px] font-medium text-content-tertiary">
+                                        <div className="text-[11px] font-medium text-content-tertiary/85">
                                           {detail.label}
                                         </div>
                                         <div className="mt-1 break-all text-xs leading-5 text-content-primary">
@@ -2292,20 +2290,20 @@ export default function AiChatPageContent() {
                                     ))}
                                   </div>
                                   {operationCard.sections && operationCard.sections.length > 0 && (
-                                    <div className="mt-3 space-y-3">
+                                    <div className="space-y-3">
                                       {operationCard.sections.map((section) => (
                                         <div
                                           key={`${msg.id}-${section.title}`}
-                                          className="rounded-xl border border-line-glass/70 bg-surface-glass/55 p-3"
+                                          className="rounded-xl border border-line-glass/35 bg-content-primary/[0.035] p-3"
                                         >
-                                          <div className="text-[11px] font-semibold tracking-[0.14em] text-content-tertiary">
+                                          <div className="text-[11px] font-semibold tracking-[0.1em] text-content-tertiary/85">
                                             {section.title}
                                           </div>
                                           <div className="mt-2 space-y-2">
                                             {section.items.map((item, itemIndex) => (
                                               <div
                                                 key={`${msg.id}-${section.title}-${itemIndex}`}
-                                                className="rounded-lg bg-white/70 px-3 py-2 text-xs leading-5 text-content-primary"
+                                                className="rounded-lg bg-content-primary/[0.04] px-3 py-2 text-xs leading-5 text-content-primary"
                                               >
                                                 {item}
                                               </div>
@@ -2337,7 +2335,7 @@ export default function AiChatPageContent() {
                               )}
 
                               {showWorkflowFollowupActions && operationCard.kind === 'followup' && (
-                                <div className="mt-4 border-t border-line-glass/70 pt-3">
+                                <div className="border-t border-line-glass/35 pt-3">
                                   <div className="mb-2 text-xs font-medium text-content-secondary">
                                     通过操作卡补充信息后直接继续生成：
                                   </div>
@@ -2348,7 +2346,7 @@ export default function AiChatPageContent() {
                                       return (
                                         <div
                                           key={spec.id}
-                                          className="rounded-xl border border-line-glass/70 bg-surface-glass/60 p-3"
+                                          className="rounded-xl border border-line-glass/35 bg-content-primary/[0.035] p-3"
                                         >
                                           <div className="text-xs font-medium text-content-primary">
                                             {spec.title}
@@ -2376,7 +2374,7 @@ export default function AiChatPageContent() {
                                             })}
                                           </div>
                                           <textarea
-                                            className="mt-3 w-full resize-none rounded-xl border border-line-glass bg-surface-glass px-3 py-2 text-xs text-content-primary placeholder:text-content-tertiary focus:outline-none focus:ring-2 focus:ring-accent-primary/40"
+                                            className="mt-3 w-full resize-none rounded-xl border border-line-glass/45 bg-content-primary/[0.035] px-3 py-2 text-xs text-content-primary placeholder:text-content-tertiary focus:outline-none focus:ring-2 focus:ring-accent-primary/35"
                                             rows={2}
                                             value={draft.customText}
                                             onChange={(e) =>
@@ -2423,7 +2421,7 @@ export default function AiChatPageContent() {
                               )}
 
                               {showChatFollowupActions && operationCard.kind === 'followup' && (
-                                <div className="mt-4 border-t border-line-glass/70 pt-3">
+                                <div className="border-t border-line-glass/35 pt-3">
                                   {operationCard.quickReplies && operationCard.quickReplies.length > 0 && (
                                     <div className="mb-3 flex flex-wrap gap-2">
                                       {operationCard.quickReplies.map((reply) => (
@@ -2442,7 +2440,7 @@ export default function AiChatPageContent() {
                                     </div>
                                   )}
                                   <textarea
-                                    className="w-full resize-none rounded-xl border border-line-glass bg-surface-glass px-3 py-2 text-xs text-content-primary placeholder:text-content-tertiary focus:outline-none focus:ring-2 focus:ring-accent-primary/40"
+                                    className="w-full resize-none rounded-xl border border-line-glass/45 bg-content-primary/[0.035] px-3 py-2 text-xs text-content-primary placeholder:text-content-tertiary focus:outline-none focus:ring-2 focus:ring-accent-primary/35"
                                     rows={3}
                                     value={getOperationCardReplyDraft(msg.id)}
                                     onChange={(e) =>
@@ -2492,7 +2490,7 @@ export default function AiChatPageContent() {
                               )}
 
                               {showConfirmActions && operationCard.kind === 'confirm' && (
-                                <div className="mt-4 flex flex-wrap gap-2 border-t border-line-glass/70 pt-3">
+                                <div className="flex flex-wrap gap-2 border-t border-line-glass/35 pt-3">
                                   {operationCard.actions
                                     .filter((action) => action.type === 'send_message')
                                     .map((action) => (
