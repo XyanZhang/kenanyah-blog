@@ -1,0 +1,18 @@
+{
+  "name": "task-loop",
+  "version": "0.1.0",
+  "private": true,
+  "description": "CLI for persistent engineering task loops and Codex handoffs",
+  "scripts": {
+    "task-loop": "node src/cli.js",
+    "test": "node --test src/cli.test.js",
+    "type-check": "node --check src/cli.js && node --check src/cli.test.js",
+    "clean": "rm -rf node_modules"
+  },
+  "bin": {
+    "task-loop": "src/cli.js"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

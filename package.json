@@ -39,6 +39,8 @@
     "predeploy:prod": "bash scripts/predeploy-prod-check.sh",
     "predeploy:prod:docker": "bash scripts/predeploy-prod-check.sh --docker",
     "init": "pnpm install && pnpm docker:up && sleep 5 && pnpm db:generate && pnpm db:migrate && pnpm --filter api prisma:seed",
+    "loop": "node scripts/task-loop.js",
+    "task-loop": "node scripts/task-loop.js",
     "codex:observe:index": "pnpm --filter codex-observability run index",
     "codex:observe:query": "pnpm --filter codex-observability run query"
   },
