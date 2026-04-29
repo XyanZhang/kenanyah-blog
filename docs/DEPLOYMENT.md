@@ -158,7 +158,10 @@ source blog-images.release.env
 
 ## 日常生产发布
 
-推荐默认流程：
+### 方式 A：本地构建后上传镜像
+
+适合服务器资源较小、Docker 构建较慢的场景。
+Use this when the server is small and Docker builds are slow.
 
 ```bash
 # 本地
@@ -174,11 +177,32 @@ source blog-images.release.env
 ./scripts/deploy.sh verify
 ```
 
+### 方式 B：服务器直接构建发布
+
+适合服务器构建缓存稳定、希望命令更简单的场景。
+Use this when the server Docker cache is stable and you want a shorter deploy flow.
+
+```bash
+./scripts/deploy.sh backup
+./scripts/deploy.sh migrate-prod
+./scripts/deploy.sh deploy-build
+./scripts/deploy.sh verify
+```
+
+如果只想重新构建某个服务，可以给 `deploy-build` 传服务名。
+If you only want to rebuild one service, pass service names to `deploy-build`.
+
+```bash
+./scripts/deploy.sh deploy-build api
+./scripts/deploy.sh deploy-build web
+./scripts/deploy.sh deploy-build admin
+```
+
 说明：
 
 - `backup` 默认生成压缩 `.dump` 文件，命名为 `backups/prod_<db>_<release>_predeploy.dump`
-- `migrate` 使用独立的 `migrate` 服务执行 `prisma migrate deploy`
-- `deploy-app primary` 更新主应用容器
+- `migrate-prod` 使用独立的 `migrate` 服务执行 `prisma migrate deploy`
+- `deploy-build` 在服务器上重新构建并启动 `api`、`web`、`admin`、`nginx`
 - `verify` 会检查健康接口、首页、登录页，以及你在 `.env.prod` 里配置的额外 URL
 
 ## 可选的 green 应用发布
@@ -267,8 +291,8 @@ VERIFY_WRITE_BEARER_TOKEN=<token>
 ./scripts/deploy.sh check
 ./scripts/deploy.sh predeploy
 ./scripts/deploy.sh backup
-./scripts/deploy.sh migrate
-./scripts/deploy.sh deploy-app
+./scripts/deploy.sh migrate-prod
+./scripts/deploy.sh deploy-build
 ./scripts/deploy.sh verify
 ./scripts/deploy.sh status
 ./scripts/deploy.sh logs api
@@ -292,7 +316,7 @@ green 相关：
 根本原因通常是：新流程里迁移不再跟 API 启动绑在一起，所以你漏跑了：
 
 ```bash
-./scripts/deploy.sh migrate
+./scripts/deploy.sh migrate-prod
 ```
 
 ### nginx 还在指向旧服务
