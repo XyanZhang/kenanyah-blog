@@ -147,6 +147,7 @@ export interface AdminMediaItem {
   variants?: Record<string, unknown> | null
   source?: string
   status?: string
+  category?: 'image' | 'pdf' | 'other'
   updatedAt: string
   subdir: string
 }

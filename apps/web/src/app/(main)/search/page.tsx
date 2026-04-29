@@ -3,7 +3,16 @@
 import { useState, useCallback, useEffect } from 'react'
 import Link from 'next/link'
 import type { Route } from 'next'
-import { Search as SearchIcon, FileText, Loader2, Bot } from 'lucide-react'
+import {
+  Search as SearchIcon,
+  FileText,
+  Loader2,
+  Bot,
+  Bookmark,
+  FolderOpen,
+  FileSearch,
+  Lightbulb,
+} from 'lucide-react'
 import { apiClient } from '@/lib/api-client'
 import { getApiErrorMessage } from '@/lib/api-error'
 
@@ -13,6 +22,7 @@ export type SemanticSearchHit =
       postId: string
       title: string
       slug: string
+      href?: string
       snippet: string
       score: number
     }
@@ -20,11 +30,71 @@ export type SemanticSearchHit =
       type: 'conversation'
       conversationId: string
       title: string
+      href?: string
+      snippet: string
+      score: number
+    }
+  | {
+      type: 'pdf'
+      documentId: string
+      chunkId: string
+      chunkIndex: number
+      title: string
+      href: string
+      snippet: string
+      score: number
+    }
+  | {
+      type: 'thought'
+      thoughtId: string
+      title: string
+      href: string
+      snippet: string
+      score: number
+    }
+  | {
+      type: 'bookmark'
+      bookmarkId: string
+      title: string
+      href: string
+      snippet: string
+      score: number
+    }
+  | {
+      type: 'project'
+      projectId: string
+      title: string
+      href: string
       snippet: string
       score: number
     }
 
 const SEARCH_DEBOUNCE_MS = 300
+
+function getHitKey(hit: SemanticSearchHit): string {
+  if (hit.type === 'post') return hit.postId
+  if (hit.type === 'conversation') return hit.conversationId
+  if (hit.type === 'pdf') return `${hit.documentId}-${hit.chunkId}`
+  if (hit.type === 'thought') return hit.thoughtId
+  if (hit.type === 'bookmark') return hit.bookmarkId
+  return hit.projectId
+}
+
+function getHitHref(hit: SemanticSearchHit): string {
+  if (hit.href) return hit.href
+  if (hit.type === 'post') return `/posts/${hit.slug}`
+  if (hit.type === 'conversation') return `/ai-chat/${hit.conversationId}`
+  return '/'
+}
+
+function getHitMeta(hit: SemanticSearchHit) {
+  if (hit.type === 'post') return { Icon: FileText, badgeText: '文章' }
+  if (hit.type === 'conversation') return { Icon: Bot, badgeText: '对话' }
+  if (hit.type === 'pdf') return { Icon: FileSearch, badgeText: 'PDF' }
+  if (hit.type === 'thought') return { Icon: Lightbulb, badgeText: '思考' }
+  if (hit.type === 'bookmark') return { Icon: Bookmark, badgeText: '收藏' }
+  return { Icon: FolderOpen, badgeText: '项目' }
+}
 
 export default function SearchPage() {
   const [query, setQuery] = useState('')
@@ -78,7 +148,7 @@ export default function SearchPage() {
         <section className="rounded-[28px] border border-line-glass bg-surface-glass p-5 backdrop-blur-sm sm:p-6">
           <h1 className="mb-4 text-2xl font-semibold text-content-primary">语义搜索</h1>
           <p className="mb-6 text-sm leading-7 text-content-secondary">
-            输入关键词，按语义匹配博客文章并跳转到对应内容。
+            输入关键词，同时搜索文章、思考、收藏、PDF、项目和 AI 对话。
           </p>
 
           <div className="relative mb-8">
@@ -90,7 +160,7 @@ export default function SearchPage() {
               type="search"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="输入关键词搜索文章…"
+              placeholder="输入关键词搜索全部内容…"
               className="w-full rounded-xl border border-line-glass bg-surface-glass py-3 pl-10 pr-10 text-content-primary placeholder:text-content-tertiary focus:outline-none focus:ring-2 focus:ring-accent-primary/50"
               autoFocus
               aria-label="搜索博客"
@@ -112,19 +182,13 @@ export default function SearchPage() {
           {searched && !loading && (
             <section aria-label="搜索结果">
               {hits.length === 0 ? (
-                <p className="text-content-secondary">未找到相关文章。</p>
+                <p className="text-content-secondary">未找到相关内容。</p>
               ) : (
                 <ul className="space-y-4">
                   {hits.map((hit, index) => {
-                    const key = hit.type === 'post' ? hit.postId : hit.conversationId
-                    const href =
-                      hit.type === 'post'
-                        ? `/posts/${(hit as Extract<SemanticSearchHit, { type: 'post' }>).slug}`
-                        : `/ai-chat/${
-                            (hit as Extract<SemanticSearchHit, { type: 'conversation' }>).conversationId
-                          }`
-                    const Icon = hit.type === 'post' ? FileText : Bot
-                    const badgeText = hit.type === 'post' ? '文章' : '对话'
+                    const key = getHitKey(hit)
+                    const href = getHitHref(hit)
+                    const { Icon, badgeText } = getHitMeta(hit)
 
                     return (
                       <li key={`${key}-${index}`}>

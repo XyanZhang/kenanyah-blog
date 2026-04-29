@@ -140,8 +140,9 @@ export async function deleteAdminTag(id: string) {
   })
 }
 
-export async function getAdminMedia() {
-  return request<AdminMediaItem[]>('/admin/media')
+export async function getAdminMedia(params?: URLSearchParams) {
+  const query = params?.toString()
+  return request<AdminMediaItem[]>(`/admin/media${query ? `?${query}` : ''}`)
 }
 
 export async function uploadAdminMedia(file: File) {

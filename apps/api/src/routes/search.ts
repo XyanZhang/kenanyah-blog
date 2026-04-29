@@ -1,6 +1,6 @@
 import { Hono } from 'hono'
 import { z } from 'zod'
-import { searchSemantic } from '../lib/semantic-search'
+import { searchSemanticAll } from '../lib/semantic-search'
 
 const search = new Hono()
 
@@ -23,7 +23,7 @@ search.get('/semantic', async (c) => {
   }
   const { q, limit } = parsed.data
   try {
-    const hits = await searchSemantic(q, limit)
+    const hits = await searchSemanticAll(q, limit)
     return c.json({
       success: true,
       data: hits,

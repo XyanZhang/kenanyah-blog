@@ -1,9 +1,32 @@
 'use client'
 
-import { useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Bot, FileUp, Sparkles, Database, FileText, Download, Loader2 } from 'lucide-react'
-import { generatePdfDoc, indexPdf, parsePdf, savePdfAsPost, uploadPdf, type PdfDocument } from '@/lib/pdf-agent-api'
+import {
+  Bot,
+  FileUp,
+  Sparkles,
+  Database,
+  FileText,
+  Download,
+  Loader2,
+  Trash2,
+  RefreshCcw,
+  Search,
+  ExternalLink,
+} from 'lucide-react'
+import {
+  deletePdfDocument,
+  generatePdfDoc,
+  getPdfDocuments,
+  indexPdf,
+  parsePdf,
+  savePdfAsPost,
+  searchPdfDocument,
+  uploadPdf,
+  type PdfDocument,
+  type PdfSearchHit,
+} from '@/lib/pdf-agent-api'
 
 type StepKey = 'upload' | 'parse' | 'index' | 'generate'
 
@@ -13,6 +36,8 @@ export default function PdfAgentPage() {
   const [step, setStep] = useState<StepKey>('upload')
   const [file, setFile] = useState<File | null>(null)
   const [doc, setDoc] = useState<PdfDocument | null>(null)
+  const [documents, setDocuments] = useState<PdfDocument[]>([])
+  const [loadingDocuments, setLoadingDocuments] = useState(false)
   const [chunkCount, setChunkCount] = useState<number | null>(null)
   const [parseDetail, setParseDetail] = useState<{
     chunks: Array<{ chunkIndex: number; content: string }>
@@ -48,7 +73,44 @@ export default function PdfAgentPage() {
   const [indexPost, setIndexPost] = useState(false)
   const [replaceOnUpload, setReplaceOnUpload] = useState(true)
   const [chunkFilter, setChunkFilter] = useState('')
+  const [docSearchQuery, setDocSearchQuery] = useState('')
+  const [docSearchHits, setDocSearchHits] = useState<PdfSearchHit[]>([])
+  const [searchingDoc, setSearchingDoc] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  const loadDocuments = useCallback(async () => {
+    setLoadingDocuments(true)
+    try {
+      const list = await getPdfDocuments()
+      setDocuments(list)
+      setDoc((current) => {
+        if (!current) return list[0] ?? null
+        return list.find((item) => item.id === current.id) ?? current
+      })
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setLoadingDocuments(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    void loadDocuments()
+  }, [loadDocuments])
+
+  const selectDocument = useCallback((nextDoc: PdfDocument) => {
+    setDoc(nextDoc)
+    setFile(null)
+    setChunkCount(nextDoc.chunkCount ?? null)
+    setParseDetail(null)
+    setMarkdown('')
+    setDocSearchHits([])
+    setDocSearchQuery('')
+    setError(null)
+    if ((nextDoc.embeddingCount ?? 0) > 0) setStep('generate')
+    else if ((nextDoc.chunkCount ?? 0) > 0) setStep('index')
+    else setStep('parse')
+  }, [])
 
   const stepMeta = useMemo(() => {
     const items: Array<{ key: StepKey; label: string; icon: React.ReactNode }> = [
@@ -70,7 +132,7 @@ export default function PdfAgentPage() {
   }, [parseDetail, chunkFilter])
 
   return (
-    <main className="mx-auto w-full max-w-5xl px-4 pb-10 sm:px-6 sm:pb-12 md:py-10">
+    <main className="mx-auto w-full max-w-7xl px-4 pb-10 sm:px-6 sm:pb-12 md:py-10">
       <header className="mb-6 rounded-3xl border border-line-glass bg-surface-glass/70 backdrop-blur-sm p-5 md:p-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
@@ -128,7 +190,71 @@ export default function PdfAgentPage() {
         </div>
       </header>
 
-      <section className="rounded-3xl border border-line-glass bg-surface-glass/60 backdrop-blur-sm p-5 md:p-6">
+      <div className="grid gap-5 lg:grid-cols-[22rem_minmax(0,1fr)]">
+        <aside className="rounded-3xl border border-line-glass bg-surface-glass/60 p-4 backdrop-blur-sm md:p-5">
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <div>
+              <h2 className="text-base font-semibold text-content-primary">PDF 知识库</h2>
+              <p className="mt-1 text-xs text-content-secondary">
+                {documents.length} 个文档，上传后也会进入后台资源管理。
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => void loadDocuments()}
+              disabled={loadingDocuments}
+              className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-line-glass bg-surface-glass/30 text-content-secondary hover:border-line-hover hover:text-content-primary disabled:cursor-not-allowed disabled:opacity-60"
+              aria-label="刷新 PDF 文档列表"
+            >
+              <RefreshCcw className={['h-4 w-4', loadingDocuments ? 'animate-spin' : ''].join(' ')} />
+            </button>
+          </div>
+
+          <div className="space-y-2">
+            {documents.map((item) => {
+              const active = item.id === doc?.id
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => selectDocument(item)}
+                  className={[
+                    'w-full rounded-2xl border p-3 text-left transition-colors',
+                    active
+                      ? 'border-accent-primary/50 bg-accent-primary/10'
+                      : 'border-line-glass bg-surface-glass/20 hover:border-line-hover',
+                  ].join(' ')}
+                >
+                  <div className="flex items-start gap-3">
+                    <FileText className="mt-0.5 h-4 w-4 shrink-0 text-accent-primary" />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium text-content-primary">{item.filename}</p>
+                      <div className="mt-2 flex flex-wrap gap-1.5 text-[11px] text-content-muted">
+                        <span className="rounded-full bg-surface-glass/40 px-2 py-0.5">{item.status}</span>
+                        <span className="rounded-full bg-surface-glass/40 px-2 py-0.5">
+                          chunks {item.chunkCount ?? 0}
+                        </span>
+                        <span className="rounded-full bg-surface-glass/40 px-2 py-0.5">
+                          vectors {item.embeddingCount ?? 0}
+                        </span>
+                      </div>
+                      <p className="mt-2 text-xs text-content-muted">
+                        {(item.size / 1024 / 1024).toFixed(2)} MB · {new Date(item.updatedAt).toLocaleDateString()}
+                      </p>
+                    </div>
+                  </div>
+                </button>
+              )
+            })}
+            {!documents.length && !loadingDocuments ? (
+              <div className="rounded-2xl border border-dashed border-line-glass bg-surface-glass/20 p-4 text-sm text-content-secondary">
+                还没有 PDF 文档。先上传一份，知识库列表会自动出现。
+              </div>
+            ) : null}
+          </div>
+        </aside>
+
+        <section className="rounded-3xl border border-line-glass bg-surface-glass/60 backdrop-blur-sm p-5 md:p-6">
         {error ? (
           <div className="mb-4 rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">
             {error}
@@ -186,6 +312,7 @@ export default function PdfAgentPage() {
                   try {
                     const uploaded = await uploadPdf(file, { replace: replaceOnUpload })
                     setDoc(uploaded)
+                    await loadDocuments()
                     setParseDetail(null)
                     setChunkCount(null)
                     setMarkdown('')
@@ -243,6 +370,63 @@ export default function PdfAgentPage() {
               ) : null}
             </p>
 
+            {doc ? (
+              <div className="grid gap-3 rounded-2xl border border-line-glass bg-surface-glass/30 p-3 text-xs text-content-secondary md:grid-cols-[1fr_auto] md:items-center">
+                <div className="flex flex-wrap gap-2">
+                  <span className="rounded-full bg-surface-glass/40 px-2.5 py-1">状态：{doc.status}</span>
+                  <span className="rounded-full bg-surface-glass/40 px-2.5 py-1">
+                    chunks：{doc.chunkCount ?? chunkCount ?? 0}
+                  </span>
+                  <span className="rounded-full bg-surface-glass/40 px-2.5 py-1">
+                    vectors：{doc.embeddingCount ?? 0}
+                  </span>
+                  {doc.mediaAsset ? (
+                    <span className="rounded-full bg-surface-glass/40 px-2.5 py-1">
+                      已接入资源库
+                    </span>
+                  ) : null}
+                </div>
+                <div className="flex gap-2">
+                  <a
+                    href={doc.fileUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-line-glass px-3 py-2 text-content-secondary hover:border-line-hover hover:text-content-primary"
+                  >
+                    <ExternalLink className="h-3.5 w-3.5" />
+                    查看原 PDF
+                  </a>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      if (!doc) return
+                      const ok = window.confirm(`确认删除「${doc.filename}」及其 chunks/embeddings？`)
+                      if (!ok) return
+                      setBusy(true)
+                      setError(null)
+                      try {
+                        await deletePdfDocument(doc.id)
+                        setDoc(null)
+                        setParseDetail(null)
+                        setChunkCount(null)
+                        setMarkdown('')
+                        await loadDocuments()
+                        setStep('upload')
+                      } catch (e) {
+                        setError(e instanceof Error ? e.message : String(e))
+                      } finally {
+                        setBusy(false)
+                      }
+                    }}
+                    className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-red-500/20 px-3 py-2 text-red-300 hover:border-red-500/40 hover:bg-red-500/10"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                    删除
+                  </button>
+                </div>
+              </div>
+            ) : null}
+
             <div className="flex flex-col gap-3 pt-2 md:flex-row md:items-center">
               <button
                 type="button"
@@ -266,6 +450,7 @@ export default function PdfAgentPage() {
                     if (step === 'parse') {
                       const res = await parsePdf(doc.id)
                       setChunkCount(res.chunkCount)
+                      await loadDocuments()
                       setParseDetail({
                         chunks: res.chunks,
                         preview: res.preview,
@@ -279,6 +464,7 @@ export default function PdfAgentPage() {
                     if (step === 'index') {
                       const res = await indexPdf(doc.id)
                       setChunkCount(res.chunkCount)
+                      await loadDocuments()
                       setStep('generate')
                       return
                     }
@@ -362,7 +548,55 @@ export default function PdfAgentPage() {
             </div>
 
             {step === 'generate' ? (
-              <div className="mt-4 rounded-2xl border border-line-glass bg-surface-glass/40 p-4">
+              <div className="mt-4 space-y-4">
+                <div className="rounded-2xl border border-line-glass bg-surface-glass/40 p-4">
+                  <div className="mb-3 flex flex-col gap-2 md:flex-row md:items-center">
+                    <div className="relative flex-1">
+                      <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-content-muted" />
+                      <input
+                        value={docSearchQuery}
+                        onChange={(e) => setDocSearchQuery(e.currentTarget.value)}
+                        placeholder="在当前 PDF chunks 中搜索"
+                        className="w-full rounded-xl border border-line-glass bg-surface-glass/20 py-2 pl-9 pr-3 text-sm text-content-primary placeholder:text-content-muted focus:outline-hidden focus:ring-2 focus:ring-accent-primary/30"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      disabled={!doc || !docSearchQuery.trim() || searchingDoc}
+                      onClick={async () => {
+                        if (!doc || !docSearchQuery.trim()) return
+                        setSearchingDoc(true)
+                        setError(null)
+                        try {
+                          const hits = await searchPdfDocument(doc.id, docSearchQuery.trim())
+                          setDocSearchHits(hits)
+                        } catch (e) {
+                          setError(e instanceof Error ? e.message : String(e))
+                        } finally {
+                          setSearchingDoc(false)
+                        }
+                      }}
+                      className="inline-flex items-center justify-center gap-2 rounded-xl border border-line-primary bg-surface-glass px-3 py-2 text-sm font-medium text-content-primary hover:border-line-hover disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {searchingDoc ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                      搜索
+                    </button>
+                  </div>
+                  {docSearchHits.length ? (
+                    <div className="space-y-2">
+                      {docSearchHits.map((hit) => (
+                        <div key={hit.chunkId} className="rounded-xl border border-line-glass bg-surface-glass/20 p-3">
+                          <div className="mb-1 flex items-center justify-between gap-3 text-xs text-content-muted">
+                            <span>chunk {hit.chunkIndex}</span>
+                            <span>相关度 {(hit.score * 100).toFixed(0)}%</span>
+                          </div>
+                          <p className="text-sm leading-6 text-content-secondary">{hit.snippet}</p>
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
+                <div className="rounded-2xl border border-line-glass bg-surface-glass/40 p-4">
                 <label className="mb-3 flex items-center gap-2 text-xs text-content-secondary">
                   <input
                     type="checkbox"
@@ -379,6 +613,7 @@ export default function PdfAgentPage() {
                   placeholder="点击“生成文档”后，这里会出现 Markdown。"
                   className="h-72 w-full resize-y rounded-xl border border-line-glass bg-surface-glass/30 px-3 py-2 text-sm text-content-primary placeholder:text-content-muted focus:outline-hidden focus:ring-2 focus:ring-accent-primary/40"
                 />
+              </div>
               </div>
             ) : null}
             {step === 'parse' && parseDetail ? (
@@ -435,7 +670,8 @@ export default function PdfAgentPage() {
             ) : null}
           </div>
         )}
-      </section>
+        </section>
+      </div>
     </main>
   )
 }

@@ -3,7 +3,16 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import type { Route } from 'next'
-import { Search as SearchIcon, FileText, Loader2, Bot } from 'lucide-react'
+import {
+  Search as SearchIcon,
+  FileText,
+  Loader2,
+  Bot,
+  Bookmark,
+  FolderOpen,
+  FileSearch,
+  Lightbulb,
+} from 'lucide-react'
 import { apiClient } from '@/lib/api-client'
 import { getApiErrorMessage } from '@/lib/api-error'
 import {
@@ -18,6 +27,7 @@ export type SemanticSearchHit =
       postId: string
       title: string
       slug: string
+      href?: string
       snippet: string
       score: number
     }
@@ -25,11 +35,71 @@ export type SemanticSearchHit =
       type: 'conversation'
       conversationId: string
       title: string
+      href?: string
+      snippet: string
+      score: number
+    }
+  | {
+      type: 'pdf'
+      documentId: string
+      chunkId: string
+      chunkIndex: number
+      title: string
+      href: string
+      snippet: string
+      score: number
+    }
+  | {
+      type: 'thought'
+      thoughtId: string
+      title: string
+      href: string
+      snippet: string
+      score: number
+    }
+  | {
+      type: 'bookmark'
+      bookmarkId: string
+      title: string
+      href: string
+      snippet: string
+      score: number
+    }
+  | {
+      type: 'project'
+      projectId: string
+      title: string
+      href: string
       snippet: string
       score: number
     }
 
 const SEARCH_DEBOUNCE_MS = 300
+
+function getHitKey(hit: SemanticSearchHit): string {
+  if (hit.type === 'post') return hit.postId
+  if (hit.type === 'conversation') return hit.conversationId
+  if (hit.type === 'pdf') return `${hit.documentId}-${hit.chunkId}`
+  if (hit.type === 'thought') return hit.thoughtId
+  if (hit.type === 'bookmark') return hit.bookmarkId
+  return hit.projectId
+}
+
+function getHitHref(hit: SemanticSearchHit): string {
+  if (hit.href) return hit.href
+  if (hit.type === 'post') return `/posts/${hit.slug}`
+  if (hit.type === 'conversation') return `/ai-chat/${hit.conversationId}`
+  return '/'
+}
+
+function getHitMeta(hit: SemanticSearchHit) {
+  if (hit.type === 'post') return { Icon: FileText, badgeText: '文章' }
+  if (hit.type === 'conversation') return { Icon: Bot, badgeText: '对话' }
+  if (hit.type === 'pdf') return { Icon: FileSearch, badgeText: 'PDF' }
+  if (hit.type === 'thought') return { Icon: Lightbulb, badgeText: '思考' }
+  if (hit.type === 'bookmark') return { Icon: Bookmark, badgeText: '收藏' }
+  return { Icon: FolderOpen, badgeText: '项目' }
+}
 
 export function GlobalSearch() {
   const [open, setOpen] = useState(false)
@@ -180,7 +250,7 @@ export function GlobalSearch() {
                   type="text"
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
-                  placeholder="搜索文章或对话 / Search posts or chats"
+                  placeholder="搜索文章、思考、收藏、PDF、项目或对话 / Search all content"
                   className="relative w-full rounded-2xl border border-white/28 bg-white/18 py-4 pl-12 pr-12 text-[15px] text-content-primary shadow-[inset_0_1px_0_rgba(255,255,255,0.52),0_14px_34px_rgba(15,23,42,0.08)] outline-none backdrop-blur-xl transition-[border-color,background-color,box-shadow] duration-300 placeholder:text-content-tertiary focus:border-white/48 focus:bg-white/26 focus:shadow-[inset_0_1px_0_rgba(255,255,255,0.62),0_18px_44px_rgba(15,23,42,0.12)]"
                   aria-label="全局搜索 / Global Search"
                 />
@@ -208,9 +278,9 @@ export function GlobalSearch() {
             >
               {!searched && !loading ? (
                 <div className="rounded-2xl border border-dashed border-white/24 bg-white/14 p-5 text-sm leading-7 text-content-secondary shadow-[inset_0_1px_0_rgba(255,255,255,0.28)]">
-                  输入关键词后，会同时搜索文章和 AI 对话。
+                  输入关键词后，会同时搜索文章、思考、收藏、PDF、项目和 AI 对话。
                   <br />
-                  Type a keyword to search posts and AI chats together.
+                  Type a keyword to search all content together.
                 </div>
               ) : null}
 
@@ -218,24 +288,16 @@ export function GlobalSearch() {
                 <>
                   {hits.length === 0 ? (
                     <div className="rounded-2xl border border-dashed border-white/24 bg-white/14 p-5 text-sm leading-7 text-content-secondary shadow-[inset_0_1px_0_rgba(255,255,255,0.28)]">
-                      未找到相关文章或对话。
+                      未找到相关内容。
                       <br />
-                      No matching posts or chats found.
+                      No matching content found.
                     </div>
                   ) : (
                     <ul className="space-y-3">
                       {hits.map((hit, index) => {
-                        const key = hit.type === 'post' ? hit.postId : hit.conversationId
-                        const href =
-                          hit.type === 'post'
-                            ? `/posts/${
-                                (hit as Extract<SemanticSearchHit, { type: 'post' }>).slug
-                              }`
-                            : `/ai-chat/${
-                                (hit as Extract<SemanticSearchHit, { type: 'conversation' }>).conversationId
-                              }`
-                        const Icon = hit.type === 'post' ? FileText : Bot
-                        const badgeText = hit.type === 'post' ? '文章' : '对话'
+                        const key = getHitKey(hit)
+                        const href = getHitHref(hit)
+                        const { Icon, badgeText } = getHitMeta(hit)
 
                         return (
                           <li key={`${key}-${index}`}>

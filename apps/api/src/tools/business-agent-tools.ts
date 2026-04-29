@@ -11,8 +11,7 @@ import { parseExplicitDate, toDateString } from '../lib/calendar-quick-create'
 import { indexPost, removePostFromIndex } from '../lib/semantic-search'
 import {
   searchSemanticAll,
-  type PdfSemanticHit,
-  type SemanticSearchHit,
+  type UnifiedSearchHit,
 } from '../lib/semantic-search'
 import {
   createQuickCalendarEntry,
@@ -101,7 +100,7 @@ type CalendarPlanningPhaseEvent = {
   label: string
 }
 
-type PlanningReferenceHit = SemanticSearchHit | PdfSemanticHit
+type PlanningReferenceHit = UnifiedSearchHit
 type CalendarExecutionMode = 'plan' | 'quick_create' | 'confirm' | 'cancel'
 
 export type BusinessToolExecutionResult =
@@ -875,6 +874,18 @@ function formatPlanningReferenceSource(hit: PlanningReferenceHit): string {
 
   if (hit.type === 'pdf') {
     return `PDF:${hit.documentId}#${hit.chunkIndex}`
+  }
+
+  if (hit.type === 'thought') {
+    return `思考:${hit.thoughtId}`
+  }
+
+  if (hit.type === 'bookmark') {
+    return `收藏:${hit.bookmarkId}`
+  }
+
+  if (hit.type === 'project') {
+    return `项目:${hit.projectId}`
   }
 
   return '未知来源'

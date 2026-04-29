@@ -7,13 +7,14 @@ import { z } from 'zod'
 import { prisma } from '../lib/db'
 import { authMiddleware } from '../middleware/auth'
 import { env } from '../env'
+import { Prisma } from '../generated/prisma/client/client'
 import { extractPdfText } from '../lib/pdf-text'
 import { embedDocuments, embedQuery } from '../lib/embeddings'
 import { cleanPdfText, mergeSoftLineBreaks, removeSpacesKeepNewlines } from '../lib/pdf-clean'
 import { splitTextForRag } from '../lib/text-splitter'
 import { generateSlug } from '@blog/utils'
 import { indexPost } from '../lib/semantic-search'
-import { syncPostEvent } from '../lib/calendar-events'
+import { serializeMediaAsset, syncPostEvent } from '../lib/calendar-events'
 import { logger } from '../lib/logger'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -45,8 +46,126 @@ function sanitizeFilename(name: string): string {
   return cleaned || 'document.pdf'
 }
 
+function storageKeyFromFileUrl(fileUrl: string): string | null {
+  try {
+    const url = new URL(fileUrl, getUploadBaseUrl())
+    const parts = url.pathname.split('/').filter(Boolean)
+    const uploadsIdx = parts.indexOf('uploads')
+    const rel = uploadsIdx >= 0 ? parts.slice(uploadsIdx + 1) : parts
+    if (rel.length < 2) return null
+    return rel
+      .map((seg) => {
+        try {
+          return decodeURIComponent(seg)
+        } catch {
+          return seg
+        }
+      })
+      .join('/')
+  } catch {
+    return null
+  }
+}
+
+function localPathFromFileUrl(fileUrl: string): string | null {
+  const storageKey = storageKeyFromFileUrl(fileUrl)
+  return storageKey ? path.join(getUploadDir(), ...storageKey.split('/')) : null
+}
+
+async function upsertPdfMediaAsset(input: {
+  filename: string
+  size: number
+  fileUrl: string
+  userId?: string | null
+}) {
+  const storageKey = storageKeyFromFileUrl(input.fileUrl)
+  if (!storageKey) return null
+
+  const url = `/uploads/${storageKey.split('/').map(encodeURIComponent).join('/')}`
+  return prisma.mediaAsset.upsert({
+    where: { storageKey },
+    create: {
+      userId: input.userId ?? null,
+      url,
+      storageKey,
+      filename: input.filename,
+      mimeType: 'application/pdf',
+      size: input.size,
+      variants: Prisma.JsonNull,
+      source: 'pdf_agent',
+      status: 'ready',
+    },
+    update: {
+      userId: input.userId ?? null,
+      url,
+      filename: input.filename,
+      mimeType: 'application/pdf',
+      size: input.size,
+      source: 'pdf_agent',
+      status: 'ready',
+    },
+  })
+}
+
+async function deletePdfMediaAsset(fileUrl: string) {
+  const storageKey = storageKeyFromFileUrl(fileUrl)
+  if (!storageKey) return
+  await prisma.mediaAsset.deleteMany({ where: { storageKey } })
+}
+
+async function serializePdfDocument(doc: {
+  id: string
+  filename: string
+  mimeType: string
+  size: number
+  fileUrl: string
+  status: string
+  createdAt: Date
+  updatedAt: Date
+  _count?: { chunks: number }
+}) {
+  const storageKey = storageKeyFromFileUrl(doc.fileUrl)
+  const [mediaAsset, embeddingRows] = await Promise.all([
+    storageKey
+      ? prisma.mediaAsset.findUnique({ where: { storageKey } }).catch(() => null)
+      : Promise.resolve(null),
+    (prisma as any).$queryRawUnsafe(
+      `SELECT COUNT(*)::int AS count FROM pdf_chunk_embeddings WHERE document_id = $1`,
+      doc.id
+    ).catch(() => []),
+  ])
+
+  const embeddingCount = Number((embeddingRows as Array<{ count: number }>)[0]?.count ?? 0)
+  const chunkCount = doc._count?.chunks ?? 0
+
+  return {
+    id: doc.id,
+    filename: doc.filename,
+    mimeType: doc.mimeType,
+    size: doc.size,
+    fileUrl: doc.fileUrl,
+    status: doc.status,
+    chunkCount,
+    embeddingCount,
+    mediaAsset: mediaAsset ? serializeMediaAsset(mediaAsset) : null,
+    createdAt: doc.createdAt.toISOString(),
+    updatedAt: doc.updatedAt.toISOString(),
+  }
+}
+
+// GET /pdf/documents
+pdf.get('/documents', async (c) => {
+  const docs = await prisma.pdfDocument.findMany({
+    orderBy: { updatedAt: 'desc' },
+    include: { _count: { select: { chunks: true } } },
+  })
+  const data = await Promise.all(docs.map((doc) => serializePdfDocument(doc)))
+  return c.json({ success: true, data })
+})
+
 // POST /pdf/documents (multipart/form-data: file)
 pdf.post('/documents', async (c) => {
+  const user = c.get('user')
   const replace = c.req.query('replace') === 'true'
   const form = await c.req.formData()
   const file = form.get('file')
@@ -98,6 +217,9 @@ pdf.post('/documents', async (c) => {
   const doc = existingByName
     ? await prisma.$transaction(async (tx) => {
         // 覆盖旧文档时清空旧 chunks（embedding 会级联删除）
+        await tx.mediaAsset.deleteMany({
+          where: { storageKey: storageKeyFromFileUrl(existingByName.fileUrl) ?? '__missing__' },
+        })
         await tx.pdfChunk.deleteMany({ where: { documentId: existingByName.id } })
         return tx.pdfDocument.update({
           where: { id: existingByName.id },
@@ -121,10 +243,18 @@ pdf.post('/documents', async (c) => {
         },
       })
 
+  const mediaAsset = await upsertPdfMediaAsset({
+    filename,
+    size,
+    fileUrl,
+    userId: user?.userId ?? null,
+  })
+
   return c.json({
     success: true,
     data: {
-      ...doc,
+      ...(await serializePdfDocument({ ...doc, _count: { chunks: 0 } })),
+      mediaAsset: mediaAsset ? serializeMediaAsset(mediaAsset) : null,
       replaced: Boolean(existingByName),
     },
   })
@@ -200,21 +330,10 @@ pdf.post('/documents/:id/parse', async (c) => {
 
   // 根据 fileUrl 推断出本地路径（当前仅支持本地 uploads）
   // 支持 /uploads/:subdir/:filename 和 /uploads/:subdir/:subsubdir/:filename 两种形式
-  const url = new URL(doc.fileUrl)
-  const parts = url.pathname.split('/').filter(Boolean) // e.g. ['uploads','pdfs','pdf_xxx','原文件.pdf']
-  const uploadsIdx = parts.indexOf('uploads')
-  const rel = uploadsIdx >= 0 ? parts.slice(uploadsIdx + 1) : parts
-  if (rel.length < 2) {
+  const localPath = localPathFromFileUrl(doc.fileUrl)
+  if (!localPath) {
     return c.json({ success: false, error: 'fileUrl 路径不合法' }, 400)
   }
-  const decodedRel = rel.map((seg) => {
-    try {
-      return decodeURIComponent(seg)
-    } catch {
-      return seg
-    }
-  })
-  const localPath = path.join(getUploadDir(), ...decodedRel)
 
   const { text } = await extractPdfText(localPath)
   const normalized = text.replace(/\r/g, '').trim()
@@ -314,6 +433,30 @@ pdf.post('/documents/:id/parse', async (c) => {
       parseStats,
     },
   })
+})
+
+// DELETE /pdf/documents/:id
+pdf.delete('/documents/:id', async (c) => {
+  const { id } = c.req.param()
+  const doc = await prisma.pdfDocument.findUnique({ where: { id } })
+  if (!doc) return c.json({ success: false, error: 'PDF 文档不存在' }, 404)
+
+  await deletePdfMediaAsset(doc.fileUrl).catch((err) =>
+    console.error('[pdf] delete media asset failed:', err)
+  )
+  await prisma.pdfDocument.delete({ where: { id } })
+
+  const storageKey = storageKeyFromFileUrl(doc.fileUrl)
+  if (storageKey) {
+    const topDir = storageKey.split('/').slice(0, -1)
+    if (topDir.length > 0) {
+      await fs.rm(path.join(getUploadDir(), ...topDir), { recursive: true, force: true }).catch((err) =>
+        console.error('[pdf] delete local file failed:', err)
+      )
+    }
+  }
+
+  return c.json({ success: true, data: { message: 'PDF 文档已删除' } })
 })
 
 // POST /pdf/documents/:id/index

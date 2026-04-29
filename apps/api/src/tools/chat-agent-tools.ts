@@ -1,8 +1,7 @@
 import { throwIfAborted } from '../lib/abort'
 import {
   searchSemanticAll,
-  type PdfSemanticHit,
-  type SemanticSearchHit,
+  type UnifiedSearchHit,
 } from '../lib/semantic-search'
 import { type ChatToolCall } from '../agents/chat-coordinator-agents'
 
@@ -28,7 +27,7 @@ export type ChatToolExecutionResult = {
   hits: ChatToolHit[]
 }
 
-function formatSourceLabel(hit: SemanticSearchHit | PdfSemanticHit): string {
+function formatSourceLabel(hit: UnifiedSearchHit): string {
   if (hit.type === 'post') {
     return `博客文章:${hit.slug ?? hit.postId ?? ''}`
   }
@@ -41,10 +40,22 @@ function formatSourceLabel(hit: SemanticSearchHit | PdfSemanticHit): string {
     return `PDF:${hit.documentId}#${hit.chunkIndex}`
   }
 
+  if (hit.type === 'thought') {
+    return `思考:${hit.thoughtId}`
+  }
+
+  if (hit.type === 'bookmark') {
+    return `收藏:${hit.bookmarkId}`
+  }
+
+  if (hit.type === 'project') {
+    return `项目:${hit.projectId}`
+  }
+
   return '未知来源'
 }
 
-function mapHit(hit: SemanticSearchHit | PdfSemanticHit): ChatToolHit {
+function mapHit(hit: UnifiedSearchHit): ChatToolHit {
   return {
     source: formatSourceLabel(hit),
     title: hit.title,

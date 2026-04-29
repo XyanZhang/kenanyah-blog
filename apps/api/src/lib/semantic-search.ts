@@ -178,6 +178,7 @@ export type SemanticSearchHit = {
   postId?: string
   slug?: string
   conversationId?: string
+  href?: string
   title: string
   snippet: string
   score: number
@@ -188,9 +189,64 @@ export type PdfSemanticHit = {
   documentId: string
   chunkId: string
   chunkIndex: number
+  href: string
   title: string
   snippet: string
   score: number
+}
+
+export type ThoughtSemanticHit = {
+  type: 'thought'
+  thoughtId: string
+  href: string
+  title: string
+  snippet: string
+  score: number
+}
+
+export type BookmarkTextHit = {
+  type: 'bookmark'
+  bookmarkId: string
+  href: string
+  title: string
+  snippet: string
+  score: number
+}
+
+export type ProjectTextHit = {
+  type: 'project'
+  projectId: string
+  href: string
+  title: string
+  snippet: string
+  score: number
+}
+
+export type UnifiedSearchHit =
+  | SemanticSearchHit
+  | PdfSemanticHit
+  | ThoughtSemanticHit
+  | BookmarkTextHit
+  | ProjectTextHit
+
+function toSnippet(text: string | null | undefined, maxLen: number = 180): string {
+  return (text ?? '').slice(0, maxLen).replace(/\s+/g, ' ').trim()
+}
+
+function stringifyTags(tags: unknown): string {
+  return Array.isArray(tags) ? tags.filter((tag) => typeof tag === 'string').join(' ') : ''
+}
+
+function textMatchScore(query: string, fields: Array<string | null | undefined>): number {
+  const normalizedQuery = query.trim().toLowerCase()
+  if (!normalizedQuery) return 0
+
+  const haystack = fields.filter(Boolean).join(' ').toLowerCase()
+  if (!haystack) return 0
+  if (haystack === normalizedQuery) return 0.95
+  if (fields.some((field) => field?.toLowerCase() === normalizedQuery)) return 0.9
+  if (fields.some((field) => field?.toLowerCase().includes(normalizedQuery))) return 0.72
+  return 0.45
 }
 
 async function searchSemanticByVector(
@@ -241,6 +297,7 @@ async function searchSemanticByVector(
         type: 'post' as const,
         postId: r.post_id,
         slug: post.slug,
+        href: `/posts/${post.slug}`,
         title: post.title,
         snippet,
         score: Number(r.score),
@@ -265,6 +322,7 @@ async function searchSemanticByVector(
       return {
         type: 'conversation' as const,
         conversationId: r.conversation_id,
+        href: `/ai-chat/${r.conversation_id}`,
         title: conv.title ?? 'AI 对话',
         snippet,
         score: Number(r.score),
@@ -307,11 +365,137 @@ async function searchPdfSemanticByVector(
         documentId: r.document_id,
         chunkId: r.chunk_id,
         chunkIndex: r.chunk_index,
+        href: '/pdf-agent',
         title: d.filename,
-        snippet: r.content.slice(0, 180).replace(/\s+/g, ' '),
+        snippet: toSnippet(r.content),
         score: Number(r.score),
       }
     })
+}
+
+async function searchThoughtSemanticByVector(
+  vectorStr: string,
+  limit: number
+): Promise<ThoughtSemanticHit[]> {
+  type Row = { thought_id: string; content: string; score: number }
+  const rows = (await (prisma as any).$queryRawUnsafe(
+    `SELECT te.thought_id, te.content,
+            1 - (te.embedding <=> $1::vector) AS score
+     FROM thought_embeddings te
+     ORDER BY te.embedding <=> $1::vector
+     LIMIT $2`,
+    vectorStr,
+    limit
+  ).catch(() => [])) as Row[]
+
+  if (rows.length === 0) return []
+
+  const thoughtIds = [...new Set(rows.map((r) => r.thought_id))]
+  const thoughts = await prisma.thought.findMany({
+    where: { id: { in: thoughtIds } },
+    select: { id: true, content: true, createdAt: true },
+  })
+  const thoughtMap = new Map(thoughts.map((thought) => [thought.id, thought]))
+
+  return rows
+    .filter((r) => thoughtMap.has(r.thought_id))
+    .map((r) => {
+      const thought = thoughtMap.get(r.thought_id)!
+      const date = thought.createdAt.toISOString().slice(0, 10)
+      return {
+        type: 'thought' as const,
+        thoughtId: r.thought_id,
+        href: '/thoughts',
+        title: `思考 · ${date}`,
+        snippet: toSnippet(thought.content),
+        score: Number(r.score),
+      }
+    })
+}
+
+async function searchBookmarkText(query: string, limit: number): Promise<BookmarkTextHit[]> {
+  const rows = await prisma.bookmark.findMany({
+    where: {
+      OR: [
+        { title: { contains: query, mode: 'insensitive' } },
+        { url: { contains: query, mode: 'insensitive' } },
+        { notes: { contains: query, mode: 'insensitive' } },
+        { category: { contains: query, mode: 'insensitive' } },
+      ],
+    },
+    orderBy: { updatedAt: 'desc' },
+    take: limit,
+    select: {
+      id: true,
+      title: true,
+      url: true,
+      notes: true,
+      category: true,
+      tags: true,
+    },
+  })
+
+  return rows
+    .map((bookmark) => {
+      const tags = stringifyTags(bookmark.tags)
+      const snippet = toSnippet(bookmark.notes || [bookmark.url, bookmark.category, tags].filter(Boolean).join(' · '))
+      return {
+        type: 'bookmark' as const,
+        bookmarkId: bookmark.id,
+        href: bookmark.url,
+        title: bookmark.title,
+        snippet,
+        score: textMatchScore(query, [bookmark.title, bookmark.url, bookmark.notes, bookmark.category, tags]),
+      }
+    })
+    .sort((a, b) => b.score - a.score)
+}
+
+async function searchProjectText(query: string, limit: number): Promise<ProjectTextHit[]> {
+  const rows = await prisma.projectEntry.findMany({
+    where: {
+      OR: [
+        { title: { contains: query, mode: 'insensitive' } },
+        { description: { contains: query, mode: 'insensitive' } },
+        { href: { contains: query, mode: 'insensitive' } },
+        { category: { contains: query, mode: 'insensitive' } },
+        { status: { contains: query, mode: 'insensitive' } },
+      ],
+    },
+    orderBy: { updatedAt: 'desc' },
+    take: limit,
+    select: {
+      id: true,
+      title: true,
+      description: true,
+      href: true,
+      category: true,
+      tags: true,
+      status: true,
+    },
+  })
+
+  return rows
+    .map((project) => {
+      const tags = stringifyTags(project.tags)
+      const snippet = toSnippet(project.description || [project.category, project.status, tags].filter(Boolean).join(' · '))
+      return {
+        type: 'project' as const,
+        projectId: project.id,
+        href: project.href || '/projects',
+        title: project.title,
+        snippet,
+        score: textMatchScore(query, [
+          project.title,
+          project.description,
+          project.href,
+          project.category,
+          project.status,
+          tags,
+        ]),
+      }
+    })
+    .sort((a, b) => b.score - a.score)
 }
 
 /** 语义搜索：返回带标题、slug、摘要、相关度的列表 */
@@ -346,7 +530,7 @@ export async function searchPdfSemantic(
 export async function searchSemanticAll(
   query: string,
   limit: number = 10
-): Promise<(SemanticSearchHit | PdfSemanticHit)[]> {
+): Promise<UnifiedSearchHit[]> {
   const model = getEmbeddingsModel()
   if (!model) {
     throw new Error('OPENAI_API_KEY is not configured for semantic search')
@@ -356,12 +540,15 @@ export async function searchSemanticAll(
   const queryVector = await embedQuery(query)
   const vectorStr = vectorToPgString(queryVector)
 
-  const [a, b, c] = await Promise.all([
+  const [contentHits, pdfHits, thoughtHits, bookmarkHits, projectHits] = await Promise.all([
     searchSemanticByVector(vectorStr, limit).catch(() => []),
     searchPdfSemanticByVector(vectorStr, limit).catch(() => []),
-    // 未来可扩展更多 KB（例如代码库、笔记等）
-    Promise.resolve([] as never[]),
+    searchThoughtSemanticByVector(vectorStr, limit).catch(() => []),
+    searchBookmarkText(query, limit).catch(() => []),
+    searchProjectText(query, limit).catch(() => []),
   ])
 
-  return [...a, ...b, ...c].sort((x, y) => y.score - x.score).slice(0, limit)
+  return [...contentHits, ...pdfHits, ...thoughtHits, ...bookmarkHits, ...projectHits]
+    .sort((x, y) => y.score - x.score)
+    .slice(0, limit)
 }

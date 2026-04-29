@@ -15,9 +15,41 @@ export type PdfDocument = {
   size: number
   fileUrl: string
   status: string
+  chunkCount?: number
+  embeddingCount?: number
+  mediaAsset?: {
+    id: string
+    url: string
+    storageKey: string
+    filename: string
+    mimeType: string
+    size: number
+    source: string
+    status: string
+    createdAt: string
+    updatedAt: string
+  } | null
   createdAt: string
   updatedAt: string
   replaced?: boolean
+}
+
+export type PdfSearchHit = {
+  chunkId: string
+  chunkIndex: number
+  snippet: string
+  score: number
+}
+
+export async function getPdfDocuments(): Promise<PdfDocument[]> {
+  const res = await fetch(`${API_BASE_URL}/pdf/documents`, {
+    credentials: 'include',
+  })
+  const json = (await res.json().catch(() => ({}))) as ApiResponse<PdfDocument[]>
+  if (!json.success || !json.data) {
+    throw new Error(json.error || '加载 PDF 文档失败')
+  }
+  return json.data
 }
 
 export async function uploadPdf(file: File, opts?: { replace?: boolean }): Promise<PdfDocument> {
@@ -118,6 +150,34 @@ export async function indexPdf(documentId: string): Promise<{ documentId: string
   return json.data
 }
 
+export async function deletePdfDocument(documentId: string): Promise<void> {
+  const res = await fetch(`${API_BASE_URL}/pdf/documents/${encodeURIComponent(documentId)}`, {
+    method: 'DELETE',
+    credentials: 'include',
+  })
+  const json = (await res.json().catch(() => ({}))) as ApiResponse<{ message: string }>
+  if (!json.success) {
+    throw new Error(json.error || '删除 PDF 文档失败')
+  }
+}
+
+export async function searchPdfDocument(
+  documentId: string,
+  query: string,
+  limit: number = 8
+): Promise<PdfSearchHit[]> {
+  const params = new URLSearchParams({ q: query, limit: String(limit) })
+  const res = await fetch(
+    `${API_BASE_URL}/pdf/documents/${encodeURIComponent(documentId)}/search?${params.toString()}`,
+    { credentials: 'include' }
+  )
+  const json = (await res.json().catch(() => ({}))) as ApiResponse<PdfSearchHit[]>
+  if (!json.success || !json.data) {
+    throw new Error(json.error || '搜索 PDF 文档失败')
+  }
+  return json.data
+}
+
 export async function generatePdfDoc(
   documentId: string,
   payload?: { style?: string }
@@ -159,4 +219,3 @@ export async function savePdfAsPost(
   }
   return json.data
 }
-

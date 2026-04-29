@@ -38,6 +38,10 @@ export const adminCommentModerationSchema = z.object({
 
 export const adminMediaQuerySchema = z.object({
   subdir: z.string().max(64).optional(),
+  search: z.string().max(100).optional(),
+  type: z.enum(['all', 'image', 'pdf', 'other']).default('all'),
+  source: z.string().max(64).optional(),
+  status: z.string().max(64).optional(),
 })
 
 export const adminBookmarkQuerySchema = z.object({
