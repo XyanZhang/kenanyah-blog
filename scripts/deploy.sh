@@ -218,6 +218,16 @@ migrate() {
   log_info "Migrations complete."
 }
 
+migrate_build() {
+  check_prerequisites
+  log_info "Starting PostgreSQL with the build compose file..."
+  compose_cmd "$BUILD_COMPOSE_FILE" up -d postgres
+  log_info "Building and running Prisma migrations with the build compose file..."
+  COMPOSE_DOCKER_CLI_BUILD=1 COMPOSE_BAKE=true \
+    compose_cmd "$BUILD_COMPOSE_FILE" --profile ops run --rm --build migrate
+  log_info "Migrations complete."
+}
+
 deploy_app() {
   check_prerequisites
   local target="${1:-primary}"
@@ -426,7 +436,7 @@ Commands:
   logs [service]           Tail logs
   backup [label]           Create a compressed production backup in backups/
   migrate [release-tag]    Run prisma migrate deploy via the dedicated migrate task
-  migrate-prod             Alias for: migrate
+  migrate-prod             Run prisma migrate deploy using server-side build compose
   deploy-app [target] [release-tag]
                            target: primary (default) or green
   green-up [release-tag]   Shortcut for: deploy-app green [release-tag]
@@ -477,7 +487,7 @@ case "${1:-help}" in
     migrate "${2:-}"
     ;;
   migrate-prod)
-    migrate
+    migrate_build
     ;;
   deploy-app)
     deploy_app "${2:-primary}" "${3:-}"
