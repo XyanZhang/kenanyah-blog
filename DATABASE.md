@@ -96,6 +96,27 @@ docker-compose exec postgres_test psql -U blog_user -d blog_test
 pnpm --filter api prisma:studio
 ```
 
+### Create Admin User
+
+Use the manual SQL template when you need to create or reset an admin portal user:
+
+```bash
+apps/api/prisma/templates/create-admin-user.sql
+```
+
+Generate a bcrypt password hash first:
+
+```bash
+pnpm --filter api gen-password 'YourStrongPassword123'
+```
+
+Then connect to the database and run the template:
+
+```bash
+psql "postgresql://blog_user:<DB_PASSWORD>@127.0.0.1:15432/blog_prod"
+\i apps/api/prisma/templates/create-admin-user.sql
+```
+
 ### Stop and Remove Containers
 
 ```bash
