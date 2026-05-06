@@ -6,6 +6,8 @@
 # - 端口: 3010 (web), 3011 (api), 5434 (postgres)
 # - 适用于本地完整部署测试
 
+name: blog_test_env
+
 services:
   # PostgreSQL Database
   postgres:
@@ -32,6 +34,7 @@ services:
 
   # API Service (Hono)
   api:
+    image: blog-api:latest
     build:
       context: .
       dockerfile: Dockerfile.api
@@ -80,6 +83,7 @@ services:
 
   # Web Service (Next.js)
   web:
+    image: blog-web:latest
     build:
       context: .
       dockerfile: Dockerfile.web
@@ -104,7 +108,8 @@ services:
 
 volumes:
   postgres_test_env_data:
-    driver: local
+    name: blog_postgres_test_env_data
+    external: true
 
 networks:
   blog-test-network:
