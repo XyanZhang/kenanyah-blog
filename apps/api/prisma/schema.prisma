@@ -44,6 +44,22 @@ enum EventStatus {
   canceled
 }
 
+enum DraftIdeaStatus {
+  idea
+  outlining
+  writing
+  published
+  archived
+}
+
+enum DraftIdeaSourceType {
+  manual
+  thought
+  bookmark
+  pdf
+  chat
+}
+
 model User {
   id            String       @id @default(cuid())
   email         String       @unique
@@ -68,6 +84,7 @@ model User {
   photoEntries        PhotoEntry[]
   mediaAssets         MediaAsset[]
   eventItems          EventItem[]
+  draftIdeas          DraftIdea[]
 
   @@index([email])
   @@index([username])
@@ -520,4 +537,31 @@ model EventItem {
   @@index([userId, status, eventDate])
   @@index([sourceType, sourceId])
   @@map("event_items")
+}
+
+model DraftIdea {
+  id          String              @id @default(cuid())
+  title       String
+  summary     String?             @db.Text
+  angle       String?             @db.Text
+  notes       String?             @db.Text
+  status      DraftIdeaStatus     @default(idea)
+  sourceType  DraftIdeaSourceType @default(manual) @map("source_type")
+  sourceId    String?             @map("source_id")
+  sourceUrl   String?             @map("source_url") @db.Text
+  tags        Json?
+  priority    Int                 @default(2)
+  postId      String?             @map("post_id")
+  userId      String?             @map("user_id")
+  createdAt   DateTime            @default(now()) @map("created_at")
+  updatedAt   DateTime            @updatedAt @map("updated_at")
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([status])
+  @@index([sourceType, sourceId])
+  @@index([postId])
+  @@index([userId])
+  @@index([updatedAt])
+  @@map("draft_ideas")
 }

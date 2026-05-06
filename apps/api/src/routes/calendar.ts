@@ -194,17 +194,20 @@ calendar.post('/events', authMiddleware, validateBody(createCalendarEventSchema)
 // PATCH /calendar/events/:id
 calendar.patch('/events/:id', authMiddleware, validateBody(updateCalendarEventSchema), async (c) => {
   const id = c.req.param('id')
+  if (!id) throw new NotFoundError('事件不存在')
   const body = c.get('validatedBody') as UpdateCalendarEventInput
   const { userId } = c.get('user')!
+  const title = body.title?.trim()
+  const description = body.description === undefined ? undefined : body.description?.trim() ?? null
 
   const updated = await updateEventItemById({
     id,
     userId,
-    title: body.title?.trim(),
-    description: body.description === undefined ? undefined : body.description?.trim() ?? null,
-    date: body.date,
-    status: body.status,
-    allDay: body.allDay,
+    ...(title !== undefined ? { title } : {}),
+    ...(description !== undefined ? { description } : {}),
+    ...(body.date !== undefined ? { date: body.date } : {}),
+    ...(body.status !== undefined ? { status: body.status } : {}),
+    ...(body.allDay !== undefined ? { allDay: body.allDay } : {}),
   })
 
   if (!updated) throw new NotFoundError('事件不存在')

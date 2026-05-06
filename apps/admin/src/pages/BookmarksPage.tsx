@@ -9,6 +9,7 @@ import {
   deleteAdminBookmark,
   checkAdminBookmark,
   convertAdminBookmark,
+  createAdminDraftIdeaFromSource,
   enrichAdminBookmark,
   getAdminBookmarkMetadata,
   getAdminBookmarks,
@@ -241,6 +242,23 @@ export function BookmarksPage() {
       )
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to convert bookmark')
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  const sendBookmarkToIdeas = async (bookmark: AdminBookmarkItem) => {
+    try {
+      setBusyId(bookmark.id)
+      setError(null)
+      setNotice(null)
+      const result = await createAdminDraftIdeaFromSource({
+        sourceType: 'bookmark',
+        sourceId: bookmark.id,
+      })
+      setNotice(`Parsed page and created draft idea ${result.data.title}`)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to create draft idea')
     } finally {
       setBusyId(null)
     }
@@ -483,6 +501,13 @@ export function BookmarksPage() {
                           onClick={() => void convertBookmark(bookmark, 'draft_post')}
                         >
                           To draft
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          disabled={busyId === bookmark.id}
+                          onClick={() => void sendBookmarkToIdeas(bookmark)}
+                        >
+                          Parse to idea
                         </Button>
                         <Button
                           variant="ghost"

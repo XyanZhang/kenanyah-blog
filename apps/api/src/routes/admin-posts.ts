@@ -9,8 +9,8 @@ import {
   type AdminPostQueryInput,
   type AdminPostUpdateInput,
 } from '@blog/validation'
-import { indexPost } from '../lib/semantic-search'
-import { syncPostEvent } from '../lib/calendar-events'
+import { indexPost, removePostFromIndex } from '../lib/semantic-search'
+import { removeEventsForSource, syncPostEvent } from '../lib/calendar-events'
 
 type AdminPostVariables = {
   validatedQuery: unknown
@@ -233,6 +233,36 @@ adminPosts.patch(
         categories: post.categories.map((item) => item.category),
         tags: post.tags.map((item) => item.tag),
       },
+    })
+  }
+)
+
+adminPosts.delete(
+  '/:id',
+  adminAuthMiddleware,
+  requireAdminRole('ADMIN'),
+  async (c) => {
+    const { id } = c.req.param()
+    const existingPost = await prisma.post.findUnique({
+      where: { id },
+      select: { id: true },
+    })
+
+    if (!existingPost) {
+      throw new NotFoundError('Post not found')
+    }
+
+    await removePostFromIndex(id).catch((err) =>
+      console.error('[admin-posts] remove post index failed:', err)
+    )
+    await removeEventsForSource('post', id).catch((err) =>
+      console.error('[admin-posts] remove post event failed:', err)
+    )
+    await prisma.post.delete({ where: { id } })
+
+    return c.json({
+      success: true,
+      data: { message: 'Post deleted successfully' },
     })
   }
 )

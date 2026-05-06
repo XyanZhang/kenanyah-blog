@@ -4,7 +4,7 @@ import { EmptyState } from '@/components/EmptyState'
 import { PageHeader } from '@/components/PageHeader'
 import { SectionTable } from '@/components/SectionTable'
 import { Badge, Button, Input } from '@/components/ui'
-import { SITE_BASE_URL, getAdminPosts, updateAdminPost } from '@/lib/api'
+import { SITE_BASE_URL, deleteAdminPost, getAdminPosts, updateAdminPost } from '@/lib/api'
 
 export function PostsPage() {
   const [search, setSearch] = useState('')
@@ -37,16 +37,37 @@ export function PostsPage() {
   }, [featured, published])
 
   const handleToggleFeatured = async (post: AdminPostListItem) => {
-    await updateAdminPost(post.id, { isFeatured: !post.isFeatured })
-    await load()
+    try {
+      setError(null)
+      await updateAdminPost(post.id, { isFeatured: !post.isFeatured })
+      await load()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update post')
+    }
   }
 
   const handleTogglePublished = async (post: AdminPostListItem) => {
-    await updateAdminPost(post.id, {
-      published: !post.published,
-      publishedAt: !post.published ? new Date().toISOString() : null,
-    })
-    await load()
+    try {
+      setError(null)
+      await updateAdminPost(post.id, {
+        published: !post.published,
+        publishedAt: !post.published ? new Date().toISOString() : null,
+      })
+      await load()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update post')
+    }
+  }
+
+  const handleDeletePost = async (post: AdminPostListItem) => {
+    if (!window.confirm(`Delete "${post.title}"? This cannot be undone.`)) return
+    try {
+      setError(null)
+      await deleteAdminPost(post.id)
+      await load()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete post')
+    }
   }
 
   return (
@@ -135,6 +156,9 @@ export function PostsPage() {
                       </Button>
                       <Button variant="ghost" onClick={() => window.open(`${SITE_BASE_URL}/posts/${post.slug}`, '_blank')}>
                         Preview
+                      </Button>
+                      <Button variant="danger" onClick={() => void handleDeletePost(post)}>
+                        Delete
                       </Button>
                     </div>
                   </td>

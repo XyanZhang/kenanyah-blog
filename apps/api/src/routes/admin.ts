@@ -8,6 +8,7 @@ import adminTags from './admin-tags'
 import adminMedia from './admin-media'
 import adminBookmarks from './admin-bookmarks'
 import adminThoughts from './admin-thoughts'
+import adminDraftIdeas from './admin-draft-ideas'
 import adminProjects from './admin-projects'
 import adminPhotos from './admin-photos'
 
@@ -22,6 +23,7 @@ admin.route('/tags', adminTags)
 admin.route('/media', adminMedia)
 admin.route('/bookmarks', adminBookmarks)
 admin.route('/thoughts', adminThoughts)
+admin.route('/draft-ideas', adminDraftIdeas)
 admin.route('/projects', adminProjects)
 admin.route('/photos', adminPhotos)
 

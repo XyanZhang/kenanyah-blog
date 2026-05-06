@@ -160,7 +160,7 @@ async function serveStaticImage(
     }
 
     const buffer = await transformer.toBuffer()
-    return new Response(buffer, {
+    return new Response(new Uint8Array(buffer), {
       headers: {
         'Content-Type': getMimeTypeByFormat(format),
         'Cache-Control': 'public, max-age=604800, stale-while-revalidate=86400',

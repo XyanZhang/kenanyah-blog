@@ -100,6 +100,10 @@ export type {
   BookmarkLinkCheckResult,
   BookmarkConversionResult,
   AdminThoughtItem,
+  DraftIdeaStatus,
+  DraftIdeaSourceType,
+  AdminDraftIdeaItem,
+  DraftIdeaConversionResult,
 } from './admin'
 
 // Dashboard types

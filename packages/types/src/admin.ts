@@ -203,3 +203,34 @@ export interface AdminThoughtItem {
     avatar: string | null
   } | null
 }
+
+export type DraftIdeaStatus = 'idea' | 'outlining' | 'writing' | 'published' | 'archived'
+export type DraftIdeaSourceType = 'manual' | 'thought' | 'bookmark' | 'pdf' | 'chat'
+
+export interface AdminDraftIdeaItem {
+  id: string
+  title: string
+  summary: string | null
+  angle: string | null
+  notes: string | null
+  status: DraftIdeaStatus
+  sourceType: DraftIdeaSourceType
+  sourceId: string | null
+  sourceUrl: string | null
+  tags: string[]
+  priority: number
+  postId: string | null
+  createdAt: Date
+  updatedAt: Date
+  user: {
+    id: string
+    username: string
+    name: string | null
+  } | null
+}
+
+export interface DraftIdeaConversionResult {
+  id: string
+  postId: string
+  slug: string
+}

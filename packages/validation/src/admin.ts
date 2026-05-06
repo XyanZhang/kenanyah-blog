@@ -67,6 +67,37 @@ export const adminThoughtCreateSchema = z.object({
 
 export const adminThoughtUpdateSchema = adminThoughtCreateSchema.partial()
 
+export const draftIdeaStatusSchema = z.enum(['idea', 'outlining', 'writing', 'published', 'archived'])
+export const draftIdeaSourceTypeSchema = z.enum(['manual', 'thought', 'bookmark', 'pdf', 'chat'])
+
+export const adminDraftIdeaQuerySchema = z.object({
+  page: z.coerce.number().int().positive().default(1),
+  limit: z.coerce.number().int().positive().max(100).default(20),
+  search: z.string().max(100).optional(),
+  status: z.enum(['idea', 'outlining', 'writing', 'published', 'archived', 'all']).default('all'),
+  sourceType: z.enum(['manual', 'thought', 'bookmark', 'pdf', 'chat', 'all']).default('all'),
+})
+
+export const adminDraftIdeaCreateSchema = z.object({
+  title: z.string().min(1).max(180),
+  summary: z.string().max(5000).nullable().optional(),
+  angle: z.string().max(3000).nullable().optional(),
+  notes: z.string().max(10000).nullable().optional(),
+  status: draftIdeaStatusSchema.default('idea'),
+  sourceType: draftIdeaSourceTypeSchema.default('manual'),
+  sourceId: z.string().max(120).nullable().optional(),
+  sourceUrl: z.string().url().nullable().optional(),
+  tags: z.array(z.string().min(1).max(50)).max(20).optional(),
+  priority: z.number().int().min(1).max(3).default(2),
+})
+
+export const adminDraftIdeaUpdateSchema = adminDraftIdeaCreateSchema.partial()
+
+export const adminDraftIdeaSourceSchema = z.object({
+  sourceType: z.enum(['thought', 'bookmark']),
+  sourceId: z.string().cuid(),
+})
+
 export const adminProjectQuerySchema = z.object({
   page: z.coerce.number().int().positive().default(1),
   limit: z.coerce.number().int().positive().max(100).default(20),
@@ -121,6 +152,12 @@ export type AdminBookmarkQueryInput = z.infer<typeof adminBookmarkQuerySchema>
 export type AdminThoughtQueryInput = z.infer<typeof adminThoughtQuerySchema>
 export type AdminThoughtCreateInput = z.infer<typeof adminThoughtCreateSchema>
 export type AdminThoughtUpdateInput = z.infer<typeof adminThoughtUpdateSchema>
+export type DraftIdeaStatusInput = z.infer<typeof draftIdeaStatusSchema>
+export type DraftIdeaSourceTypeInput = z.infer<typeof draftIdeaSourceTypeSchema>
+export type AdminDraftIdeaQueryInput = z.infer<typeof adminDraftIdeaQuerySchema>
+export type AdminDraftIdeaCreateInput = z.infer<typeof adminDraftIdeaCreateSchema>
+export type AdminDraftIdeaUpdateInput = z.infer<typeof adminDraftIdeaUpdateSchema>
+export type AdminDraftIdeaSourceInput = z.infer<typeof adminDraftIdeaSourceSchema>
 export type AdminProjectQueryInput = z.infer<typeof adminProjectQuerySchema>
 export type AdminProjectCreateInput = z.infer<typeof adminProjectCreateSchema>
 export type AdminProjectUpdateInput = z.infer<typeof adminProjectUpdateSchema>

@@ -6,6 +6,10 @@ import type {
   BookmarkLinkCheckResult,
   BookmarkMetadataResult,
   AdminThoughtItem,
+  AdminDraftIdeaItem,
+  DraftIdeaConversionResult,
+  DraftIdeaSourceType,
+  DraftIdeaStatus,
   AdminMediaItem,
   AdminPostListItem,
   AdminTaxonomyItem,
@@ -22,8 +26,9 @@ type FetchOptions = RequestInit & {
 }
 
 const API_BASE = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? '/api'
+const DEFAULT_SITE_BASE_URL = import.meta.env.DEV ? 'http://localhost:3000' : 'https://www.xyan.store'
 export const SITE_BASE_URL = (
-  (import.meta.env.VITE_SITE_BASE_URL as string | undefined) ?? 'https://www.xyan.store'
+  (import.meta.env.VITE_SITE_BASE_URL as string | undefined) ?? DEFAULT_SITE_BASE_URL
 ).replace(/\/$/, '')
 
 async function request<T>(
@@ -86,6 +91,12 @@ export async function updateAdminPost(id: string, payload: Record<string, unknow
   return request<AdminPostListItem>(`/admin/posts/${id}`, {
     method: 'PATCH',
     body: JSON.stringify(payload),
+  })
+}
+
+export async function deleteAdminPost(id: string) {
+  return request<{ message: string }>(`/admin/posts/${id}`, {
+    method: 'DELETE',
   })
 }
 
@@ -261,6 +272,71 @@ export async function updateAdminThought(
 
 export async function deleteAdminThought(id: string) {
   return request<{ message: string }>(`/admin/thoughts/${id}`, {
+    method: 'DELETE',
+  })
+}
+
+export async function getAdminDraftIdeas(params: URLSearchParams) {
+  return request<AdminDraftIdeaItem[]>(`/admin/draft-ideas?${params.toString()}`)
+}
+
+export async function createAdminDraftIdea(payload: {
+  title: string
+  summary?: string | null
+  angle?: string | null
+  notes?: string | null
+  status?: DraftIdeaStatus
+  sourceType?: DraftIdeaSourceType
+  sourceId?: string | null
+  sourceUrl?: string | null
+  tags?: string[]
+  priority?: number
+}) {
+  return request<AdminDraftIdeaItem>('/admin/draft-ideas', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+}
+
+export async function createAdminDraftIdeaFromSource(payload: {
+  sourceType: 'thought' | 'bookmark'
+  sourceId: string
+}) {
+  return request<AdminDraftIdeaItem>('/admin/draft-ideas/from-source', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+}
+
+export async function updateAdminDraftIdea(
+  id: string,
+  payload: {
+    title?: string
+    summary?: string | null
+    angle?: string | null
+    notes?: string | null
+    status?: DraftIdeaStatus
+    sourceType?: DraftIdeaSourceType
+    sourceId?: string | null
+    sourceUrl?: string | null
+    tags?: string[]
+    priority?: number
+  }
+) {
+  return request<AdminDraftIdeaItem>(`/admin/draft-ideas/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  })
+}
+
+export async function convertAdminDraftIdeaToPost(id: string) {
+  return request<DraftIdeaConversionResult>(`/admin/draft-ideas/${id}/convert-to-draft`, {
+    method: 'POST',
+  })
+}
+
+export async function deleteAdminDraftIdea(id: string) {
+  return request<{ message: string }>(`/admin/draft-ideas/${id}`, {
     method: 'DELETE',
   })
 }

@@ -15,6 +15,7 @@ import { TaxonomyPage } from './pages/TaxonomyPage'
 import { MediaPage } from './pages/MediaPage'
 import { BookmarksPage } from './pages/BookmarksPage'
 import { ThoughtsPage } from './pages/ThoughtsPage'
+import { DraftIdeasPage } from './pages/DraftIdeasPage'
 import { ProjectsPage } from './pages/ProjectsPage'
 import { PhotosPage } from './pages/PhotosPage'
 import { AdminShell } from './components/AdminShell'
@@ -113,6 +114,12 @@ const thoughtsRoute = createRoute({
   component: ThoughtsPage,
 })
 
+const draftIdeasRoute = createRoute({
+  getParentRoute: () => protectedRoute,
+  path: '/draft-ideas',
+  component: DraftIdeasPage,
+})
+
 const projectsRoute = createRoute({
   getParentRoute: () => protectedRoute,
   path: '/projects',
@@ -145,6 +152,7 @@ const routeTree = rootRoute.addChildren([
     commentsRoute,
     bookmarksRoute,
     thoughtsRoute,
+    draftIdeasRoute,
     projectsRoute,
     photosRoute,
     taxonomyRoute,

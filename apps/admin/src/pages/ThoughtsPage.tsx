@@ -5,6 +5,7 @@ import { PageHeader } from '@/components/PageHeader'
 import { SectionTable } from '@/components/SectionTable'
 import { Badge, Button, Input } from '@/components/ui'
 import {
+  createAdminDraftIdeaFromSource,
   createAdminThought,
   deleteAdminThought,
   getAdminThoughts,
@@ -67,7 +68,9 @@ export function ThoughtsPage() {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
+  const [busyId, setBusyId] = useState<string | null>(null)
 
   const editingThought = useMemo(
     () => items.find((item) => item.id === editingId),
@@ -77,6 +80,7 @@ export function ThoughtsPage() {
   const load = async () => {
     try {
       setError(null)
+      setNotice(null)
       const params = new URLSearchParams({
         page: '1',
         limit: '20',
@@ -104,6 +108,7 @@ export function ThoughtsPage() {
     setForm(emptyForm)
     setEditingId(null)
     setError(null)
+    setNotice(null)
     setIsFormOpen(true)
   }
 
@@ -111,6 +116,7 @@ export function ThoughtsPage() {
     try {
       setIsSaving(true)
       setError(null)
+      setNotice(null)
       const payload = {
         content: form.content.trim(),
         images: imagesFromInput(form.images),
@@ -137,6 +143,7 @@ export function ThoughtsPage() {
     setEditingId(thought.id)
     setForm(formFromThought(thought))
     setError(null)
+    setNotice(null)
     setIsFormOpen(true)
   }
 
@@ -147,6 +154,23 @@ export function ThoughtsPage() {
       resetForm()
     }
     await load()
+  }
+
+  const sendThoughtToIdeas = async (thought: AdminThoughtItem) => {
+    try {
+      setBusyId(thought.id)
+      setError(null)
+      setNotice(null)
+      const result = await createAdminDraftIdeaFromSource({
+        sourceType: 'thought',
+        sourceId: thought.id,
+      })
+      setNotice(`Created draft idea ${result.data.title}`)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to create draft idea')
+    } finally {
+      setBusyId(null)
+    }
   }
 
   return (
@@ -173,6 +197,7 @@ export function ThoughtsPage() {
       </div>
 
       {error ? <p className="mb-4 rounded-xl border border-[var(--danger)]/20 bg-[var(--danger-soft)] px-3 py-2 text-sm text-[var(--danger)]">{error}</p> : null}
+      {notice ? <p className="mb-4 rounded-xl border border-[var(--success)]/20 bg-[var(--success-soft)] px-3 py-2 text-sm text-[var(--success)]">{notice}</p> : null}
 
       {isFormOpen ? (
         <div className="fixed inset-0 z-50 grid place-items-center bg-black/45 px-4 py-6 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="thought-form-title">
@@ -261,6 +286,9 @@ export function ThoughtsPage() {
                       <div className="flex flex-wrap gap-2">
                         <Button variant="ghost" onClick={() => startEditing(thought)}>
                           Edit
+                        </Button>
+                        <Button variant="ghost" disabled={busyId === thought.id} onClick={() => void sendThoughtToIdeas(thought)}>
+                          To idea
                         </Button>
                         <Button variant="danger" onClick={() => void removeThought(thought)}>
                           Delete

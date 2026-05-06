@@ -1,10 +1,19 @@
+import { Readability } from '@mozilla/readability'
+import { JSDOM } from 'jsdom'
+
 const FETCH_TIMEOUT_MS = 8000
-const MAX_HTML_BYTES = 512 * 1024
+const MAX_HTML_BYTES = 1024 * 1024
+const MAX_ARTICLE_TEXT_CHARS = 18_000
 
 export type BookmarkMetadata = {
   title: string | null
   favicon: string | null
   description: string | null
+}
+
+export type BookmarkArticle = BookmarkMetadata & {
+  url: string
+  text: string | null
 }
 
 export type BookmarkLinkCheck = {
@@ -39,6 +48,56 @@ function cleanText(value: string | null) {
   if (!value) return null
   const cleaned = decodeHtmlEntities(value).replace(/\s+/g, ' ').trim()
   return cleaned || null
+}
+
+function stripHtmlNoise(html: string) {
+  return html
+    .replace(/<script\b[\s\S]*?<\/script>/gi, ' ')
+    .replace(/<style\b[\s\S]*?<\/style>/gi, ' ')
+    .replace(/<noscript\b[\s\S]*?<\/noscript>/gi, ' ')
+    .replace(/<svg\b[\s\S]*?<\/svg>/gi, ' ')
+    .replace(/<!--[\s\S]*?-->/g, ' ')
+}
+
+function htmlToText(html: string) {
+  const withBreaks = stripHtmlNoise(html)
+    .replace(/<(\/p|\/h[1-6]|\/li|br|\/blockquote|\/pre|\/article|\/section)>/gi, '\n')
+    .replace(/<[^>]+>/g, ' ')
+  return cleanText(withBreaks)
+}
+
+function extractTagContent(html: string, tagName: string) {
+  const match = new RegExp(`<${tagName}\\b[^>]*>([\\s\\S]*?)<\\/${tagName}>`, 'i').exec(html)
+  return match?.[1] ?? null
+}
+
+function extractArticleText(html: string) {
+  const candidates = [
+    extractTagContent(html, 'article'),
+    ...Array.from(html.matchAll(/<main\b[^>]*>([\s\S]*?)<\/main>/gi)).map((match) => match[1]),
+    ...Array.from(html.matchAll(/<section\b[^>]*>([\s\S]*?)<\/section>/gi)).map((match) => match[1]),
+  ]
+    .map((candidate) => htmlToText(candidate ?? ''))
+    .filter((text): text is string => Boolean(text && text.length > 300))
+    .sort((a, b) => b.length - a.length)
+
+  const text = candidates[0] ?? htmlToText(html)
+  return text ? text.slice(0, MAX_ARTICLE_TEXT_CHARS) : null
+}
+
+function extractReadableArticle(html: string, url: string) {
+  try {
+    const dom = new JSDOM(html, { url })
+    const article = new Readability(dom.window.document).parse()
+    const text = cleanText(article?.textContent ?? null)
+    if (!text || text.length < 300) return null
+    return {
+      title: cleanText(article?.title ?? null),
+      text: text.slice(0, MAX_ARTICLE_TEXT_CHARS),
+    }
+  } catch {
+    return null
+  }
 }
 
 function getAttribute(tag: string, name: string) {
@@ -137,6 +196,46 @@ export async function fetchBookmarkMetadata(url: string): Promise<BookmarkMetada
       title: null,
       favicon: resolveUrl('/favicon.ico', url),
       description: null,
+    }
+  }
+}
+
+export async function fetchBookmarkArticle(url: string): Promise<BookmarkArticle> {
+  if (!isHttpUrl(url)) {
+    return { url, title: null, favicon: null, description: null, text: null }
+  }
+
+  try {
+    const response = await fetchWithTimeout(url, {
+      headers: { accept: 'text/html,application/xhtml+xml' },
+    })
+    const contentType = response.headers.get('content-type') ?? ''
+    if (!response.ok || !contentType.includes('text/html')) {
+      return {
+        url: response.url || url,
+        title: null,
+        favicon: resolveUrl('/favicon.ico', url),
+        description: null,
+        text: null,
+      }
+    }
+
+    const html = (await response.text()).slice(0, MAX_HTML_BYTES)
+    const readable = extractReadableArticle(html, response.url || url)
+    return {
+      url: response.url || url,
+      title: readable?.title || getTitle(html),
+      favicon: getFavicon(html, response.url || url),
+      description: getDescription(html),
+      text: readable?.text || extractArticleText(html),
+    }
+  } catch {
+    return {
+      url,
+      title: null,
+      favicon: resolveUrl('/favicon.ico', url),
+      description: null,
+      text: null,
     }
   }
 }
