@@ -10,10 +10,12 @@ import { invokeChat } from '../lib/llm'
 import { fetchBookmarkArticle } from '../lib/bookmark-workflow'
 import {
   adminDraftIdeaCreateSchema,
+  adminDraftIdeaConversionSchema,
   adminDraftIdeaQuerySchema,
   adminDraftIdeaSourceSchema,
   adminDraftIdeaUpdateSchema,
   type AdminDraftIdeaCreateInput,
+  type AdminDraftIdeaConversionInput,
   type AdminDraftIdeaQueryInput,
   type AdminDraftIdeaSourceInput,
   type AdminDraftIdeaUpdateInput,
@@ -238,6 +240,10 @@ async function generateDraftContentFromIdea(idea: {
   }
 }
 
+function draftExcerptFromIdea(idea: { summary: string | null; angle: string | null }) {
+  return idea.summary?.slice(0, 500) ?? idea.angle?.slice(0, 500) ?? null
+}
+
 adminDraftIdeas.use('*', adminAuthMiddleware, requireAdminRole('ADMIN'))
 
 adminDraftIdeas.get('/', validateQuery(adminDraftIdeaQuerySchema), async (c) => {
@@ -381,6 +387,7 @@ adminDraftIdeas.patch('/:id', validateBody(adminDraftIdeaUpdateSchema), async (c
 
 adminDraftIdeas.post('/:id/convert-to-draft', async (c) => {
   const { id } = c.req.param()
+  const body = adminDraftIdeaConversionSchema.parse(await c.req.json().catch(() => ({}))) as AdminDraftIdeaConversionInput
   const idea = await prisma.draftIdea.findUnique({ where: { id } })
   if (!idea) throw new NotFoundError('Draft idea not found')
   if (idea.postId) throw new BadRequestError('Draft idea is already linked to a post.')
@@ -392,8 +399,8 @@ adminDraftIdeas.post('/:id/convert-to-draft', async (c) => {
     data: {
       title: idea.title,
       slug: await makeUniqueSlug(idea.title),
-      excerpt: idea.summary?.slice(0, 500) ?? idea.angle?.slice(0, 500) ?? null,
-      content: await generateDraftContentFromIdea(idea),
+      excerpt: draftExcerptFromIdea(idea),
+      content: body.content ? ensureSourceAttribution(body.content, idea.sourceUrl) : await generateDraftContentFromIdea(idea),
       published: false,
       isFeatured: false,
       authorId,
@@ -407,6 +414,25 @@ adminDraftIdeas.post('/:id/convert-to-draft', async (c) => {
   indexPost(post.id).catch((err) => console.error('[admin-draft-ideas] index draft failed:', err))
 
   return c.json({ success: true, data: { id, postId: post.id, slug: post.slug } }, 201)
+})
+
+adminDraftIdeas.post('/:id/preview-draft', async (c) => {
+  const { id } = c.req.param()
+  const idea = await prisma.draftIdea.findUnique({ where: { id } })
+  if (!idea) throw new NotFoundError('Draft idea not found')
+  if (idea.postId) throw new BadRequestError('Draft idea is already linked to a post.')
+
+  const content = await generateDraftContentFromIdea(idea)
+  return c.json({
+    success: true,
+    data: {
+      id,
+      title: idea.title,
+      excerpt: draftExcerptFromIdea(idea),
+      content,
+      sourceUrl: idea.sourceUrl,
+    },
+  })
 })
 
 adminDraftIdeas.delete('/:id', async (c) => {

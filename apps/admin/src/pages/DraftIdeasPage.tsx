@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import type { AdminDraftIdeaItem, DraftIdeaSourceType, DraftIdeaStatus, PaginationMeta } from '@blog/types'
+import type { AdminDraftIdeaItem, DraftIdeaPreviewResult, DraftIdeaSourceType, DraftIdeaStatus, PaginationMeta } from '@blog/types'
 import { EmptyState } from '@/components/EmptyState'
 import { PageHeader } from '@/components/PageHeader'
 import { SectionTable } from '@/components/SectionTable'
@@ -9,6 +9,7 @@ import {
   createAdminDraftIdea,
   deleteAdminDraftIdea,
   getAdminDraftIdeas,
+  previewAdminDraftIdeaPost,
   updateAdminDraftIdea,
 } from '@/lib/api'
 
@@ -114,6 +115,8 @@ export function DraftIdeasPage() {
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
+  const [preview, setPreview] = useState<DraftIdeaPreviewResult | null>(null)
+  const [previewIdea, setPreviewIdea] = useState<AdminDraftIdeaItem | null>(null)
 
   const editingIdea = useMemo(() => items.find((item) => item.id === editingId), [editingId, items])
 
@@ -194,13 +197,35 @@ export function DraftIdeasPage() {
     }
   }
 
-  const convertToPost = async (idea: AdminDraftIdeaItem) => {
+  const previewDraft = async (idea: AdminDraftIdeaItem) => {
     try {
       setBusyId(idea.id)
       setError(null)
       setNotice(null)
-      const result = await convertAdminDraftIdeaToPost(idea.id)
+      const result = await previewAdminDraftIdeaPost(idea.id)
+      setPreview(result.data)
+      setPreviewIdea(idea)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to preview draft post')
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  const closePreview = () => {
+    setPreview(null)
+    setPreviewIdea(null)
+  }
+
+  const confirmCreatePost = async () => {
+    if (!previewIdea) return
+    try {
+      setBusyId(previewIdea.id)
+      setError(null)
+      setNotice(null)
+      const result = await convertAdminDraftIdeaToPost(previewIdea.id, { content: preview?.content })
       setNotice(`Generated article draft ${result.data.slug}`)
+      closePreview()
       await load()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create draft post')
@@ -292,6 +317,38 @@ export function DraftIdeasPage() {
         </div>
       ) : null}
 
+      {preview ? (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-black/45 px-4 py-6 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="draft-preview-title">
+          <div className="admin-panel flex max-h-[calc(100vh-48px)] w-full max-w-5xl flex-col overflow-hidden rounded-2xl shadow-2xl">
+            <div className="flex items-start justify-between gap-4 border-b border-[var(--border)] p-5">
+              <div>
+                <p className="font-['IBM_Plex_Mono'] text-[11px] uppercase tracking-[0.12em] text-[var(--text-muted)]">Generated preview</p>
+                <h2 id="draft-preview-title" className="mt-1 text-lg font-semibold text-[var(--text)]">{preview.title}</h2>
+                {preview.excerpt ? <p className="mt-2 line-clamp-2 text-sm text-[var(--text-soft)]">{preview.excerpt}</p> : null}
+              </div>
+              <Button variant="ghost" onClick={closePreview}>Close</Button>
+            </div>
+
+            <div className="grid min-h-0 flex-1 gap-4 overflow-y-auto p-5 lg:grid-cols-[minmax(0,1fr)_260px]">
+              <pre className="min-h-[420px] overflow-auto whitespace-pre-wrap rounded-xl border border-[var(--border)] bg-[var(--surface-strong)] p-4 font-['IBM_Plex_Mono'] text-xs leading-6 text-[var(--text)]">
+                {preview.content}
+              </pre>
+              <aside className="space-y-3 text-sm text-[var(--text-soft)]">
+                <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-strong)] p-3">
+                  <p className="font-medium text-[var(--text)]">Draft metadata</p>
+                  <p className="mt-2">Status after create: writing</p>
+                  <p className="mt-1">Published: false</p>
+                  {preview.sourceUrl ? <p className="mt-1 break-all">Source: {preview.sourceUrl}</p> : null}
+                </div>
+                <Button className="w-full" disabled={busyId === preview.id} onClick={() => void confirmCreatePost()}>
+                  {busyId === preview.id ? 'Creating...' : 'Create post draft'}
+                </Button>
+              </aside>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       <div className="mb-4">
         <SectionTable title={`Draft ideas${meta ? ` · ${meta.total}` : ''}`}>
           {!items.length ? (
@@ -329,7 +386,9 @@ export function DraftIdeasPage() {
                     <td className="px-5 py-4 align-top">
                       <div className="flex flex-wrap gap-2">
                         <Button variant="ghost" onClick={() => startEditing(idea)}>Edit</Button>
-                        <Button variant="ghost" disabled={busyId === idea.id || Boolean(idea.postId)} onClick={() => void convertToPost(idea)}>Generate draft</Button>
+                        <Button variant="ghost" disabled={busyId === idea.id || Boolean(idea.postId)} onClick={() => void previewDraft(idea)}>
+                          {busyId === idea.id ? 'Working...' : 'Preview draft'}
+                        </Button>
                         {idea.sourceUrl ? <Button variant="ghost" onClick={() => window.open(idea.sourceUrl!, '_blank', 'noopener,noreferrer')}>Source</Button> : null}
                         <Button variant="danger" onClick={() => void removeIdea(idea)}>Delete</Button>
                       </div>

@@ -234,3 +234,11 @@ export interface DraftIdeaConversionResult {
   postId: string
   slug: string
 }
+
+export interface DraftIdeaPreviewResult {
+  id: string
+  title: string
+  excerpt: string | null
+  content: string
+  sourceUrl: string | null
+}

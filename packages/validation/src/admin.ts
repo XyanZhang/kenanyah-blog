@@ -98,6 +98,10 @@ export const adminDraftIdeaSourceSchema = z.object({
   sourceId: z.string().cuid(),
 })
 
+export const adminDraftIdeaConversionSchema = z.object({
+  content: z.string().min(1).max(100000).optional(),
+})
+
 export const adminProjectQuerySchema = z.object({
   page: z.coerce.number().int().positive().default(1),
   limit: z.coerce.number().int().positive().max(100).default(20),
@@ -158,6 +162,7 @@ export type AdminDraftIdeaQueryInput = z.infer<typeof adminDraftIdeaQuerySchema>
 export type AdminDraftIdeaCreateInput = z.infer<typeof adminDraftIdeaCreateSchema>
 export type AdminDraftIdeaUpdateInput = z.infer<typeof adminDraftIdeaUpdateSchema>
 export type AdminDraftIdeaSourceInput = z.infer<typeof adminDraftIdeaSourceSchema>
+export type AdminDraftIdeaConversionInput = z.infer<typeof adminDraftIdeaConversionSchema>
 export type AdminProjectQueryInput = z.infer<typeof adminProjectQuerySchema>
 export type AdminProjectCreateInput = z.infer<typeof adminProjectCreateSchema>
 export type AdminProjectUpdateInput = z.infer<typeof adminProjectUpdateSchema>

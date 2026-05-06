@@ -23,6 +23,20 @@ type PostVariables = {
 
 const posts = new Hono<{ Variables: PostVariables }>()
 
+async function makeUniquePostSlug(title: string, currentPostId?: string) {
+  const baseSlug = generateSlug(title) || `post-${Date.now()}`
+  const existingPost = await prisma.post.findUnique({
+    where: { slug: baseSlug },
+    select: { id: true },
+  })
+
+  if (!existingPost || existingPost.id === currentPostId) {
+    return baseSlug
+  }
+
+  return `${baseSlug}-${Date.now()}`
+}
+
 // List posts
 posts.get('/', validateQuery(postQuerySchema), async (c) => {
   const query = c.get('validatedQuery') as PostQueryInput
@@ -281,21 +295,7 @@ posts.post('/', authMiddleware, validateBody(createPostSchema), async (c) => {
   const data = c.get('validatedBody') as CreatePostInput
   const { userId } = c.get('user')
 
-  let slugToUse = generateSlug(data.title)
-  if (!slugToUse) {
-    // 纯中文等标题可能生成空 slug；用时间戳兜底
-    slugToUse = `post-${Date.now()}`
-  }
-
-  // Check if slug already exists
-  const existingPost = await prisma.post.findUnique({
-    where: { slug: slugToUse },
-  })
-
-  if (existingPost) {
-    // Append timestamp to make it unique
-    slugToUse = `${slugToUse}-${Date.now()}`
-  }
+  const slugToUse = await makeUniquePostSlug(data.title)
 
   const post = await prisma.post.create({
     data: {
@@ -388,14 +388,7 @@ posts.patch('/:id', authMiddleware, validateBody(updatePostSchema), async (c) =>
 
   if (data.title) {
     updateData.title = data.title
-    const newSlug = generateSlug(data.title)
-    if (newSlug) {
-      updateData.slug = newSlug
-    } else if (!existingPost.slug) {
-      // 纯中文等标题会生成空 slug，用 id 兜底，避免列表无法点击
-      updateData.slug = existingPost.id
-    }
-    // 否则保留原 slug
+    updateData.slug = await makeUniquePostSlug(data.title, existingPost.id)
   }
   if (data.excerpt !== undefined) updateData.excerpt = data.excerpt
   if (data.content) updateData.content = data.content

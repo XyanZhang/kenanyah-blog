@@ -104,6 +104,7 @@ export type {
   DraftIdeaSourceType,
   AdminDraftIdeaItem,
   DraftIdeaConversionResult,
+  DraftIdeaPreviewResult,
 } from './admin'
 
 // Dashboard types

@@ -8,6 +8,7 @@ import type {
   AdminThoughtItem,
   AdminDraftIdeaItem,
   DraftIdeaConversionResult,
+  DraftIdeaPreviewResult,
   DraftIdeaSourceType,
   DraftIdeaStatus,
   AdminMediaItem,
@@ -329,8 +330,15 @@ export async function updateAdminDraftIdea(
   })
 }
 
-export async function convertAdminDraftIdeaToPost(id: string) {
+export async function convertAdminDraftIdeaToPost(id: string, payload: { content?: string } = {}) {
   return request<DraftIdeaConversionResult>(`/admin/draft-ideas/${id}/convert-to-draft`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+}
+
+export async function previewAdminDraftIdeaPost(id: string) {
+  return request<DraftIdeaPreviewResult>(`/admin/draft-ideas/${id}/preview-draft`, {
     method: 'POST',
   })
 }
