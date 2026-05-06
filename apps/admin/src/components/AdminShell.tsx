@@ -25,14 +25,13 @@ export function AdminShell({ children }: { children: ReactNode }) {
   return (
     <div className="h-screen overflow-hidden">
       <div className="mx-auto flex h-screen max-w-[1500px] gap-4 px-3 py-3 lg:px-4">
-        <aside className="admin-panel hidden h-full w-60 shrink-0 rounded-2xl p-4 lg:flex lg:flex-col">
-          <div className="mb-6">
+        <aside className="admin-panel hidden h-full min-h-0 w-60 shrink-0 overflow-hidden rounded-2xl p-4 lg:flex lg:flex-col">
+          <div className="mb-6 shrink-0">
             <p className="font-['IBM_Plex_Mono'] text-[11px] uppercase tracking-[0.12em] text-[var(--text-muted)]">Blog Admin</p>
             <h1 className="mt-2 text-[22px] font-semibold text-[var(--text)]">Editorial Desk</h1>
-            <p className="mt-2 max-w-[22ch] text-sm leading-6 text-[var(--text-soft)]">A tighter workspace for publishing, moderation, and taxonomy upkeep.</p>
           </div>
 
-          <nav className="space-y-1.5">
+          <nav className="-mx-1 min-h-0 flex-1 space-y-1.5 overflow-y-auto px-1 pr-2">
             {items.map((item) => (
               <Link
                 key={item.to}
@@ -48,7 +47,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
             ))}
           </nav>
 
-          <div className="mt-6 rounded-xl bg-[var(--bg-elevated)] p-2">
+          <div className="mt-6 shrink-0 rounded-xl bg-[var(--bg-elevated)] p-2">
             <div className="grid grid-cols-2 gap-1">
               <button
                 className={`rounded-lg px-3 py-2 text-xs font-medium ${theme === 'light' ? 'bg-[var(--surface-strong)] text-[var(--text)] shadow-sm' : 'text-[var(--text-muted)]'}`}
@@ -67,7 +66,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
             </div>
           </div>
 
-          <div className="mt-auto rounded-xl bg-[var(--bg-elevated)] p-3">
+          <div className="mt-4 shrink-0 rounded-xl bg-[var(--bg-elevated)] p-3">
             <p className="text-sm font-medium text-[var(--text)]">{user?.name ?? 'Admin'}</p>
             <p className="mt-1 text-xs text-[var(--text-muted)]">{user?.email}</p>
             <Button className="mt-3 w-full" variant="ghost" onClick={() => void logout()}>
