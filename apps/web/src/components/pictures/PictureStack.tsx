@@ -361,7 +361,8 @@ export function PictureStack({ items, className }: PictureStackProps) {
         controller={{ closeOnBackdropClick: true }}
         styles={{
           container: {
-            backgroundColor: 'var(--pictures-lightbox)',
+            backgroundColor: 'rgba(10, 8, 6, 0.88)',
+            backdropFilter: 'blur(10px)',
           },
         }}
       />
