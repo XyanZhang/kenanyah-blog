@@ -62,7 +62,7 @@ export function NavItem({
 
   const baseClassName = cn(
     'group relative flex items-center overflow-hidden rounded-xl',
-    isCompact ? 'justify-center p-2' : 'gap-3 px-3 py-2',
+    isCompact ? 'h-10 w-10 shrink-0 justify-center p-2' : 'gap-3 px-3 py-2',
     isHighlighted ? 'text-accent-primary-dark' : 'text-content-tertiary'
   )
 

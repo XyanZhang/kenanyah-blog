@@ -15,6 +15,7 @@ import {
 } from 'lucide-react'
 import { apiClient } from '@/lib/api-client'
 import { getApiErrorMessage } from '@/lib/api-error'
+import { SearchResultsSkeleton } from '@/components/search/SearchResultsSkeleton'
 
 export type SemanticSearchHit =
   | {
@@ -178,6 +179,8 @@ export default function SearchPage() {
               {error}
             </p>
           )}
+
+          {loading ? <SearchResultsSkeleton /> : null}
 
           {searched && !loading && (
             <section aria-label="搜索结果">

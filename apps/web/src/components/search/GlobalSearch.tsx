@@ -20,6 +20,7 @@ import {
   DialogContent,
 } from '@/components/ui/dialog'
 import { LiquidGlassFilter } from '@/components/music/LiquidGlassFilter'
+import { SearchResultsSkeleton } from './SearchResultsSkeleton'
 
 export type SemanticSearchHit =
   | {
@@ -283,6 +284,8 @@ export function GlobalSearch() {
                   Type a keyword to search all content together.
                 </div>
               ) : null}
+
+              {loading ? <SearchResultsSkeleton /> : null}
 
               {searched && !loading && (
                 <>

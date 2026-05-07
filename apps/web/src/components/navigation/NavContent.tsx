@@ -146,6 +146,7 @@ export function NavContent({
               width={48}
               height={48}
               className={cn('rounded-full', isHomeLayout ? '' : 'mr-0')}
+              sizes="48px"
             />
           </div>
         ) : null}
@@ -161,7 +162,7 @@ export function NavContent({
         className={cn(
           'relative flex min-w-0 flex-1 overflow-hidden',
           isTopbar
-            ? 'flex-row items-center justify-start gap-0'
+            ? 'hide-scrollbar flex-row items-center justify-start gap-0 overflow-x-auto overscroll-x-contain'
             : isHomeLayout
               ? 'min-w-30 flex-col justify-center gap-1'
               : 'flex-col items-center gap-1'

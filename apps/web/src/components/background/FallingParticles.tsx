@@ -226,9 +226,10 @@ export function FallingParticles({
     const ctx = canvas.getContext('2d', { alpha: true })
     if (!ctx) return
 
-    const typeConfig = PARTICLE_TYPE_MAP.get(type)
+    const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches ?? false
+    if (reduceMotion) return
 
-    console.log('typeConfig', typeConfig)
+    const typeConfig = PARTICLE_TYPE_MAP.get(type)
 
     if (!typeConfig) return
     const config = typeConfig
@@ -248,7 +249,9 @@ export function FallingParticles({
       particles = []
       const w = canvas!.width
       const h = canvas!.height
-      const baseCount = Math.min(count, Math.floor((w * h) / 35000))
+      const density = w < 640 ? 70000 : 35000
+      const countLimit = w < 640 ? Math.ceil(count * 0.45) : count
+      const baseCount = Math.min(countLimit, Math.floor((w * h) / density))
       const [sizeMin, sizeMax] = config.sizeRange
       const spawnZone = Math.min(h * 0.4, 280)
 

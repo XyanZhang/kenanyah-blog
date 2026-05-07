@@ -257,6 +257,7 @@ export function Nav() {
     (isHomepage && config.customSize ? true : hasMeasuredTargetSize || !isHomepage)
 
   const rowNavWidth = Math.max(0, viewportWidth - 24)
+  const topbarWidth = Math.max(0, rowNavWidth)
   const targetSize = measuredSizes[targetLayoutMode]
   const targetX = isHomepage
     ? homeLeft
@@ -307,7 +308,7 @@ export function Nav() {
               : '12px 10px',
         width:
           visualLayoutMode === 'topbar'
-            ? rowNavWidth
+            ? topbarWidth
             : isHomeVisual
               ? displaySize?.width
               : 72,
@@ -315,7 +316,12 @@ export function Nav() {
         height: isHomeVisual ? displaySize?.height : undefined,
         minWidth: isHomeVisual ? undefined : 72,
         minHeight: 48,
-        overflow: useFixedSize && !isEditMode ? 'hidden' : 'visible',
+        overflow:
+          visualLayoutMode === 'topbar'
+            ? 'hidden'
+            : useFixedSize && !isEditMode
+              ? 'hidden'
+              : 'visible',
         willChange: animateShell ? 'width, height' : undefined,
         backfaceVisibility: 'hidden',
       }}

@@ -37,6 +37,7 @@ export function ProfileCard({ card }: ProfileCardProps) {
               alt={profile.name}
               fill
               className="object-cover"
+              sizes="128px"
               priority
             />
           </div>

@@ -106,6 +106,7 @@ export function RandomPostsCard({ card }: RandomPostsCardProps) {
                     alt={post.title}
                     fill
                     className="object-cover transition-transform group-hover:scale-105"
+                    sizes="80px"
                     onError={(e) => {
                       e.currentTarget.style.display = 'none'
                     }}
