@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { CalendarDaySummaryDto, CalendarEventDto, CalendarEventStatus } from '@blog/types'
 import {
   ArrowUpRight,
@@ -15,7 +15,6 @@ import {
   Loader2,
   Pin,
   Sparkles,
-  X,
 } from 'lucide-react'
 import {
   addMonths,
@@ -39,7 +38,6 @@ import { cn } from '@/lib/utils'
 
 type SummaryMap = Map<string, CalendarDaySummaryDto>
 type EventsMap = Map<string, CalendarEventDto[]>
-type FloatingCardPosition = { top: number; left: number }
 
 const WEEKDAYS = ['日', '一', '二', '三', '四', '五', '六']
 
@@ -139,14 +137,9 @@ function buildEventsMap(events: CalendarEventDto[]): EventsMap {
 
 export function CalendarMonthView({ month }: { month: string }) {
   const router = useRouter()
-  const calendarSurfaceRef = useRef<HTMLElement | null>(null)
-  const hoverHideTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [currentMonth, setCurrentMonth] = useState(() => parseMonth(month))
   const [selectedDate, setSelectedDate] = useState(() => parseMonth(month))
   const [hoveredDate, setHoveredDate] = useState<Date | null>(null)
-  const [hoverCardStyle, setHoverCardStyle] = useState<FloatingCardPosition | null>(null)
-  const [pinnedDate, setPinnedDate] = useState<Date | null>(null)
-  const [pinnedCardStyle, setPinnedCardStyle] = useState<FloatingCardPosition | null>(null)
   const [summaryMap, setSummaryMap] = useState<SummaryMap>(new Map())
   const [eventsMap, setEventsMap] = useState<EventsMap>(new Map())
   const [loading, setLoading] = useState(true)
@@ -156,9 +149,6 @@ export function CalendarMonthView({ month }: { month: string }) {
     const nextMonth = parseMonth(month)
     setCurrentMonth(nextMonth)
     setHoveredDate(null)
-    setHoverCardStyle(null)
-    setPinnedDate(null)
-    setPinnedCardStyle(null)
     setSelectedDate((previous) => {
       const today = new Date()
       if (format(nextMonth, 'yyyy-MM') === format(today, 'yyyy-MM')) {
@@ -172,14 +162,6 @@ export function CalendarMonthView({ month }: { month: string }) {
       return nextMonth
     })
   }, [month])
-
-  useEffect(() => {
-    return () => {
-      if (hoverHideTimeoutRef.current) {
-        clearTimeout(hoverHideTimeoutRef.current)
-      }
-    }
-  }, [])
 
   useEffect(() => {
     const from = format(startOfMonth(currentMonth), 'yyyy-MM-dd')
@@ -213,7 +195,7 @@ export function CalendarMonthView({ month }: { month: string }) {
     })
   }, [monthEnd, monthStart])
 
-  const activeDate = pinnedDate ?? hoveredDate ?? selectedDate
+  const activeDate = hoveredDate ?? selectedDate
   const activeDateKey = format(activeDate, 'yyyy-MM-dd')
   const activeSummary = summaryMap.get(activeDateKey)
   const activeEvents = eventsMap.get(activeDateKey) ?? []
@@ -244,78 +226,20 @@ export function CalendarMonthView({ month }: { month: string }) {
     router.push(`/calendar/day/${format(date, 'yyyy-MM-dd')}`)
   }
 
-  const cancelHoverHide = () => {
-    if (hoverHideTimeoutRef.current) {
-      clearTimeout(hoverHideTimeoutRef.current)
-      hoverHideTimeoutRef.current = null
-    }
-  }
-
-  const scheduleHoverHide = () => {
-    if (pinnedDate) return
-    cancelHoverHide()
-    hoverHideTimeoutRef.current = setTimeout(() => {
-      setHoveredDate(null)
-      setHoverCardStyle(null)
-      hoverHideTimeoutRef.current = null
-    }, 1000)
-  }
-
-  const getFloatingCardPosition = (element: HTMLElement): FloatingCardPosition | null => {
-    const container = calendarSurfaceRef.current
-    if (!container) return null
-
-    const containerRect = container.getBoundingClientRect()
-    const elementRect = element.getBoundingClientRect()
-    const cardWidth = 320
-    const gap = 18
-    const relativeTop = elementRect.top - containerRect.top - 6
-    const preferredLeft = elementRect.right - containerRect.left + gap
-    const fallbackLeft = elementRect.left - containerRect.left - cardWidth - gap
-    const nextLeft =
-      preferredLeft + cardWidth <= containerRect.width - 16
-        ? preferredLeft
-        : Math.max(16, fallbackLeft)
-
-    return {
-      top: Math.max(96, relativeTop),
-      left: nextLeft,
-    }
-  }
-
-  const placeHoverCard = (day: Date, element: HTMLElement) => {
-    if (pinnedDate) return
-    cancelHoverHide()
-    const nextPosition = getFloatingCardPosition(element)
-    if (!nextPosition) return
-
+  const previewDay = (day: Date) => {
     setHoveredDate(day)
-    setHoverCardStyle(nextPosition)
   }
 
-  const pinCard = (day: Date, element: HTMLElement) => {
-    cancelHoverHide()
-    const nextPosition = getFloatingCardPosition(element)
-    if (!nextPosition) return
-
+  const selectDay = (day: Date) => {
     setSelectedDate(day)
-    setPinnedDate(day)
-    setPinnedCardStyle(nextPosition)
-    setHoveredDate(null)
-    setHoverCardStyle(null)
-  }
-
-  const releasePinnedCard = () => {
-    setPinnedDate(null)
-    setPinnedCardStyle(null)
   }
 
   const monthTitle = format(currentMonth, 'yyyy 年 M 月', { locale: zhCN })
   const monthCaption = format(currentMonth, 'MMMM', { locale: zhCN })
   const monthLead =
     monthStats.total > 0
-      ? `这个月一共记录了 ${monthStats.total} 条事件，其中 ${monthStats.completed} 条已经落地，${monthStats.activeDays} 天留下了行动痕迹。`
-      : '这个月还很安静，适合把新的计划、想法或作品先落进日历。'
+      ? `${monthStats.total} 条记录 · ${monthStats.activeDays} 天活跃 · ${monthStats.completed} 已完成`
+      : '本月暂无记录'
 
   if (loading) {
     return (
@@ -326,8 +250,8 @@ export function CalendarMonthView({ month }: { month: string }) {
   }
 
   return (
-    <main className="min-h-screen px-4 pb-16 pt-24 sm:px-6 sm:pt-28 lg:pl-24 lg:pr-8 lg:pt-8">
-      <div className="mx-auto max-w-7xl">
+    <main className="min-h-screen px-4 pb-16 pt-24 sm:px-6 sm:pt-28 lg:px-8 lg:pt-8">
+      <div className="mx-auto w-full max-w-[82rem]">
         <section className="rounded-[2rem] border border-black/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.88),rgba(246,248,247,0.94))] px-4 py-4 shadow-[0_18px_50px_rgba(15,23,42,0.05)] backdrop-blur-sm sm:px-5">
           <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
             <div className="min-w-0">
@@ -386,9 +310,8 @@ export function CalendarMonthView({ month }: { month: string }) {
           </div>
         )}
 
-        <section className="mt-6">
+        <section className="mt-6 grid gap-5 xl:grid-cols-[minmax(0,58rem)_22rem] xl:items-start xl:justify-center">
           <section
-            ref={calendarSurfaceRef}
             className="relative rounded-[2.4rem] border border-black/8 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.96),rgba(246,248,247,0.92)_55%,rgba(241,245,243,0.94))] p-4 shadow-[0_24px_70px_rgba(15,23,42,0.06)] backdrop-blur-sm sm:p-6"
           >
             <div className="mb-5 flex flex-wrap items-end justify-between gap-4 border-b border-black/8 pb-4">
@@ -397,7 +320,7 @@ export function CalendarMonthView({ month }: { month: string }) {
                   月历总览
                 </h2>
                 <p className="mt-2 max-w-2xl text-sm leading-7 text-content-secondary">
-                  把鼠标移到某一天就能在右侧预览详情，点击会固定选中，方便在移动端继续查看。
+                  移到某一天会更新右侧预览，点击会选中日期，适合连续扫完整个月的记录。
                 </p>
               </div>
               <div className="flex flex-wrap gap-2 text-xs text-content-secondary">
@@ -409,8 +332,7 @@ export function CalendarMonthView({ month }: { month: string }) {
 
             <div
               className="grid grid-cols-7 gap-2 sm:gap-3"
-              onMouseEnter={cancelHoverHide}
-              onMouseLeave={scheduleHoverHide}
+              onMouseLeave={() => setHoveredDate(null)}
             >
               {WEEKDAYS.map((weekday) => (
                 <div
@@ -430,18 +352,17 @@ export function CalendarMonthView({ month }: { month: string }) {
                 const selected = isSameDay(day, selectedDate)
                 const today = isToday(day)
                 const almanac = getPerpetualCalendarInfo(day)
+                const firstEvent = events[0]
 
                 return (
                   <button
                     key={dateKey}
                     type="button"
-                    onMouseEnter={(event) => placeHoverCard(day, event.currentTarget)}
-                    onFocus={(event) => placeHoverCard(day, event.currentTarget)}
-                    onClick={(event) => {
-                      pinCard(day, event.currentTarget)
-                    }}
+                    onMouseEnter={() => previewDay(day)}
+                    onFocus={() => previewDay(day)}
+                    onClick={() => selectDay(day)}
                     className={cn(
-                      'group relative min-h-[7.8rem] overflow-hidden rounded-[1.7rem] border p-3 text-left transition-all sm:min-h-[9.4rem] sm:p-3.5',
+                      'group relative flex min-h-[5.9rem] flex-col overflow-hidden rounded-[1.35rem] border p-2.5 text-left transition-all sm:min-h-[6.9rem] sm:p-3',
                       hovered || selected
                         ? 'border-black/8 bg-[radial-gradient(circle_at_top_left,color-mix(in_srgb,var(--theme-accent-primary)_18%,transparent),transparent_52%),linear-gradient(180deg,color-mix(in_srgb,var(--theme-accent-primary-subtle)_72%,white_28%),color-mix(in_srgb,var(--theme-surface-selected)_82%,white_18%))] shadow-[0_18px_40px_rgba(15,23,42,0.10)]'
                         : 'border-black/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(249,250,249,0.88))] hover:border-accent-primary/20 hover:bg-accent-primary-subtle/35',
@@ -488,27 +409,21 @@ export function CalendarMonthView({ month }: { month: string }) {
                       )}
                     </div>
 
-                    <div className="mt-3 space-y-1">
+                    <div className="min-h-[1.65rem] pt-2">
                       {summary?.annotationLabel ? (
-                        <p className="line-clamp-2 font-blog text-[13px] leading-5 text-content-primary">
+                        <p className="line-clamp-1 font-blog text-[13px] leading-5 text-content-primary">
                           {summary.annotationLabel}
                         </p>
-                      ) : (
-                        <p className="text-[12px] leading-5 text-content-muted">
-                          {(summary?.totalCount ?? 0) > 0
-                            ? `${summary?.plannedCount ?? 0} 条待推进，${summary?.completedCount ?? 0} 条已完成`
-                            : '留白的一天，也许适合补一条注记。'}
-                        </p>
-                      )}
-
-                      {events.slice(0, 2).map((event) => (
-                        <div key={event.id} className="truncate text-[12px] text-content-secondary">
-                          {formatEventTime(event)} {event.title}
+                      ) : firstEvent ? (
+                        <div className="truncate text-[12px] leading-5 text-content-secondary">
+                          {formatEventTime(firstEvent)} {firstEvent.title}
                         </div>
-                      ))}
+                      ) : (
+                        <div aria-hidden />
+                      )}
                     </div>
 
-                    <div className="mt-3 flex items-center gap-1.5">
+                    <div className="mt-auto flex min-h-3 items-center gap-1.5 pt-2">
                       {events.slice(0, 3).map((event) => (
                         <span
                           key={event.id}
@@ -525,48 +440,15 @@ export function CalendarMonthView({ month }: { month: string }) {
             </div>
           </section>
 
-          <div
-            className={cn(
-              'pointer-events-none absolute z-20 hidden w-[20rem] xl:block',
-              (pinnedDate && pinnedCardStyle) || (hoveredDate && hoverCardStyle)
-                ? 'opacity-100 transition-[opacity,left,top] duration-180 ease-out'
-                : 'opacity-0 transition-[opacity,left,top] duration-120 ease-out'
-            )}
-            style={
-              pinnedDate && pinnedCardStyle
-                ? {
-                    top: pinnedCardStyle.top,
-                    left: pinnedCardStyle.left,
-                  }
-                : hoverCardStyle
-                ? {
-                    top: hoverCardStyle.top,
-                    left: hoverCardStyle.left,
-                  }
-                : {
-                    top: 96,
-                    left: 24,
-                }
-            }
-          >
+          <aside className="xl:sticky xl:top-8">
             <div
-              className={cn(
-                'overflow-hidden rounded-[2rem] border border-black/10 bg-[linear-gradient(180deg,color-mix(in_srgb,var(--theme-accent-primary-subtle)_38%,white_62%),color-mix(in_srgb,var(--theme-surface-selected)_58%,white_42%))] shadow-[0_24px_70px_rgba(15,23,42,0.12)] backdrop-blur-xl',
-                pinnedDate ? 'pointer-events-auto' : 'pointer-events-none'
-              )}
+              className="overflow-hidden rounded-[2rem] border border-black/10 bg-[linear-gradient(180deg,color-mix(in_srgb,var(--theme-accent-primary-subtle)_38%,white_62%),color-mix(in_srgb,var(--theme-surface-selected)_58%,white_42%))] shadow-[0_24px_70px_rgba(15,23,42,0.08)] backdrop-blur-xl"
             >
               <div className="bg-[radial-gradient(circle_at_top_left,color-mix(in_srgb,var(--theme-accent-primary)_14%,transparent),transparent_54%)] px-5 pb-4 pt-5">
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.24em] text-content-muted">
-                      {pinnedDate ? (
-                        <>
-                          <Pin className="h-3.5 w-3.5" />
-                          Fixed Card
-                        </>
-                      ) : (
-                        'Hover Card'
-                      )}
+                      {hoveredDate ? 'Hover Preview' : 'Selected Day'}
                     </div>
                     <h2 className="mt-2 text-2xl font-semibold tracking-[-0.04em] text-content-primary">
                       {format(activeDate, 'M 月 d 日', { locale: zhCN })}
@@ -578,28 +460,24 @@ export function CalendarMonthView({ month }: { month: string }) {
                       农历 {activeAlmanac.lunarMonthDay}
                     </p>
                   </div>
-                  <div className="flex items-center gap-2">
-                    {pinnedDate ? (
-                      <>
-                        <Link
-                          href={`/calendar/day/${activeDateKey}`}
-                          className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-line-glass bg-surface-primary/90 text-content-primary transition-colors hover:bg-surface-selected"
-                        >
-                          <ArrowUpRight className="h-4 w-4" />
-                        </Link>
-                        <button
-                          type="button"
-                          onClick={releasePinnedCard}
-                          className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-line-glass bg-surface-primary/90 text-content-primary transition-colors hover:bg-surface-selected"
-                          aria-label="关闭固定卡片"
-                        >
-                          <X className="h-4 w-4" />
-                        </button>
-                      </>
-                    ) : (
-                      <div className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-line-glass bg-surface-primary/90 text-content-primary">
-                        <ArrowUpRight className="h-4 w-4" />
-                      </div>
+                  <div className="flex shrink-0 flex-col gap-2">
+                    <Link
+                      href={`/calendar/day/${activeDateKey}`}
+                      className="inline-flex h-9 items-center justify-center gap-1.5 rounded-full border border-line-glass bg-white/78 px-3 text-xs font-medium text-content-primary shadow-sm transition-colors hover:bg-white"
+                    >
+                      <ArrowUpRight className="h-3.5 w-3.5" />
+                      打开
+                    </Link>
+                    {hoveredDate && !isSameDay(hoveredDate, selectedDate) && (
+                      <button
+                        type="button"
+                        onClick={() => selectDay(hoveredDate)}
+                        className="inline-flex h-9 items-center justify-center gap-1.5 rounded-full border border-accent-primary/20 bg-accent-primary/8 px-3 text-xs font-medium text-accent-primary shadow-sm transition-colors hover:bg-accent-primary/12"
+                        aria-label="固定当前预览日期"
+                      >
+                        <Pin className="h-3.5 w-3.5" />
+                        选中
+                      </button>
                     )}
                   </div>
                 </div>
@@ -634,12 +512,14 @@ export function CalendarMonthView({ month }: { month: string }) {
                 <div className="text-[11px] uppercase tracking-[0.2em] text-content-muted">当日记录摘录</div>
 
                 <div className="mt-3 max-h-70 space-y-4 overflow-y-auto pr-1">
-                  <div className="rounded-[1.4rem] bg-[linear-gradient(180deg,color-mix(in_srgb,var(--theme-surface-selected)_76%,white_24%),color-mix(in_srgb,var(--theme-accent-primary-subtle)_44%,white_56%))] px-4 py-4 shadow-[0_10px_28px_rgba(15,23,42,0.05)]">
-                    <div className="text-[11px] uppercase tracking-[0.2em] text-content-muted">Day Note</div>
-                    <p className="mt-2 font-blog text-sm leading-7 text-content-primary">
-                      {activeSummary?.annotationLabel || '这一天还没有留下附注，可以从 AI 快速创建或当日页补记。'}
-                    </p>
-                  </div>
+                  {activeSummary?.annotationLabel && (
+                    <div className="rounded-[1.4rem] bg-[linear-gradient(180deg,color-mix(in_srgb,var(--theme-surface-selected)_76%,white_24%),color-mix(in_srgb,var(--theme-accent-primary-subtle)_44%,white_56%))] px-4 py-4 shadow-[0_10px_28px_rgba(15,23,42,0.05)]">
+                      <div className="text-[11px] uppercase tracking-[0.2em] text-content-muted">Day Note</div>
+                      <p className="mt-2 font-blog text-sm leading-7 text-content-primary">
+                        {activeSummary.annotationLabel}
+                      </p>
+                    </div>
+                  )}
 
                   <div className="space-y-3">
                     {activeEvents.length > 0 ? (
@@ -694,61 +574,7 @@ export function CalendarMonthView({ month }: { month: string }) {
                 </div>
               </div>
             </div>
-          </div>
-
-          <section className="mt-5 space-y-4 xl:hidden">
-            <div className="overflow-hidden rounded-[2rem] border border-black/8 bg-[linear-gradient(180deg,color-mix(in_srgb,var(--theme-accent-primary-subtle)_38%,white_62%),color-mix(in_srgb,var(--theme-surface-selected)_58%,white_42%))] shadow-[0_20px_60px_rgba(15,23,42,0.06)] backdrop-blur-sm">
-              <div className="bg-[radial-gradient(circle_at_top_left,color-mix(in_srgb,var(--theme-accent-primary)_12%,transparent),transparent_54%)] px-5 pb-4 pt-5">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <div className="text-[11px] uppercase tracking-[0.24em] text-content-muted">
-                      {hoveredDate ? 'Hover Preview' : 'Pinned Day'}
-                    </div>
-                    <h2 className="mt-2 text-2xl font-semibold tracking-[-0.04em] text-content-primary">
-                      {format(activeDate, 'M 月 d 日 EEEE', { locale: zhCN })}
-                    </h2>
-                    <p className="mt-1 text-sm text-accent-primary">农历 {activeAlmanac.lunarMonthDay}</p>
-                  </div>
-                  <Link
-                    href={`/calendar/day/${activeDateKey}`}
-                    className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-black/8 bg-white text-content-primary transition-colors hover:bg-black/[0.02]"
-                  >
-                    <ArrowUpRight className="h-4 w-4" />
-                  </Link>
-                </div>
-
-                <div className="mt-4 rounded-[1.5rem] bg-[linear-gradient(180deg,color-mix(in_srgb,var(--theme-surface-selected)_76%,white_24%),color-mix(in_srgb,var(--theme-accent-primary-subtle)_44%,white_56%))] px-4 py-4 shadow-sm">
-                  <div className="text-[11px] uppercase tracking-[0.24em] text-content-muted">Perpetual Calendar</div>
-                  <p className="mt-2 text-sm leading-7 text-content-primary">
-                    {activeAlmanac.ganzhiYear}年 {activeAlmanac.ganzhiMonth}月 {activeAlmanac.ganzhiDay}日
-                    {activeAlmanac.solarTerm ? ` · ${activeAlmanac.solarTerm}` : ''}
-                  </p>
-                </div>
-
-                <div className="mt-4 rounded-[1.5rem] bg-[linear-gradient(180deg,color-mix(in_srgb,var(--theme-surface-selected)_76%,white_24%),color-mix(in_srgb,var(--theme-accent-primary-subtle)_44%,white_56%))] px-4 py-4 shadow-sm">
-                  <div className="text-[11px] uppercase tracking-[0.24em] text-content-muted">Day Note</div>
-                  <p className="mt-2 font-blog text-sm leading-7 text-content-primary">
-                    {activeSummary?.annotationLabel || '这一天还没有留下附注，可以从 AI 快速创建或当日页开始补记。'}
-                  </p>
-                </div>
-
-                <div className="mt-4 grid grid-cols-3 gap-2">
-                  <div className="rounded-[1.15rem] bg-[color-mix(in_srgb,var(--theme-surface-selected)_82%,white_18%)] px-3 py-3 text-center shadow-sm">
-                    <div className="text-lg font-semibold text-content-primary">{activeSummary?.totalCount ?? 0}</div>
-                    <div className="mt-1 text-[10px] uppercase tracking-[0.16em] text-content-muted">事件</div>
-                  </div>
-                  <div className="rounded-[1.15rem] bg-[color-mix(in_srgb,var(--theme-surface-selected)_82%,white_18%)] px-3 py-3 text-center shadow-sm">
-                    <div className="text-lg font-semibold text-content-primary">{activeSummary?.plannedCount ?? 0}</div>
-                    <div className="mt-1 text-[10px] uppercase tracking-[0.16em] text-content-muted">计划</div>
-                  </div>
-                  <div className="rounded-[1.15rem] bg-[color-mix(in_srgb,var(--theme-surface-selected)_82%,white_18%)] px-3 py-3 text-center shadow-sm">
-                    <div className="text-lg font-semibold text-content-primary">{activeSummary?.completedCount ?? 0}</div>
-                    <div className="mt-1 text-[10px] uppercase tracking-[0.16em] text-content-muted">完成</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </section>
+          </aside>
         </section>
       </div>
     </main>
