@@ -21,6 +21,7 @@ import {
   syncPostEvent,
   syncThoughtEvent,
 } from '../lib/calendar-events'
+import { getPerpetualCalendarInfo, type PerpetualCalendarInfo } from '../lib/perpetual-calendar'
 import {
   buildCalendarScheduleConfirmOperationCardMessage,
   buildDeletePostConfirmOperationCardMessage,
@@ -102,6 +103,9 @@ type CalendarPlanningPhaseEvent = {
 
 type PlanningReferenceHit = UnifiedSearchHit
 type CalendarExecutionMode = 'plan' | 'quick_create' | 'confirm' | 'cancel'
+type CalendarPlanningDay = Awaited<ReturnType<typeof getCalendarDay>> & {
+  almanac: PerpetualCalendarInfo
+}
 
 export type BusinessToolExecutionResult =
   | {
@@ -1103,6 +1107,19 @@ function formatExistingCalendarSummary(
   return `已有 ${day.events.length} 项：${titles}${day.events.length > 3 ? ' 等' : ''}`
 }
 
+function formatAlmanacSummary(almanac: PerpetualCalendarInfo): string {
+  const labels = [
+    `农历${almanac.lunarMonthDay}`,
+    almanac.solarTerm ? `节气：${almanac.solarTerm}` : '',
+    almanac.festivals.length > 0 ? `节日：${almanac.festivals.slice(0, 3).join('、')}` : '',
+    almanac.yi.length > 0 ? `宜：${almanac.yi.slice(0, 5).join('、')}` : '',
+    almanac.ji.length > 0 ? `忌：${almanac.ji.slice(0, 5).join('、')}` : '',
+    almanac.chongSha ? `冲煞：${almanac.chongSha}` : '',
+  ].filter(Boolean)
+
+  return labels.join('；')
+}
+
 function buildCalendarAdviceRecap(items: PendingCalendarSchedulePlan['items']): string {
   const lines = items
     .map((item, index) => {
@@ -1240,7 +1257,7 @@ async function buildCalendarSchedulePlan(input: {
   rawText: string
   startDate: string
   endDate: string
-  existingDays: Array<Awaited<ReturnType<typeof getCalendarDay>>>
+  existingDays: CalendarPlanningDay[]
   conversationText: string
   useKnowledgeBase: boolean
   signal?: AbortSignal
@@ -1280,6 +1297,8 @@ async function buildCalendarSchedulePlan(input: {
     '注意：当前系统只支持按“天”记录事件，不支持小时分钟，因此不要输出具体时间点。',
     '如果是出行、旅行、活动、筹备等场景，请同时考虑：出发前准备、每天安排、回程或收尾事项。',
     '请优先避开已有安排密集的日期，把重任务放到空档更多的日期，做出你认为更合理的自主决策。',
+    '同时参考万年历信息：节气、节日和“宜/忌”可作为软参考，用来安排更合适的事项类型。',
+    '万年历不是硬性规则；如果它和用户明确需求冲突，优先满足用户需求，并在 description 或 implementationAdvice 里说明取舍。',
     '如果范围内已有安排很多，可以减少写入项，只保留关键节点和准备事项。',
     'title 要简洁直接，description 用一句中文说明为什么安排在这一天或它的产出。',
     'implementationAdvice 需要给出具体、可执行的建议，例如先做什么、重点关注什么、产出物是什么。',
@@ -1298,6 +1317,17 @@ async function buildCalendarSchedulePlan(input: {
       existingEventsByDate: input.existingDays.map((day) => ({
         date: day.date,
         totalCount: day.summary.totalCount,
+        almanac: {
+          lunarMonthDay: day.almanac.lunarMonthDay,
+          lunarShortLabel: day.almanac.lunarShortLabel,
+          solarTerm: day.almanac.solarTerm,
+          festivals: day.almanac.festivals,
+          yi: day.almanac.yi,
+          ji: day.almanac.ji,
+          chongSha: day.almanac.chongSha,
+          caiPosition: day.almanac.caiPosition,
+          xiPosition: day.almanac.xiPosition,
+        },
         events: day.events.map((event) => ({
           title: event.title,
           status: event.status,
@@ -2077,14 +2107,18 @@ async function executeCreateCalendarEventTool(
   }
 
   if (executionMode.mode === 'plan') {
-    const existingDays = []
+    const existingDays: CalendarPlanningDay[] = []
     let cursorDate = startDate
     while (cursorDate <= endDate) {
       // Limit autonomous planning window for safety and readability.
       if (existingDays.length >= 7) {
         break
       }
-      existingDays.push(await getCalendarDay({ mode: 'user', userId: input.userId }, cursorDate))
+      const day = await getCalendarDay({ mode: 'user', userId: input.userId }, cursorDate)
+      existingDays.push({
+        ...day,
+        almanac: getPerpetualCalendarInfo(cursorDate),
+      })
       throwIfAborted(input.signal)
       cursorDate = addUtcDays(cursorDate, 1)
     }
@@ -2134,9 +2168,9 @@ async function executeCreateCalendarEventTool(
       ],
       assistantMessage: buildCalendarScheduleConfirmOperationCardMessage({
         date: dateLabel,
-        description: `${plan.summary}。${plan.rationale} 我已参考你当前已有安排做了更优先级和日期分配，确认后会把以下关键节点写入日历。`,
+        description: `${plan.summary}。${plan.rationale} 我已参考你当前已有安排和万年历信息做了更优先级和日期分配，确认后会把以下关键节点写入日历。`,
         existingSummary: existingDays
-          .map((day) => `${day.date}：${formatExistingCalendarSummary(day)}`)
+          .map((day) => `${day.date}：${formatExistingCalendarSummary(day)}；${formatAlmanacSummary(day.almanac)}`)
           .join(' / '),
         planItems: plan.items.map((item) =>
           compactText(

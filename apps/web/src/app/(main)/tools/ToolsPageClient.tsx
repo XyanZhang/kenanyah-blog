@@ -3,7 +3,7 @@
 import type { Route } from 'next'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
-import { ArrowUpRight, FileText, Image as ImageIcon } from 'lucide-react'
+import { ArrowUpRight, FileText, Image as ImageIcon, LibraryBig } from 'lucide-react'
 
 const tools: Array<{
   name: string
@@ -22,6 +22,15 @@ const tools: Array<{
     note: '适合长文档阅读、整理和提炼。',
     icon: <FileText className="h-5 w-5" />,
     mode: 'Document Parsing',
+  },
+  {
+    name: 'Divination Knowledge Lab',
+    description: '管理通书、八字古籍和万年历资料，为 AI 命理咨询生成可追溯的参考提示词。',
+    href: '/tools/divination',
+    tags: ['Almanac', 'RAG', 'Prompt'],
+    note: '适合整理命理资料库和搭建后续 AI 引用流程。',
+    icon: <LibraryBig className="h-5 w-5" />,
+    mode: 'Knowledge Lab',
   },
   {
     name: 'Image Converter',
