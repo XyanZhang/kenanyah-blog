@@ -71,6 +71,14 @@ posts.get('/', validateQuery(postQuerySchema), async (c) => {
     }
   }
 
+  if (query.search) {
+    where.OR = [
+      { title: { contains: query.search, mode: 'insensitive' } },
+      { excerpt: { contains: query.search, mode: 'insensitive' } },
+      { content: { contains: query.search, mode: 'insensitive' } },
+    ]
+  }
+
   const [total, postsList] = await Promise.all([
     prisma.post.count({ where }),
     prisma.post.findMany({

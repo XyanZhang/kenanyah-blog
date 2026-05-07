@@ -126,7 +126,7 @@ export default function BlogPage() {
     setLoading(true)
     setError(null)
     apiClient
-      .get('posts', { searchParams: { published: true, limit: 50 } })
+      .get('posts', { searchParams: { published: true, limit: 100 } })
       .json<ApiResponse<PostFromApi[]>>()
       .then((res) => {
         if (cancelled) return
@@ -149,6 +149,8 @@ export default function BlogPage() {
     }
   }, [])
 
+  const { dayOfYear, yearProgress, dayProgress, year } = todayStats
+
   if (loading) {
     return <BlogPageSkeleton />
   }
@@ -162,8 +164,6 @@ export default function BlogPage() {
       </main>
     )
   }
-
-  const { dayOfYear, yearProgress, dayProgress, year } = todayStats
 
   return (
     <main className="min-h-[calc(100vh-80px)] w-full flex flex-col">

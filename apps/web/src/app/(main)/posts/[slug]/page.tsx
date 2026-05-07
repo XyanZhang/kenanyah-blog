@@ -20,6 +20,8 @@ import {
   type TocHeading,
 } from '@/lib/heading'
 import { FixedPostAsideRail } from '@/components/posts/FixedPostAsideRail'
+import { MarkdownCodeBlock } from '@/components/posts/MarkdownCodeBlock'
+import { PostAside } from '@/components/posts/PostAside'
 import PostDetailSkeletonGenerated from '@/components/skeletons/generated/PostDetailSkeletonGenerated'
 
 type PostDetail = {
@@ -252,7 +254,7 @@ export default function PostPage() {
 
             <article className="font-blog w-full overflow-hidden rounded-2xl border border-line-glass bg-surface-glass/60 shadow-lg backdrop-blur-sm">
               <header className="p-5 pb-4 sm:p-8">
-                <h1 className="text-2xl sm:text-3xl md:text-4xl font-semibold leading-tight text-content-primary tracking-tight">
+                <h1 className="text-[1.75rem] font-semibold leading-[1.18] tracking-normal text-content-primary sm:text-3xl md:text-4xl">
                   {post.title}
                 </h1>
                 <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-content-tertiary">
@@ -288,10 +290,29 @@ export default function PostPage() {
               )}
 
               <div className="p-5 pt-6 sm:p-8">
+                <div className="mb-6 xl:hidden">
+                  <PostAside headings={tocHeadings} compact />
+                </div>
                 <div ref={markdownRootRef} className="md-content max-w-none">
                   <ReactMarkdown
                     remarkPlugins={[remarkGfm]}
                     components={{
+                      pre: ({ children }) => <>{children}</>,
+                      code: ({ className, children, ...props }) => {
+                        if (className?.startsWith('language-')) {
+                          return (
+                            <MarkdownCodeBlock className={className}>
+                              {children}
+                            </MarkdownCodeBlock>
+                          )
+                        }
+
+                        return (
+                          <code className={className} {...props}>
+                            {children}
+                          </code>
+                        )
+                      },
                       h1: ({ node: _node, children, ...props }) => {
                         // h1 通常是文章标题（已在 header 渲染），正文内出现时不做 TOC
                         return <h1 {...props}>{children}</h1>

@@ -10,6 +10,7 @@ import {
 
 export interface PostAsideProps {
   headings: TocHeading[]
+  compact?: boolean
 }
 
 function useActiveHeading(headings: TocHeading[]) {
@@ -129,10 +130,11 @@ function useCompletionConfetti(progress: number) {
   }, [progress])
 }
 
-export function PostAside({ headings }: PostAsideProps) {
+export function PostAside({ headings, compact = false }: PostAsideProps) {
   const progress = useReadingProgress()
   const progressPct = Math.round(progress * 100)
-  const items = useMemo(() => headings.slice(0, 18), [headings])
+  const maxItems = compact ? 8 : 18
+  const items = useMemo(() => headings.slice(0, maxItems), [headings, maxItems])
   const activeId = useActiveHeading(items)
 
   useCompletionConfetti(progress)
@@ -168,9 +170,14 @@ export function PostAside({ headings }: PostAsideProps) {
       <div className="rounded-2xl border border-line-glass bg-surface-glass/45 backdrop-blur-sm p-3 shadow-sm">
         {items.length > 0 ? (
           <div>
-            <div className="text-xs font-medium text-content-secondary">目录</div>
+            <div className="flex items-center justify-between gap-3 text-xs font-medium text-content-secondary">
+              <span>目录</span>
+              {compact ? (
+                <span className="tabular-nums text-content-muted">阅读 {progressPct}%</span>
+              ) : null}
+            </div>
             <TooltipProvider>
-              <nav className="mt-2 space-y-1">
+              <nav className={cn('mt-2 space-y-1', compact ? 'max-h-52 overflow-y-auto pr-1' : '')}>
               {items.map((h) => (
                 <Tooltip key={h.id} className="block w-full">
                   <TooltipTrigger asChild>
@@ -209,7 +216,7 @@ export function PostAside({ headings }: PostAsideProps) {
       </div>
 
       {/* 进度环 + 回到顶部：与目录左侧对齐 */}
-      <div className="mt-3 flex flex-col items-start gap-2">
+      <div className={cn('mt-3 gap-2', compact ? 'flex items-center justify-between' : 'flex flex-col items-start')}>
         <div className="relative" style={{ width: ringSize, height: ringSize }}>
           <svg
             width={ringSize}
