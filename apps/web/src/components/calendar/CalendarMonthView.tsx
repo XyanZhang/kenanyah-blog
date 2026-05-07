@@ -34,6 +34,7 @@ import {
 import { zhCN } from 'date-fns/locale'
 import { Button } from '@/components/ui/button'
 import { getCalendarEventSummary, getCalendarEvents } from '@/lib/calendar-api'
+import { getPerpetualCalendarInfo } from '@/lib/perpetual-calendar'
 import { cn } from '@/lib/utils'
 
 type SummaryMap = Map<string, CalendarDaySummaryDto>
@@ -216,6 +217,7 @@ export function CalendarMonthView({ month }: { month: string }) {
   const activeDateKey = format(activeDate, 'yyyy-MM-dd')
   const activeSummary = summaryMap.get(activeDateKey)
   const activeEvents = eventsMap.get(activeDateKey) ?? []
+  const activeAlmanac = useMemo(() => getPerpetualCalendarInfo(activeDate), [activeDate])
 
   const monthStats = useMemo(() => {
     const summaries = Array.from(summaryMap.values())
@@ -427,6 +429,7 @@ export function CalendarMonthView({ month }: { month: string }) {
                 const hovered = hoveredDate ? isSameDay(day, hoveredDate) : false
                 const selected = isSameDay(day, selectedDate)
                 const today = isToday(day)
+                const almanac = getPerpetualCalendarInfo(day)
 
                 return (
                   <button
@@ -447,17 +450,29 @@ export function CalendarMonthView({ month }: { month: string }) {
                     )}
                   >
                     <div className="flex items-start justify-between gap-2">
-                      <div
-                        className={cn(
-                          'inline-flex h-8 min-w-8 items-center justify-center rounded-full px-2 text-sm font-semibold',
-                          hovered || selected
-                            ? 'bg-[color-mix(in_srgb,var(--theme-accent-primary)_82%,black_18%)] text-content-inverse'
-                            : today
-                              ? 'bg-accent-primary-subtle text-accent-primary'
-                              : 'bg-black/[0.04] text-content-primary'
-                        )}
-                      >
-                        {format(day, 'd')}
+                      <div className="min-w-0">
+                        <div
+                          className={cn(
+                            'inline-flex h-8 min-w-8 items-center justify-center rounded-full px-2 text-sm font-semibold',
+                            hovered || selected
+                              ? 'bg-[color-mix(in_srgb,var(--theme-accent-primary)_82%,black_18%)] text-content-inverse'
+                              : today
+                                ? 'bg-accent-primary-subtle text-accent-primary'
+                                : 'bg-black/[0.04] text-content-primary'
+                          )}
+                        >
+                          {format(day, 'd')}
+                        </div>
+                        <div
+                          className={cn(
+                            'mt-1 max-w-20 truncate text-[11px] leading-4',
+                            almanac.solarTerm || almanac.festivals.length > 0
+                              ? 'font-medium text-accent-primary'
+                              : 'text-content-muted'
+                          )}
+                        >
+                          {almanac.lunarShortLabel}
+                        </div>
                       </div>
                       {(summary?.totalCount ?? 0) > 0 && (
                         <span
@@ -559,6 +574,9 @@ export function CalendarMonthView({ month }: { month: string }) {
                     <p className="mt-1 text-sm text-content-secondary">
                       {format(activeDate, 'EEEE', { locale: zhCN })}
                     </p>
+                    <p className="mt-1 text-sm text-accent-primary">
+                      农历 {activeAlmanac.lunarMonthDay}
+                    </p>
                   </div>
                   <div className="flex items-center gap-2">
                     {pinnedDate ? (
@@ -598,6 +616,16 @@ export function CalendarMonthView({ month }: { month: string }) {
                   <div className="rounded-[1.15rem] bg-[color-mix(in_srgb,var(--theme-surface-selected)_82%,white_18%)] px-3 py-3 text-center shadow-sm">
                     <div className="text-lg font-semibold text-content-primary">{activeSummary?.completedCount ?? 0}</div>
                     <div className="mt-1 text-[10px] uppercase tracking-[0.16em] text-content-muted">完成</div>
+                  </div>
+                </div>
+                <div className="mt-3 rounded-[1.2rem] bg-white/55 px-3 py-3 text-xs leading-6 text-content-secondary shadow-sm">
+                  <div className="font-medium text-content-primary">
+                    {activeAlmanac.ganzhiYear}年 {activeAlmanac.ganzhiMonth}月 {activeAlmanac.ganzhiDay}日
+                  </div>
+                  <div className="mt-1">
+                    {activeAlmanac.zodiacLabel}
+                    {activeAlmanac.solarTerm ? ` · ${activeAlmanac.solarTerm}` : ''}
+                    {activeAlmanac.festivals.length > 0 ? ` · ${activeAlmanac.festivals.slice(0, 2).join(' / ')}` : ''}
                   </div>
                 </div>
               </div>
@@ -679,6 +707,7 @@ export function CalendarMonthView({ month }: { month: string }) {
                     <h2 className="mt-2 text-2xl font-semibold tracking-[-0.04em] text-content-primary">
                       {format(activeDate, 'M 月 d 日 EEEE', { locale: zhCN })}
                     </h2>
+                    <p className="mt-1 text-sm text-accent-primary">农历 {activeAlmanac.lunarMonthDay}</p>
                   </div>
                   <Link
                     href={`/calendar/day/${activeDateKey}`}
@@ -686,6 +715,14 @@ export function CalendarMonthView({ month }: { month: string }) {
                   >
                     <ArrowUpRight className="h-4 w-4" />
                   </Link>
+                </div>
+
+                <div className="mt-4 rounded-[1.5rem] bg-[linear-gradient(180deg,color-mix(in_srgb,var(--theme-surface-selected)_76%,white_24%),color-mix(in_srgb,var(--theme-accent-primary-subtle)_44%,white_56%))] px-4 py-4 shadow-sm">
+                  <div className="text-[11px] uppercase tracking-[0.24em] text-content-muted">Perpetual Calendar</div>
+                  <p className="mt-2 text-sm leading-7 text-content-primary">
+                    {activeAlmanac.ganzhiYear}年 {activeAlmanac.ganzhiMonth}月 {activeAlmanac.ganzhiDay}日
+                    {activeAlmanac.solarTerm ? ` · ${activeAlmanac.solarTerm}` : ''}
+                  </p>
                 </div>
 
                 <div className="mt-4 rounded-[1.5rem] bg-[linear-gradient(180deg,color-mix(in_srgb,var(--theme-surface-selected)_76%,white_24%),color-mix(in_srgb,var(--theme-accent-primary-subtle)_44%,white_56%))] px-4 py-4 shadow-sm">

@@ -18,6 +18,7 @@ import { zhCN } from 'date-fns/locale'
 import { DashboardCard, CalendarCardConfig } from '@blog/types'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { getCalendarEventSummary } from '@/lib/calendar-api'
+import { getPerpetualCalendarInfo } from '@/lib/perpetual-calendar'
 
 interface CalendarCardProps {
   card: DashboardCard
@@ -122,6 +123,7 @@ export function CalendarCard({ card }: CalendarCardProps) {
   const todayFontSize = Math.max(10, Math.min(cardWidth * 0.035, 12))
   const weekdayFontSize = Math.max(10, Math.min(cardWidth * 0.032, 12))
   const dayNumberFontSize = Math.max(11, Math.min(dayCellHeight * 0.32, 16))
+  const lunarFontSize = Math.max(8, Math.min(dayCellHeight * 0.15, 10))
   const countBadgeFontSize = Math.max(9, Math.min(dayCellHeight * 0.16, 11))
   const eventDotSize = Math.max(5, Math.min(dayCellHeight * 0.12, 7))
   const legendFontSize = Math.max(10, Math.min(cardWidth * 0.032, 12))
@@ -202,6 +204,7 @@ export function CalendarCard({ card }: CalendarCardProps) {
           const hasPlanned = (summary?.plannedCount ?? 0) > 0
           const hasCompleted = (summary?.completedCount ?? 0) > 0
           const hasAnnotation = Boolean(summary?.annotationLabel)
+          const almanac = getPerpetualCalendarInfo(day)
 
           return (
             <button
@@ -226,8 +229,8 @@ export function CalendarCard({ card }: CalendarCardProps) {
               }}
               title={
                 summary
-                  ? `${dateStr} · ${summary.totalCount} 条事件${summary.annotationLabel ? ` · ${summary.annotationLabel}` : ''}`
-                  : dateStr
+                  ? `${dateStr} · 农历${almanac.lunarMonthDay} · ${summary.totalCount} 条事件${summary.annotationLabel ? ` · ${summary.annotationLabel}` : ''}`
+                  : `${dateStr} · 农历${almanac.lunarMonthDay}`
               }
             >
               {hasEvents && isCurrentMonth && (
@@ -262,9 +265,17 @@ export function CalendarCard({ card }: CalendarCardProps) {
               )}
 
               <span
-                className={`flex h-full w-full items-center justify-center ${isCurrentDay && config.highlightToday ? 'text-white' : ''}`}
+                className={`flex h-full w-full flex-col items-center justify-center ${isCurrentDay && config.highlightToday ? 'text-white' : ''}`}
               >
-                {format(day, 'd')}
+                <span>{format(day, 'd')}</span>
+                {!isTight && (
+                  <span
+                    className={`mt-0.5 max-w-full truncate font-normal ${isCurrentDay && config.highlightToday ? 'text-white/85' : almanac.solarTerm || almanac.festivals.length > 0 ? 'text-accent-primary' : 'text-content-muted'}`}
+                    style={{ fontSize: lunarFontSize, lineHeight: 1.1 }}
+                  >
+                    {almanac.lunarShortLabel}
+                  </span>
+                )}
               </span>
 
               {hasEvents && isCurrentMonth && (
@@ -336,6 +347,12 @@ export function CalendarCard({ card }: CalendarCardProps) {
               style={{ width: Math.max(5, legendDotSize - 1), height: Math.max(5, legendDotSize - 1) }}
             />
             <span>{isTight ? '注' : '附注'}</span>
+          </div>
+        )}
+        {!isTight && (
+          <div className="flex items-center gap-1">
+            <span className="text-accent-primary">农</span>
+            <span>农历</span>
           </div>
         )}
       </div>

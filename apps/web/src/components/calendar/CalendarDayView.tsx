@@ -28,6 +28,7 @@ import {
   saveCalendarAnnotation,
   updateCalendarEvent,
 } from '@/lib/calendar-api'
+import { getPerpetualCalendarInfo } from '@/lib/perpetual-calendar'
 import { createPhotoEntry, uploadPictureFile } from '@/lib/pictures-api'
 import { createProjectEntry } from '@/lib/projects-api'
 import { cn } from '@/lib/utils'
@@ -172,6 +173,7 @@ export function CalendarDayView({ date }: { date: string }) {
 
   const prevDate = useMemo(() => format(subDays(new Date(`${date}T00:00:00`), 1), 'yyyy-MM-dd'), [date])
   const nextDate = useMemo(() => format(addDays(new Date(`${date}T00:00:00`), 1), 'yyyy-MM-dd'), [date])
+  const almanac = useMemo(() => getPerpetualCalendarInfo(date), [date])
 
   const sortedEvents = useMemo(() => {
     return [...(dayData?.events ?? [])].sort((left, right) => {
@@ -419,6 +421,17 @@ export function CalendarDayView({ date }: { date: string }) {
             <h1 className="mt-4 text-4xl font-semibold tracking-[-0.04em] text-content-primary sm:text-5xl">
               {dateToHeading(date)}
             </h1>
+            <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-content-secondary">
+              <span className="rounded-full bg-accent-primary/8 px-3 py-1 text-accent-primary">
+                农历 {almanac.lunarMonthDay}
+              </span>
+              <span className="rounded-full bg-black/[0.04] px-3 py-1">
+                {almanac.ganzhiYear}年 {almanac.ganzhiMonth}月 {almanac.ganzhiDay}日
+              </span>
+              {almanac.solarTerm && (
+                <span className="rounded-full bg-black/[0.04] px-3 py-1">{almanac.solarTerm}</span>
+              )}
+            </div>
             <p className="mt-5 max-w-3xl text-sm leading-7 text-content-secondary">
               {dayData.annotation?.label || '查看这一天聚合进数据库的记录，并在这里继续补记或调整。'}
             </p>
@@ -746,6 +759,67 @@ export function CalendarDayView({ date }: { date: string }) {
           </section>
 
           <aside className="space-y-6">
+            <section className="rounded-[2rem] border border-black/8 bg-white/68 p-5 backdrop-blur-sm">
+              <div>
+                <div className="text-[11px] uppercase tracking-[0.28em] text-content-muted">
+                  Perpetual Calendar
+                </div>
+                <h2 className="mt-3 text-lg font-semibold text-content-primary">农历与黄历</h2>
+                <p className="mt-2 text-sm leading-7 text-content-secondary">
+                  {almanac.lunarYearLabel} · {almanac.zodiacLabel}
+                  {almanac.festivals.length > 0 ? ` · ${almanac.festivals.slice(0, 3).join(' / ')}` : ''}
+                </p>
+              </div>
+
+              <div className="mt-4 grid gap-3 text-sm">
+                <div className="rounded-[1.2rem] bg-black/[0.03] px-4 py-3">
+                  <div className="text-xs text-content-muted">干支</div>
+                  <div className="mt-1 font-medium text-content-primary">
+                    {almanac.ganzhiYear}年 {almanac.ganzhiMonth}月 {almanac.ganzhiDay}日
+                  </div>
+                </div>
+
+                <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
+                  <div className="rounded-[1.2rem] bg-emerald-50 px-4 py-3">
+                    <div className="text-xs font-medium text-emerald-700">宜</div>
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {(almanac.yi.length > 0 ? almanac.yi : ['平日整理']).map((item) => (
+                        <span key={item} className="rounded-full bg-white/75 px-2 py-0.5 text-xs text-emerald-700">
+                          {item}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="rounded-[1.2rem] bg-rose-50 px-4 py-3">
+                    <div className="text-xs font-medium text-rose-700">忌</div>
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {(almanac.ji.length > 0 ? almanac.ji : ['无特别忌项']).map((item) => (
+                        <span key={item} className="rounded-full bg-white/75 px-2 py-0.5 text-xs text-rose-700">
+                          {item}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-2 text-center text-xs text-content-secondary">
+                  <div className="rounded-[1rem] bg-black/[0.03] px-2 py-3">
+                    <div className="text-content-muted">冲煞</div>
+                    <div className="mt-1 font-medium text-content-primary">{almanac.chongSha}</div>
+                  </div>
+                  <div className="rounded-[1rem] bg-black/[0.03] px-2 py-3">
+                    <div className="text-content-muted">财神</div>
+                    <div className="mt-1 font-medium text-content-primary">{almanac.caiPosition}</div>
+                  </div>
+                  <div className="rounded-[1rem] bg-black/[0.03] px-2 py-3">
+                    <div className="text-content-muted">喜神</div>
+                    <div className="mt-1 font-medium text-content-primary">{almanac.xiPosition}</div>
+                  </div>
+                </div>
+              </div>
+            </section>
+
             <section className="rounded-[2rem] border border-black/8 bg-white/68 p-5 backdrop-blur-sm">
               <div>
                 <h2 className="text-lg font-semibold text-content-primary">当日附注</h2>
