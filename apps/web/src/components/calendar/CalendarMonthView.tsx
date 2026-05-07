@@ -236,11 +236,6 @@ export function CalendarMonthView({ month }: { month: string }) {
 
   const monthTitle = format(currentMonth, 'yyyy 年 M 月', { locale: zhCN })
   const monthCaption = format(currentMonth, 'MMMM', { locale: zhCN })
-  const monthLead =
-    monthStats.total > 0
-      ? `${monthStats.total} 条记录 · ${monthStats.activeDays} 天活跃 · ${monthStats.completed} 已完成`
-      : '本月暂无记录'
-
   if (loading) {
     return (
       <div className="flex min-h-[55vh] items-center justify-center">
@@ -266,7 +261,7 @@ export function CalendarMonthView({ month }: { month: string }) {
                 </button>
                 <div>
                   <div className="text-[11px] uppercase tracking-[0.28em] text-content-muted">Month View</div>
-                  <h1 className="font-display text-3xl font-semibold tracking-[-0.05em] text-content-primary sm:text-4xl">
+                  <h1 className="mt-1 font-display text-3xl font-semibold tracking-[-0.05em] text-content-primary sm:text-4xl">
                     {monthTitle}
                   </h1>
                 </div>
@@ -282,7 +277,6 @@ export function CalendarMonthView({ month }: { month: string }) {
                   {monthCaption}
                 </span>
               </div>
-              <p className="mt-3 max-w-3xl text-sm leading-7 text-content-secondary">{monthLead}</p>
             </div>
 
             <div className="flex flex-wrap gap-2 rounded-[1.35rem] border border-black/8 bg-white/54 p-1.5 shadow-[0_12px_34px_rgba(15,23,42,0.05)] backdrop-blur-sm">
@@ -328,9 +322,6 @@ export function CalendarMonthView({ month }: { month: string }) {
                 <h2 className="text-2xl font-semibold tracking-[-0.04em] text-content-primary">
                   月历总览
                 </h2>
-                <p className="mt-2 max-w-2xl text-sm leading-7 text-content-secondary">
-                  移到某一天会更新右侧预览，点击会选中日期，适合连续扫完整个月的记录。
-                </p>
               </div>
               <div className="flex flex-wrap gap-2 text-xs text-content-secondary">
                 <span className="rounded-full bg-black/[0.04] px-3 py-1.5">{monthStats.total} 条事件</span>
