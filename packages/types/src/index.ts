@@ -70,6 +70,14 @@ export type {
   PhotoEntryDto,
 } from './calendar'
 
+// Divination types
+export type {
+  DivinationConsultationMode,
+  DivinationQuestionType,
+  DivinationCitationDto,
+  DivinationConsultationDto,
+} from './divination'
+
 // Auth types
 export type {
   LoginDto,

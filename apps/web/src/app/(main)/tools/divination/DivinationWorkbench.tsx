@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import {
   BookOpenText,
@@ -14,10 +14,17 @@ import {
   UploadCloud,
 } from 'lucide-react'
 import { toast } from 'sonner'
+import {
+  createDivinationConsultation,
+  type DivinationConsultationMode,
+  type DivinationQuestionType,
+} from '@/lib/divination-api'
+import type { DivinationConsultationDto } from '@blog/types'
 
 type SourceStatus = 'ready' | 'queued' | 'draft'
-type QuestionType = 'career' | 'relationship' | 'wealth' | 'health' | 'travel' | 'general'
-type ReadingMode = 'daily' | 'bazi' | 'name' | 'event'
+type QuestionType = DivinationQuestionType
+type ReadingMode = DivinationConsultationMode
+type ReplyState = 'idle' | 'generating' | 'result' | 'error' | 'empty-sources'
 
 type KnowledgeSource = {
   id: string
@@ -91,7 +98,7 @@ const initialSources: KnowledgeSource[] = [
     status: 'ready',
     notes: '当前已能提供农历、节气、节日、宜忌和冲煞等日期信息，可先作为日期参考层。',
     tags: ['农历', '节气', '冲煞'],
-    chunks: 365,
+    chunks: 0,
   },
 ]
 
@@ -128,6 +135,15 @@ function splitTags(value: string) {
     .map((tag) => tag.trim())
     .filter(Boolean)
     .slice(0, 5)
+}
+
+function formatConsultationResult(result: DivinationConsultationDto) {
+  if (result.citations.length === 0) return result.answer
+
+  const citations = result.citations
+    .map((citation, index) => `${index + 1}. ${citation.sourceTitle}：${citation.excerpt}`)
+    .join('\n')
+  return [result.answer, '', '引用 / Citations', citations].join('\n')
 }
 
 function MetricItem(props: { label: string; value: number | string; hint: string }) {
@@ -193,6 +209,7 @@ function SourceRow(props: {
 }
 
 export function DivinationWorkbench() {
+  const replyPanelRef = useRef<HTMLDivElement | null>(null)
   const [sources, setSources] = useState(initialSources)
   const [activeSourceId, setActiveSourceId] = useState(initialSources[0]?.id ?? '')
   const [selectedSourceIds, setSelectedSourceIds] = useState<string[]>(['michong-long-calendar', 'calendar-almanac-demo'])
@@ -204,6 +221,8 @@ export function DivinationWorkbench() {
   const [newSourceTitle, setNewSourceTitle] = useState('')
   const [newSourceTags, setNewSourceTags] = useState('')
   const [showPrompt, setShowPrompt] = useState(false)
+  const [replyState, setReplyState] = useState<ReplyState>('idle')
+  const [aiReply, setAiReply] = useState('')
 
   const activeSource = sources.find((source) => source.id === activeSourceId) ?? sources[0]
   const selectedSources = sources.filter((source) => selectedSourceIds.includes(source.id))
@@ -232,6 +251,13 @@ export function DivinationWorkbench() {
       '后续接入后端 RAG 后，这里会显示：核心判断、依据摘录、行动建议和风险提醒。',
     ].join('\n')
   }, [question, selectedSources])
+  const replyContent = useMemo(() => {
+    if (replyState === 'generating') return '正在生成 AI 回复，请稍候...'
+    if (replyState === 'empty-sources') return '请先选择至少一个资料源，再生成 AI 回复。'
+    if (replyState === 'error') return aiReply || '咨询生成失败，请稍后再试。'
+    if (replyState === 'result') return aiReply
+    return aiReplyPreview
+  }, [aiReply, aiReplyPreview, replyState])
 
   const addSource = () => {
     const title = newSourceTitle.trim()
@@ -268,6 +294,38 @@ export function DivinationWorkbench() {
   const copyPrompt = async () => {
     await navigator.clipboard.writeText(prompt)
     toast.success('提示词已复制')
+  }
+
+  const submitConsultation = async () => {
+    if (selectedSourceIds.length === 0) {
+      setReplyState('empty-sources')
+      return
+    }
+
+    setReplyState('generating')
+    setAiReply('')
+
+    try {
+      const result = await createDivinationConsultation({
+        mode: readingMode,
+        questionType,
+        question,
+        birthInfo,
+        targetDate,
+        sourceIds: selectedSourceIds,
+      })
+      setAiReply(formatConsultationResult(result))
+      setReplyState('result')
+      setShowPrompt(false)
+      window.setTimeout(() => {
+        replyPanelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+      }, 0)
+      toast.success('AI 回复已生成')
+    } catch (error) {
+      const message = error instanceof Error ? error.message : '咨询生成失败'
+      setAiReply(message)
+      setReplyState('error')
+    }
   }
 
   return (
@@ -394,37 +452,39 @@ export function DivinationWorkbench() {
 
           {activeSource && (
             <div className="grid min-h-0 flex-1 gap-0 overflow-hidden xl:grid-cols-[minmax(0,1fr)_260px]">
-              <article className="min-h-0 min-w-0 overflow-y-auto p-5 md:p-7">
-                <div className="flex flex-wrap items-start justify-between gap-4">
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold text-content-muted">{activeSource.category}</p>
-                    <h3 className="mt-2 text-3xl font-semibold leading-tight tracking-[0] text-content-primary md:text-5xl">
-                      {activeSource.title}
-                    </h3>
+              <article className="min-h-0 min-w-0 overflow-y-auto p-5 md:p-6">
+                <div className="grid min-w-0 gap-2">
+                  <div className="flex min-w-0 flex-wrap items-center gap-2">
+                    <span className="shrink-0 rounded-md bg-surface-tertiary px-2 py-1 text-xs font-semibold text-content-muted">
+                      {activeSource.category}
+                    </span>
+                    <span className={`w-fit rounded-md border px-2.5 py-1 text-xs font-semibold ${statusCopy[activeSource.status].tone}`}>
+                      {statusCopy[activeSource.status].label}
+                    </span>
                   </div>
-                  <span className={`rounded-md border px-2.5 py-1 text-xs font-semibold ${statusCopy[activeSource.status].tone}`}>
-                    {statusCopy[activeSource.status].label}
-                  </span>
+                  <h3 className="min-w-0 truncate text-xl font-semibold leading-tight tracking-[0] text-content-primary md:text-2xl">
+                    {activeSource.title}
+                  </h3>
                 </div>
 
-                <p className="mt-6 max-w-[68ch] text-base leading-8 text-content-secondary">
+                <p className="mt-4 max-w-[72ch] text-sm leading-6 text-content-secondary">
                   {activeSource.notes}
                 </p>
 
-                <div className="mt-8 grid gap-4 border-y border-line-primary py-5 sm:grid-cols-3">
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-[0.14em] text-content-dim">Author</p>
-                    <p className="mt-2 text-sm font-semibold text-content-primary">{activeSource.author}</p>
+                <div className="mt-5 grid min-w-0 gap-2 rounded-lg border border-line-primary bg-surface-secondary p-2 md:grid-cols-3">
+                  <div className="min-w-0 rounded-md bg-surface-primary px-3 py-2">
+                    <p className="text-[11px] font-semibold text-content-dim">作者 / Author</p>
+                    <p className="mt-1 break-words text-sm font-semibold text-content-primary">{activeSource.author}</p>
                   </div>
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-[0.14em] text-content-dim">Chunks</p>
-                    <p className="mt-2 text-sm font-semibold text-content-primary">{activeSource.chunks}</p>
+                  <div className="min-w-0 rounded-md bg-surface-primary px-3 py-2">
+                    <p className="text-[11px] font-semibold text-content-dim">片段 / Chunks</p>
+                    <p className="mt-1 text-sm font-semibold text-content-primary">{activeSource.chunks}</p>
                   </div>
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-[0.14em] text-content-dim">Tags</p>
-                    <div className="mt-2 flex flex-wrap gap-2">
+                  <div className="min-w-0 rounded-md bg-surface-primary px-3 py-2">
+                    <p className="text-[11px] font-semibold text-content-dim">标签 / Tags</p>
+                    <div className="mt-1 flex min-w-0 flex-wrap gap-1.5">
                       {activeSource.tags.map((tag) => (
-                        <span key={tag} className="rounded-md bg-surface-tertiary px-2 py-1 text-xs font-medium text-content-secondary">
+                        <span key={tag} className="rounded-md bg-surface-tertiary px-2 py-0.5 text-xs font-medium text-content-secondary">
                           {tag}
                         </span>
                       ))}
@@ -432,11 +492,15 @@ export function DivinationWorkbench() {
                   </div>
                 </div>
 
-                <div className="mt-7 rounded-lg border border-line-primary bg-surface-secondary p-4">
-                  <div className="flex items-center justify-between gap-4">
-                    <div>
-                      <p className="text-sm font-semibold text-content-primary">后续入库流程</p>
-                      <p className="mt-1 text-xs text-content-muted">Upload / OCR → Chunking → RAG citation</p>
+                <div className="mt-4 rounded-lg border border-line-primary bg-surface-secondary p-3">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-content-primary">片段状态 / Chunk status</p>
+                      <p className="mt-1 text-xs text-content-muted">
+                        {activeSource.chunks > 0
+                          ? '已存在可检索片段，后续可接入引用召回。'
+                          : '暂无片段；上传或导入资料后才会生成。'}
+                      </p>
                     </div>
                     <button
                       type="button"
@@ -476,7 +540,7 @@ export function DivinationWorkbench() {
             <div className="flex items-center justify-between gap-3">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-content-muted">Consult</p>
-                <h2 className="mt-1 text-xl font-semibold tracking-[0]">咨询草稿</h2>
+                <h2 className="mt-1 text-xl font-semibold tracking-[0]">AI 回复</h2>
               </div>
               <BookOpenText className="h-5 w-5 text-content-secondary" />
             </div>
@@ -551,15 +615,35 @@ export function DivinationWorkbench() {
               />
             </label>
 
-            <section className="grid gap-2">
+            <section ref={replyPanelRef} className="grid gap-2">
               <div className="flex items-center justify-between gap-3">
                 <p className="text-xs font-semibold text-content-secondary">AI 回复 / Reply</p>
-                <span className="rounded-md bg-surface-tertiary px-2 py-1 text-[11px] font-semibold text-content-muted">
-                  Preview
+                <span
+                  className={`rounded-md px-2 py-1 text-[11px] font-semibold ${
+                    replyState === 'result'
+                      ? 'bg-ui-success text-ui-success-text'
+                      : replyState === 'error'
+                        ? 'bg-ui-danger-light text-ui-danger-text'
+                        : 'bg-surface-tertiary text-content-muted'
+                  }`}
+                >
+                  {replyState === 'generating'
+                    ? 'Generating'
+                    : replyState === 'result'
+                      ? 'Result'
+                      : replyState === 'error'
+                        ? 'Error'
+                        : 'Preview'}
                 </span>
               </div>
-              <div className="min-h-[150px] max-h-64 overflow-y-auto whitespace-pre-wrap rounded-md border border-line-primary bg-surface-primary px-3 py-3 text-sm leading-6 text-content-secondary">
-                {aiReplyPreview}
+              <div
+                className={`min-h-[220px] max-h-[420px] overflow-y-auto whitespace-pre-wrap rounded-md border px-3 py-3 text-sm leading-6 ${
+                  replyState === 'result'
+                    ? 'border-ui-success/45 bg-surface-secondary text-content-primary'
+                    : 'border-line-primary bg-surface-primary text-content-secondary'
+                }`}
+              >
+                {replyContent}
               </div>
             </section>
           </div>
@@ -568,32 +652,46 @@ export function DivinationWorkbench() {
             <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
-                onClick={() => setShowPrompt((value) => !value)}
+                onClick={submitConsultation}
+                disabled={replyState === 'generating'}
                 className="inline-flex h-10 cursor-pointer items-center justify-center gap-2 rounded-md bg-ui-primary px-3 text-sm font-semibold text-content-inverse transition hover:bg-ui-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ui-primary-ring"
               >
                 <MessageSquareText className="h-4 w-4" />
-                {showPrompt ? '收起' : '生成'}
+                {replyState === 'generating' ? '生成中' : '生成'}
               </button>
               <button
                 type="button"
-                onClick={copyPrompt}
+                onClick={() => setShowPrompt((value) => !value)}
                 className="inline-flex h-10 cursor-pointer items-center justify-center gap-2 rounded-md border border-line-primary bg-surface-primary px-3 text-sm font-semibold text-content-secondary transition hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ui-primary-ring"
               >
                 <Clipboard className="h-4 w-4" />
-                复制
+                {showPrompt ? '收起' : '提示词'}
               </button>
             </div>
             <AnimatePresence initial={false}>
               {showPrompt && (
-                <motion.pre
+                <motion.div
                   initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: 8 }}
                   transition={{ duration: 0.22 }}
-                  className="mt-3 max-h-56 overflow-auto whitespace-pre-wrap rounded-md border border-line-primary bg-surface-secondary p-3 text-xs leading-6 text-content-secondary"
+                  className="mt-3 overflow-hidden rounded-md border border-line-primary bg-surface-secondary"
                 >
-                  {prompt}
-                </motion.pre>
+                  <div className="flex items-center justify-between gap-3 border-b border-line-primary px-3 py-2">
+                    <span className="text-xs font-semibold text-content-secondary">Prompt</span>
+                    <button
+                      type="button"
+                      onClick={copyPrompt}
+                      className="inline-flex h-8 cursor-pointer items-center justify-center gap-2 rounded-md border border-line-primary bg-surface-primary px-2 text-xs font-semibold text-content-secondary transition hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ui-primary-ring"
+                    >
+                      <Clipboard className="h-3.5 w-3.5" />
+                      复制
+                    </button>
+                  </div>
+                  <pre className="max-h-48 overflow-auto whitespace-pre-wrap p-3 text-xs leading-6 text-content-secondary">
+                    {prompt}
+                  </pre>
+                </motion.div>
               )}
             </AnimatePresence>
           </div>

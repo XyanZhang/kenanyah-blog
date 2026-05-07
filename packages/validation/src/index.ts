@@ -143,6 +143,16 @@ export {
   type QuickCreateCalendarEventInput,
 } from './calendarEvent'
 
+// Divination consultation
+export {
+  divinationConsultationModeSchema,
+  divinationQuestionTypeSchema,
+  createDivinationConsultationSchema,
+  type DivinationConsultationModeInput,
+  type DivinationQuestionTypeInput,
+  type CreateDivinationConsultationInput,
+} from './divination'
+
 // Bookmarks
 export {
   createBookmarkSchema,
