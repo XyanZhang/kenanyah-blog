@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useMemo, useState } from 'react'
 import type { CalendarDayResponse, CalendarEventDto, CalendarEventStatus } from '@blog/types'
 import {
+  ArrowLeft,
+  ArrowRight,
   CalendarDays,
   Camera,
   FilePenLine,
@@ -18,7 +20,6 @@ import {
 } from 'lucide-react'
 import { addDays, format, subDays } from 'date-fns'
 import { zhCN } from 'date-fns/locale'
-import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useAuthSession } from '@/hooks/useAuthSession'
 import {
@@ -436,36 +437,55 @@ export function CalendarDayView({ date }: { date: string }) {
               {dayData.annotation?.label || '查看这一天聚合进数据库的记录，并在这里继续补记或调整。'}
             </p>
 
-            <div className="mt-6 flex flex-wrap gap-3">
-              <Button variant="outline" onClick={() => router.push(`/calendar/day/${prevDate}`)}>
+            <div className="mt-6 flex flex-wrap gap-2 rounded-[1.35rem] border border-black/8 bg-white/54 p-1.5 shadow-[0_12px_34px_rgba(15,23,42,0.05)] backdrop-blur-sm">
+              <button
+                type="button"
+                onClick={() => router.push(`/calendar/day/${prevDate}`)}
+                className="inline-flex h-10 items-center justify-center gap-2 rounded-full px-3.5 text-sm font-medium text-content-secondary transition-colors hover:bg-white hover:text-content-primary"
+              >
+                <ArrowLeft className="h-4 w-4" />
                 前一天
-              </Button>
-              <Button variant="outline" onClick={() => router.push(`/calendar/day/${nextDate}`)}>
+              </button>
+              <button
+                type="button"
+                onClick={() => router.push(`/calendar/day/${nextDate}`)}
+                className="inline-flex h-10 items-center justify-center gap-2 rounded-full px-3.5 text-sm font-medium text-content-secondary transition-colors hover:bg-white hover:text-content-primary"
+              >
                 后一天
-              </Button>
-              <Button variant="outline" onClick={() => router.push(`/calendar/month/${date.slice(0, 7)}`)}>
+                <ArrowRight className="h-4 w-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => router.push(`/calendar/month/${date.slice(0, 7)}`)}
+                className="inline-flex h-10 items-center justify-center gap-2 rounded-full px-3.5 text-sm font-medium text-content-secondary transition-colors hover:bg-white hover:text-content-primary"
+              >
+                <CalendarDays className="h-4 w-4" />
                 月视图
-              </Button>
-              <Button variant="outline" onClick={() => router.push('/calendar/today')}>
+              </button>
+              <button
+                type="button"
+                onClick={() => router.push('/calendar/today')}
+                className="inline-flex h-10 items-center justify-center gap-2 rounded-full px-3.5 text-sm font-medium text-content-secondary transition-colors hover:bg-white hover:text-content-primary"
+              >
                 回到今天
-              </Button>
+              </button>
               <Link
                 href={{ pathname: '/ai-chat', query: { quickDate: date } }}
-                className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-accent-primary/25 bg-accent-primary/8 px-4 py-2 text-sm font-medium text-accent-primary transition-colors hover:bg-accent-primary/12"
+                className="inline-flex h-10 items-center justify-center gap-2 rounded-full bg-accent-primary px-4 text-sm font-medium text-content-inverse shadow-[0_10px_24px_color-mix(in_srgb,var(--theme-accent-primary)_20%,transparent)] transition-colors hover:bg-[color-mix(in_srgb,var(--theme-accent-primary)_88%,black_12%)]"
               >
                 <Sparkles className="h-4 w-4" />
                 去 AI 快速创建
               </Link>
               <Link
                 href="/blog/editor"
-                className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-black/8 bg-white/68 px-4 py-2 text-sm font-medium text-content-primary transition-colors hover:bg-white"
+                className="inline-flex h-10 items-center justify-center gap-2 rounded-full px-3.5 text-sm font-medium text-content-secondary transition-colors hover:bg-white hover:text-content-primary"
               >
                 <NotebookPen className="h-4 w-4" />
                 写博客
               </Link>
               <Link
                 href="/thoughts/new"
-                className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-black/8 bg-white/68 px-4 py-2 text-sm font-medium text-content-primary transition-colors hover:bg-white"
+                className="inline-flex h-10 items-center justify-center gap-2 rounded-full px-3.5 text-sm font-medium text-content-secondary transition-colors hover:bg-white hover:text-content-primary"
               >
                 <MessageCircle className="h-4 w-4" />
                 记想法
@@ -548,12 +568,20 @@ export function CalendarDayView({ date }: { date: string }) {
               <div className="mt-5 rounded-[1.4rem] border border-dashed border-black/8 px-5 py-8 text-sm text-content-secondary">
                 <div>当前筛选下还没有事件。</div>
                 <div className="mt-4 flex flex-wrap gap-2">
-                  <Button variant="outline" onClick={() => setActiveStatusFilter('all')}>
+                  <button
+                    type="button"
+                    onClick={() => setActiveStatusFilter('all')}
+                    className="inline-flex h-9 items-center justify-center rounded-full border border-line-glass bg-white/78 px-3.5 text-xs font-medium text-content-primary shadow-sm transition-colors hover:bg-white"
+                  >
                     查看全部
-                  </Button>
-                  <Button variant="outline" onClick={() => setComposerMode('event')}>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setComposerMode('event')}
+                    className="inline-flex h-9 items-center justify-center rounded-full border border-accent-primary/20 bg-accent-primary/8 px-3.5 text-xs font-medium text-accent-primary shadow-sm transition-colors hover:bg-accent-primary/12"
+                  >
                     去补一条事件
-                  </Button>
+                  </button>
                 </div>
               </div>
             ) : (
@@ -613,15 +641,19 @@ export function CalendarDayView({ date }: { date: string }) {
                               {primaryJumpUrl && (
                                 <a
                                   href={primaryJumpUrl}
-                                  className="inline-flex h-8 items-center justify-center rounded-md border border-black/8 bg-white px-3 text-xs font-medium text-content-primary transition-colors hover:bg-black/[0.02]"
+                                  className="inline-flex h-8 items-center justify-center rounded-full border border-line-glass bg-white/78 px-3 text-xs font-medium text-content-primary shadow-sm transition-colors hover:bg-white"
                                 >
                                   打开详情
                                 </a>
                               )}
                               {user && (
-                                <Button variant="outline" size="sm" onClick={() => beginEdit(event)}>
+                                <button
+                                  type="button"
+                                  onClick={() => beginEdit(event)}
+                                  className="inline-flex h-8 items-center justify-center rounded-full border border-line-glass bg-white/78 px-3 text-xs font-medium text-content-primary shadow-sm transition-colors hover:bg-white"
+                                >
                                   编辑详情
-                                </Button>
+                                </button>
                               )}
                               {user && (
                                 <button
@@ -630,7 +662,7 @@ export function CalendarDayView({ date }: { date: string }) {
                                   onClick={() => {
                                     void handleDeleteEvent(event.id, event.title)
                                   }}
-                                  className="inline-flex h-8 items-center justify-center rounded-md border border-red-200 bg-red-50 px-3 text-xs font-medium text-red-500 transition-colors hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-55"
+                                  className="inline-flex h-8 items-center justify-center rounded-full border border-red-200/80 bg-red-50/80 px-3 text-xs font-medium text-red-500 shadow-sm transition-colors hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-55"
                                 >
                                   <Trash2 className="mr-1 h-3.5 w-3.5" />
                                   删除
@@ -732,23 +764,24 @@ export function CalendarDayView({ date }: { date: string }) {
                           </select>
                         </div>
                         <div className="flex flex-wrap gap-2">
-                          <Button
-                            size="sm"
+                          <button
+                            type="button"
                             onClick={() => void handleSaveEventEdit(event.id)}
                             disabled={savingThisEvent || !editDraft.title.trim()}
+                            className="inline-flex h-9 items-center justify-center rounded-full bg-accent-primary px-4 text-xs font-medium text-content-inverse shadow-[0_10px_24px_color-mix(in_srgb,var(--theme-accent-primary)_18%,transparent)] transition-colors hover:bg-[color-mix(in_srgb,var(--theme-accent-primary)_88%,black_12%)] disabled:cursor-not-allowed disabled:opacity-55"
                           >
                             {savingThisEvent ? '保存中…' : '保存'}
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
+                          </button>
+                          <button
+                            type="button"
                             onClick={() => {
                               setEditingEventId(null)
                               setEditDraft(null)
                             }}
+                            className="inline-flex h-9 items-center justify-center rounded-full border border-line-glass bg-white/78 px-4 text-xs font-medium text-content-primary shadow-sm transition-colors hover:bg-white"
                           >
                             取消
-                          </Button>
+                          </button>
                         </div>
                       </div>
                     </article>
@@ -839,9 +872,14 @@ export function CalendarDayView({ date }: { date: string }) {
                 <span className="text-xs text-content-tertiary">
                   {user ? '保存后会出现在月历摘要里。' : '登录后可保存个人附注。'}
                 </span>
-                <Button onClick={() => void handleSaveAnnotation()} disabled={!user || annotationSaving}>
+                <button
+                  type="button"
+                  onClick={() => void handleSaveAnnotation()}
+                  disabled={!user || annotationSaving}
+                  className="inline-flex h-9 items-center justify-center rounded-full bg-accent-primary px-4 text-xs font-medium text-content-inverse shadow-[0_10px_24px_color-mix(in_srgb,var(--theme-accent-primary)_18%,transparent)] transition-colors hover:bg-[color-mix(in_srgb,var(--theme-accent-primary)_88%,black_12%)] disabled:cursor-not-allowed disabled:opacity-55"
+                >
                   {annotationSaving ? '保存中…' : '保存附注'}
-                </Button>
+                </button>
               </div>
             </section>
 
@@ -918,13 +956,14 @@ export function CalendarDayView({ date }: { date: string }) {
                         <option value="completed">已完成</option>
                         <option value="canceled">已取消</option>
                       </select>
-                      <Button
+                      <button
+                        type="button"
                         onClick={() => void handleCreateManualEvent()}
                         disabled={manualSaving || !manualTitle.trim()}
-                        className="w-full"
+                        className="inline-flex h-10 w-full items-center justify-center rounded-full bg-accent-primary px-4 text-sm font-medium text-content-inverse shadow-[0_10px_24px_color-mix(in_srgb,var(--theme-accent-primary)_18%,transparent)] transition-colors hover:bg-[color-mix(in_srgb,var(--theme-accent-primary)_88%,black_12%)] disabled:cursor-not-allowed disabled:opacity-55"
                       >
                         {manualSaving ? '保存中…' : '新增事件'}
-                      </Button>
+                      </button>
                     </div>
                   )}
 
@@ -948,13 +987,14 @@ export function CalendarDayView({ date }: { date: string }) {
                         className="w-full rounded-md border border-line-secondary bg-surface-primary px-3 py-2 text-sm text-content-primary placeholder:text-content-dim focus:outline-none focus:ring-2 focus:ring-line-focus"
                         placeholder="项目描述，可选"
                       />
-                      <Button
+                      <button
+                        type="button"
                         onClick={() => void handleCreateProject()}
                         disabled={projectSaving || !projectTitle.trim()}
-                        className="w-full"
+                        className="inline-flex h-10 w-full items-center justify-center rounded-full bg-accent-primary px-4 text-sm font-medium text-content-inverse shadow-[0_10px_24px_color-mix(in_srgb,var(--theme-accent-primary)_18%,transparent)] transition-colors hover:bg-[color-mix(in_srgb,var(--theme-accent-primary)_88%,black_12%)] disabled:cursor-not-allowed disabled:opacity-55"
                       >
                         {projectSaving ? '创建中…' : '创建项目'}
-                      </Button>
+                      </button>
                     </div>
                   )}
 
@@ -984,13 +1024,14 @@ export function CalendarDayView({ date }: { date: string }) {
                           onChange={(e) => setPhotoFile(e.target.files?.[0] ?? null)}
                         />
                       </label>
-                      <Button
+                      <button
+                        type="button"
                         onClick={() => void handleCreatePhoto()}
                         disabled={photoSaving || (!photoFile && !photoTitle.trim())}
-                        className="w-full"
+                        className="inline-flex h-10 w-full items-center justify-center rounded-full bg-accent-primary px-4 text-sm font-medium text-content-inverse shadow-[0_10px_24px_color-mix(in_srgb,var(--theme-accent-primary)_18%,transparent)] transition-colors hover:bg-[color-mix(in_srgb,var(--theme-accent-primary)_88%,black_12%)] disabled:cursor-not-allowed disabled:opacity-55"
                       >
                         {photoSaving ? '上传中…' : '新增照片'}
-                      </Button>
+                      </button>
                     </div>
                   )}
                 </div>

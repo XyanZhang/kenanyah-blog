@@ -8,6 +8,7 @@ import {
   ArrowUpRight,
   BadgeCheck,
   Ban,
+  CalendarDays,
   ChevronLeft,
   ChevronRight,
   CircleDashed,
@@ -31,7 +32,6 @@ import {
   subMonths,
 } from 'date-fns'
 import { zhCN } from 'date-fns/locale'
-import { Button } from '@/components/ui/button'
 import { getCalendarEventSummary, getCalendarEvents } from '@/lib/calendar-api'
 import { getPerpetualCalendarInfo } from '@/lib/perpetual-calendar'
 import { cn } from '@/lib/utils'
@@ -285,17 +285,26 @@ export function CalendarMonthView({ month }: { month: string }) {
               <p className="mt-3 max-w-3xl text-sm leading-7 text-content-secondary">{monthLead}</p>
             </div>
 
-            <div className="flex flex-wrap gap-2">
-              <Button variant="outline" onClick={() => openMonth(new Date())}>
-                <Clock3 className="mr-1 h-4 w-4" />
+            <div className="flex flex-wrap gap-2 rounded-[1.35rem] border border-black/8 bg-white/54 p-1.5 shadow-[0_12px_34px_rgba(15,23,42,0.05)] backdrop-blur-sm">
+              <button
+                type="button"
+                onClick={() => openMonth(new Date())}
+                className="inline-flex h-10 items-center justify-center gap-2 rounded-full px-3.5 text-sm font-medium text-content-secondary transition-colors hover:bg-white hover:text-content-primary"
+              >
+                <Clock3 className="h-4 w-4" />
                 回到本月
-              </Button>
-              <Button variant="outline" onClick={() => openDay(activeDate)}>
+              </button>
+              <button
+                type="button"
+                onClick={() => openDay(activeDate)}
+                className="inline-flex h-10 items-center justify-center gap-2 rounded-full px-3.5 text-sm font-medium text-content-secondary transition-colors hover:bg-white hover:text-content-primary"
+              >
+                <CalendarDays className="h-4 w-4" />
                 打开当日页
-              </Button>
+              </button>
               <Link
                 href={{ pathname: '/ai-chat', query: { quickDate: activeDateKey } }}
-                className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-accent-primary/25 bg-accent-primary/8 px-4 py-2 text-sm font-medium text-accent-primary transition-colors hover:bg-accent-primary/12"
+                className="inline-flex h-10 items-center justify-center gap-2 rounded-full bg-accent-primary px-4 text-sm font-medium text-content-inverse shadow-[0_10px_24px_color-mix(in_srgb,var(--theme-accent-primary)_20%,transparent)] transition-colors hover:bg-[color-mix(in_srgb,var(--theme-accent-primary)_88%,black_12%)]"
               >
                 <Sparkles className="h-4 w-4" />
                 AI 补记
