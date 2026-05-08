@@ -143,6 +143,82 @@ async function assertApiSuccess(res: Response, fallbackMessage: string): Promise
   }
 }
 
+async function readChatEventStream(
+  res: Response,
+  handlers: {
+    onChunk: (chunk: string) => void
+    onError?: (err: string) => void
+    onEvent?: (event: ChatStreamEvent) => void
+  }
+): Promise<void> {
+  const reader = res.body?.getReader()
+  if (!reader) {
+    const message = '请求失败'
+    handlers.onError?.(message)
+    throw new Error(message)
+  }
+
+  const decoder = new TextDecoder()
+  let buffer = ''
+  let completed = false
+
+  const handleLine = (line: string) => {
+    if (!line.startsWith('data: ')) {
+      return
+    }
+
+    const data = line.slice(6)
+    const trimmed = data.trim()
+    if (!trimmed) {
+      return
+    }
+    if (trimmed === '[DONE]') {
+      completed = true
+      return
+    }
+
+    let parsed: (ChatStreamEvent & { error?: string }) | null = null
+    try {
+      parsed = JSON.parse(trimmed) as ChatStreamEvent & { error?: string }
+    } catch {
+      handlers.onChunk(data)
+      return
+    }
+
+    if (parsed.error) {
+      handlers.onError?.(parsed.error)
+      throw new Error(parsed.error)
+    }
+
+    handlers.onEvent?.(parsed)
+    if (parsed.type === 'content' && typeof parsed.content === 'string') {
+      handlers.onChunk(parsed.content)
+    }
+  }
+
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) break
+    buffer += decoder.decode(value, { stream: true })
+    const lines = buffer.split('\n')
+    buffer = lines.pop() ?? ''
+    for (const line of lines) {
+      handleLine(line)
+    }
+  }
+
+  const tail = `${buffer}${decoder.decode()}`
+  if (tail.trim()) {
+    handleLine(tail)
+  }
+
+  if (!completed) {
+    const message = 'AI 响应连接已中断，请稍后重试'
+    handlers.onError?.(message)
+    throw new Error(message)
+  }
+}
+
 export async function listConversations(): Promise<ChatConversation[]> {
   const res = await fetch(`${API_BASE_URL}/chat/conversations`, {
     credentials: 'include',
@@ -220,68 +296,7 @@ export async function streamChatMessage(
     throw new Error(message)
   }
 
-  const reader = res.body.getReader()
-  const decoder = new TextDecoder()
-  let buffer = ''
-
-  while (true) {
-    const { done, value } = await reader.read()
-    if (done) break
-    buffer += decoder.decode(value, { stream: true })
-    const lines = buffer.split('\n')
-    buffer = lines.pop() ?? ''
-    for (const line of lines) {
-      if (line.startsWith('data: ')) {
-        const data = line.slice(6)
-        const trimmed = data.trim()
-        if (!trimmed) continue
-        if (trimmed === '[DONE]') {
-          return
-        }
-        let parsed: (ChatStreamEvent & { error?: string }) | null = null
-        try {
-          parsed = JSON.parse(trimmed) as ChatStreamEvent & { error?: string }
-        } catch {
-          onChunk(data)
-          continue
-        }
-
-        if (parsed.error) {
-          onError?.(parsed.error)
-          throw new Error(parsed.error)
-        }
-
-        options?.onEvent?.(parsed)
-        if (parsed.type === 'content' && typeof parsed.content === 'string') {
-          onChunk(parsed.content)
-        }
-      }
-    }
-  }
-
-  if (buffer.startsWith('data: ')) {
-    const data = buffer.slice(6)
-    const trimmed = data.trim()
-    if (!trimmed) return
-    if (trimmed === '[DONE]') return
-    let parsed: (ChatStreamEvent & { error?: string }) | null = null
-    try {
-      parsed = JSON.parse(trimmed) as ChatStreamEvent & { error?: string }
-    } catch {
-      onChunk(data)
-      return
-    }
-
-    if (parsed.error) {
-      onError?.(parsed.error)
-      throw new Error(parsed.error)
-    }
-
-    options?.onEvent?.(parsed)
-    if (parsed.type === 'content' && typeof parsed.content === 'string') {
-      onChunk(parsed.content)
-    }
-  }
+  await readChatEventStream(res, { onChunk, onError, onEvent: options?.onEvent })
 }
 
 export async function streamRetryChatMessage(
@@ -313,68 +328,7 @@ export async function streamRetryChatMessage(
     throw new Error(message)
   }
 
-  const reader = res.body.getReader()
-  const decoder = new TextDecoder()
-  let buffer = ''
-
-  while (true) {
-    const { done, value } = await reader.read()
-    if (done) break
-    buffer += decoder.decode(value, { stream: true })
-    const lines = buffer.split('\n')
-    buffer = lines.pop() ?? ''
-    for (const line of lines) {
-      if (line.startsWith('data: ')) {
-        const data = line.slice(6)
-        const trimmed = data.trim()
-        if (!trimmed) continue
-        if (trimmed === '[DONE]') {
-          return
-        }
-        let parsed: (ChatStreamEvent & { error?: string }) | null = null
-        try {
-          parsed = JSON.parse(trimmed) as ChatStreamEvent & { error?: string }
-        } catch {
-          onChunk(data)
-          continue
-        }
-
-        if (parsed.error) {
-          onError?.(parsed.error)
-          throw new Error(parsed.error)
-        }
-
-        options?.onEvent?.(parsed)
-        if (parsed.type === 'content' && typeof parsed.content === 'string') {
-          onChunk(parsed.content)
-        }
-      }
-    }
-  }
-
-  if (buffer.startsWith('data: ')) {
-    const data = buffer.slice(6)
-    const trimmed = data.trim()
-    if (!trimmed) return
-    if (trimmed === '[DONE]') return
-    let parsed: (ChatStreamEvent & { error?: string }) | null = null
-    try {
-      parsed = JSON.parse(trimmed) as ChatStreamEvent & { error?: string }
-    } catch {
-      onChunk(data)
-      return
-    }
-
-    if (parsed.error) {
-      onError?.(parsed.error)
-      throw new Error(parsed.error)
-    }
-
-    options?.onEvent?.(parsed)
-    if (parsed.type === 'content' && typeof parsed.content === 'string') {
-      onChunk(parsed.content)
-    }
-  }
+  await readChatEventStream(res, { onChunk, onError, onEvent: options?.onEvent })
 }
 
 export async function streamEditAndResendUserMessage(
@@ -407,68 +361,7 @@ export async function streamEditAndResendUserMessage(
     throw new ChatApiError(message, res.status)
   }
 
-  const reader = res.body.getReader()
-  const decoder = new TextDecoder()
-  let buffer = ''
-
-  while (true) {
-    const { done, value } = await reader.read()
-    if (done) break
-    buffer += decoder.decode(value, { stream: true })
-    const lines = buffer.split('\n')
-    buffer = lines.pop() ?? ''
-    for (const line of lines) {
-      if (line.startsWith('data: ')) {
-        const data = line.slice(6)
-        const trimmed = data.trim()
-        if (!trimmed) continue
-        if (trimmed === '[DONE]') {
-          return
-        }
-        let parsed: (ChatStreamEvent & { error?: string }) | null = null
-        try {
-          parsed = JSON.parse(trimmed) as ChatStreamEvent & { error?: string }
-        } catch {
-          onChunk(data)
-          continue
-        }
-
-        if (parsed.error) {
-          onError?.(parsed.error)
-          throw new Error(parsed.error)
-        }
-
-        options?.onEvent?.(parsed)
-        if (parsed.type === 'content' && typeof parsed.content === 'string') {
-          onChunk(parsed.content)
-        }
-      }
-    }
-  }
-
-  if (buffer.startsWith('data: ')) {
-    const data = buffer.slice(6)
-    const trimmed = data.trim()
-    if (!trimmed) return
-    if (trimmed === '[DONE]') return
-    let parsed: (ChatStreamEvent & { error?: string }) | null = null
-    try {
-      parsed = JSON.parse(trimmed) as ChatStreamEvent & { error?: string }
-    } catch {
-      onChunk(data)
-      return
-    }
-
-    if (parsed.error) {
-      onError?.(parsed.error)
-      throw new Error(parsed.error)
-    }
-
-    options?.onEvent?.(parsed)
-    if (parsed.type === 'content' && typeof parsed.content === 'string') {
-      onChunk(parsed.content)
-    }
-  }
+  await readChatEventStream(res, { onChunk, onError, onEvent: options?.onEvent })
 }
 
 export async function branchConversation(

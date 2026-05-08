@@ -1,5 +1,6 @@
 import { ChatOpenAI } from '@langchain/openai'
 import { HumanMessage, SystemMessage } from '@langchain/core/messages'
+import { logger } from './logger'
 import {
   resolveLlmChatConfig,
   llmConfigCacheKey,
@@ -60,12 +61,42 @@ function getChatModel(options?: LlmCallOptions): ChatOpenAI | null {
   return chatModel ?? null
 }
 
+function getSafeLlmDiagnostics(options?: LlmCallOptions) {
+  const resolved = resolveLlmChatConfig(options)
+  if (!resolved) {
+    return {
+      provider: peekLlmProviderKind(options),
+      modelName: options?.model ?? 'default',
+      configured: false,
+    }
+  }
+
+  return {
+    provider: resolved.provider,
+    modelName: resolved.modelName,
+    baseURL: resolved.baseURL,
+    configured: true,
+  }
+}
+
 function chatConfigErrorHint(options?: LlmCallOptions): string {
   const kind = peekLlmProviderKind(options)
   if (kind === 'qwen') {
     return 'DASHSCOPE_API_KEY 未配置，或当前槽位的 LLM_PROVIDER_* 指向 qwen 但 Key 无效'
   }
   return 'OPENAI_API_KEY / OPENAI_API_KEY_* 未配置，或当前槽位指向的 OpenAI 兼容服务不可用'
+}
+
+function normalizeLlmError(err: unknown, fallbackMessage: string): Error {
+  if (err instanceof Error && err.message.trim()) {
+    return err
+  }
+
+  if (typeof err === 'string' && err.trim()) {
+    return new Error(err)
+  }
+
+  return new Error(fallbackMessage)
 }
 
 export async function* streamChat(
@@ -81,10 +112,23 @@ export async function* streamChat(
     ...(systemPrompt ? [new SystemMessage(systemPrompt)] : []),
     new HumanMessage(userPrompt),
   ]
-  const stream = await model.stream(messages, options?.signal ? { signal: options.signal } : undefined)
-  for await (const chunk of stream) {
-    const text = normalizeMessageContent(chunk.content)
-    if (text) yield text
+  const startedAt = Date.now()
+  try {
+    const stream = await model.stream(messages, options?.signal ? { signal: options.signal } : undefined)
+    for await (const chunk of stream) {
+      const text = normalizeMessageContent(chunk.content)
+      if (text) yield text
+    }
+  } catch (err) {
+    logger.warn(
+      {
+        err: normalizeLlmError(err, 'LLM 流式调用失败'),
+        elapsedMs: Date.now() - startedAt,
+        llm: getSafeLlmDiagnostics(options),
+      },
+      'llm.stream.failed'
+    )
+    throw normalizeLlmError(err, 'LLM 流式调用失败，请检查模型配置或稍后重试')
   }
 }
 
@@ -101,6 +145,19 @@ export async function invokeChat(
     ...(systemPrompt ? [new SystemMessage(systemPrompt)] : []),
     new HumanMessage(userPrompt),
   ]
-  const res = await model.invoke(messages, options?.signal ? { signal: options.signal } : undefined)
-  return normalizeMessageContent(res.content)
+  const startedAt = Date.now()
+  try {
+    const res = await model.invoke(messages, options?.signal ? { signal: options.signal } : undefined)
+    return normalizeMessageContent(res.content)
+  } catch (err) {
+    logger.warn(
+      {
+        err: normalizeLlmError(err, 'LLM 调用失败'),
+        elapsedMs: Date.now() - startedAt,
+        llm: getSafeLlmDiagnostics(options),
+      },
+      'llm.invoke.failed'
+    )
+    throw normalizeLlmError(err, 'LLM 调用失败，请检查模型配置或稍后重试')
+  }
 }

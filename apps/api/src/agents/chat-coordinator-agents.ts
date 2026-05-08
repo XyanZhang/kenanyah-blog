@@ -252,7 +252,10 @@ type JsonAgentOptions<T> = {
   schema: z.ZodType<T, z.ZodTypeDef, unknown>
   model?: LlmModelPurpose
   signal?: AbortSignal
+  timeoutMs?: number
 }
+
+const JSON_AGENT_TIMEOUT_MS = 8_000
 
 function extractJsonObject(text: string): string | null {
   const start = text.indexOf('{')
@@ -269,6 +272,11 @@ function normalizeQuestions(questions: string[]): string[] {
 
 function normalizeMessageText(value: string): string {
   return value.replace(/\s+/g, ' ').trim()
+}
+
+function containsAmbiguousBusinessVerb(latestUserMessage: string): boolean {
+  const text = normalizeMessageText(latestUserMessage)
+  return /(?:帮我)?(?:改一下|修改|删除|删掉|发布|上线|保存|收藏|记录|安排|提醒|创建|新建|写一篇|生成一篇|写博客|生成博客)/.test(text)
 }
 
 function looksLikeDeleteConfirmation(latestUserMessage: string): boolean {
@@ -720,13 +728,85 @@ function isKnowledgeBaseToolCall(
   return toolCall.tool === 'knowledge_base_search' || toolCall.tool === 'yijing_knowledge_search'
 }
 
+function canSkipIntentLlmReview(input: {
+  signals: IntentSignal
+  candidates: IntentCandidate[]
+  context: IntentContext
+  useKnowledgeBase: boolean
+}): boolean {
+  const topCandidate = input.candidates[0]
+
+  return (
+    topCandidate?.intent === 'general_chat' &&
+    topCandidate.source === 'rule' &&
+    input.candidates.every((candidate) => candidate.intent === 'general_chat') &&
+    input.context.activeDomain === 'general' &&
+    !input.context.pendingAction &&
+    !input.signals.hasCrossTaskSwitchSignal &&
+    !containsAmbiguousBusinessVerb(input.signals.latestUserMessage) &&
+    !input.useKnowledgeBase
+  )
+}
+
+function buildRuleOnlyIntentReview(candidates: IntentCandidate[]): IntentReviewResult {
+  const fallbackIntent = candidates[0]?.intent ?? 'general_chat'
+
+  return {
+    intent: fallbackIntent,
+    summary: getIntentSummary(fallbackIntent),
+    confidence: candidates[0]?.confidence ?? 0.35,
+    needsFollowup: false,
+    followupQuestions: [],
+    needPlanning: false,
+    shouldUseKnowledgeBase: false,
+    publishDirectly: false,
+    reason: '规则判定为普通对话，跳过 LLM 意图复核',
+  }
+}
+
 async function invokeJsonAgent<T>(options: JsonAgentOptions<T>): Promise<T> {
   throwIfAborted(options.signal)
-  const raw = await invokeChat(options.userPrompt, options.systemPrompt, {
-    model: options.model ?? 'fast',
-    temperature: 0.1,
-    signal: options.signal,
-  })
+  const controller = new AbortController()
+  const timeout = setTimeout(() => {
+    controller.abort(new Error('JSON agent timeout'))
+  }, options.timeoutMs ?? JSON_AGENT_TIMEOUT_MS)
+  const abortFromParent = () => {
+    controller.abort(options.signal?.reason instanceof Error ? options.signal.reason : new Error('请求已取消'))
+  }
+
+  if (options.signal?.aborted) {
+    abortFromParent()
+  } else {
+    options.signal?.addEventListener('abort', abortFromParent, { once: true })
+  }
+
+  let raw = ''
+  try {
+    const invokePromise = invokeChat(options.userPrompt, options.systemPrompt, {
+      model: options.model ?? 'fast',
+      temperature: 0.1,
+      signal: controller.signal,
+    })
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      controller.signal.addEventListener(
+        'abort',
+        () => {
+          reject(controller.signal.reason instanceof Error ? controller.signal.reason : new Error('JSON agent timeout'))
+        },
+        { once: true }
+      )
+    })
+
+    invokePromise.catch(() => undefined)
+    raw = await Promise.race([invokePromise, timeoutPromise])
+  } catch {
+    throwIfAborted(options.signal)
+    return options.fallback
+  } finally {
+    clearTimeout(timeout)
+    options.signal?.removeEventListener('abort', abortFromParent)
+  }
+
   throwIfAborted(options.signal)
 
   const jsonText = extractJsonObject(raw)
@@ -966,14 +1046,21 @@ export async function runIntentRecognitionAgent(input: {
     useKnowledgeBase: input.useKnowledgeBase,
   })
 
-  const review = await reviewIntentWithLLM({
-    latestUserMessage: input.latestUserMessage,
-    conversationDigest: input.conversationText,
+  const review = canSkipIntentLlmReview({
+    signals,
     candidates,
     context: input.context,
     useKnowledgeBase: input.useKnowledgeBase,
-    signal: input.signal,
   })
+    ? buildRuleOnlyIntentReview(candidates)
+    : await reviewIntentWithLLM({
+        latestUserMessage: input.latestUserMessage,
+        conversationDigest: input.conversationText,
+        candidates,
+        context: input.context,
+        useKnowledgeBase: input.useKnowledgeBase,
+        signal: input.signal,
+      })
 
   return finalizeIntentRoute({
     latestUserMessage: input.latestUserMessage,

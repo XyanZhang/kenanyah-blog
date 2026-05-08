@@ -92,6 +92,20 @@ describe('chat intent recognition', () => {
     expect(bookmarks.candidates[0]?.intent).toBe('list_bookmarks')
   })
 
+  it('skips llm intent review for obvious general chat', async () => {
+    const module = await import('./chat-coordinator-agents')
+    const result = await module.runIntentRecognitionAgent({
+      conversationText: '用户：你好',
+      latestUserMessage: '你好',
+      useKnowledgeBase: false,
+      context: DEFAULT_INTENT_CONTEXT,
+    })
+
+    expect(result.intent).toBe('general_chat')
+    expect(result.needPlanning).toBe(false)
+    expect(invokeChatMock).not.toHaveBeenCalled()
+  })
+
   it('detects cross-task switch from workflow followup to travel request', async () => {
     const module = await import('./chat-coordinator-agents')
     const signals = module.extractIntentSignals({

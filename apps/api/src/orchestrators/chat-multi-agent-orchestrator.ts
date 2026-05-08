@@ -12,7 +12,7 @@ import {
   type ChatToolName,
 } from '../agents/chat-coordinator-agents'
 import { resolveChatAppSkill, type ResolvedChatAppSkill } from '../agents/chat-app-skills'
-import { throwIfAborted } from '../lib/abort'
+import { createAbortError, throwIfAborted } from '../lib/abort'
 import { logger } from '../lib/logger'
 import { streamChat } from '../lib/llm'
 import {
@@ -79,6 +79,8 @@ type ChatMultiAgentInput = {
 }
 
 type ChatStageTimingMap = Record<ChatAgentStage, number>
+
+const CHAT_AGENT_STAGE_TIMEOUT_MS = 45_000
 
 type AsyncQueue<T> = {
   push: (item: T) => void
@@ -171,6 +173,81 @@ function getUserStatusLabel(status: ChatUserFacingStatus): string {
   }
 
   return '我正在回复你'
+}
+
+function createStageTimeoutSignal(
+  parentSignal: AbortSignal | undefined,
+  timeoutMs: number,
+  timeoutMessage: string
+): { signal: AbortSignal; cleanup: () => void; didTimeout: () => boolean } {
+  const controller = new AbortController()
+  let timedOut = false
+
+  const timeout = setTimeout(() => {
+    timedOut = true
+    controller.abort(new Error(timeoutMessage))
+  }, timeoutMs)
+
+  const abortFromParent = () => {
+    const reason = parentSignal?.reason
+    if (reason instanceof Error) {
+      controller.abort(reason)
+      return
+    }
+    if (typeof reason === 'string' && reason.trim()) {
+      controller.abort(createAbortError(reason))
+      return
+    }
+    controller.abort(createAbortError())
+  }
+
+  if (parentSignal?.aborted) {
+    abortFromParent()
+  } else {
+    parentSignal?.addEventListener('abort', abortFromParent, { once: true })
+  }
+
+  return {
+    signal: controller.signal,
+    cleanup: () => {
+      clearTimeout(timeout)
+      parentSignal?.removeEventListener('abort', abortFromParent)
+    },
+    didTimeout: () => timedOut,
+  }
+}
+
+async function runWithStageTimeout<T>(
+  parentSignal: AbortSignal | undefined,
+  timeoutMs: number,
+  timeoutMessage: string,
+  task: (signal: AbortSignal) => Promise<T>
+): Promise<T> {
+  const stage = createStageTimeoutSignal(parentSignal, timeoutMs, timeoutMessage)
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    stage.signal.addEventListener(
+      'abort',
+      () => {
+        if (stage.didTimeout()) {
+          reject(new Error(timeoutMessage))
+        }
+      },
+      { once: true }
+    )
+  })
+
+  try {
+    const taskPromise = task(stage.signal)
+    taskPromise.catch(() => undefined)
+    return await Promise.race([taskPromise, timeoutPromise])
+  } catch (err) {
+    if (stage.didTimeout()) {
+      throw new Error(timeoutMessage)
+    }
+    throw err
+  } finally {
+    stage.cleanup()
+  }
 }
 
 function inferToolStatus(toolCall: ChatToolCall): ChatUserFacingStatus {
@@ -419,13 +496,19 @@ export async function* runChatMultiAgentOrchestrator(
 
     yield* emitStatus('thinking', 'intent')
     const intentStartedAt = Date.now()
-    const intent = await runIntentRecognitionAgent({
-      conversationText: conversationDigest,
-      latestUserMessage: input.latestUserMessage,
-      useKnowledgeBase: input.useKnowledgeBase,
-      context: currentIntentContext,
-      signal: input.signal,
-    })
+    const intent = await runWithStageTimeout(
+      input.signal,
+      CHAT_AGENT_STAGE_TIMEOUT_MS,
+      'AI 理解问题超时，请稍后再试，或检查当前 LLM 配置是否可用',
+      (signal) =>
+        runIntentRecognitionAgent({
+          conversationText: conversationDigest,
+          latestUserMessage: input.latestUserMessage,
+          useKnowledgeBase: input.useKnowledgeBase,
+          context: currentIntentContext,
+          signal,
+        })
+    )
     stageTimings.intent += Date.now() - intentStartedAt
     throwIfAborted(input.signal)
     yield* emitIntentState(intent.statePatch, {
@@ -776,13 +859,19 @@ export async function* runChatMultiAgentOrchestrator(
         skillId: skill.id,
       })
       const planStartedAt = Date.now()
-      resolvedPlan = await runTaskPlanningAgent({
-        conversationText: conversationDigest,
-        latestUserMessage: input.latestUserMessage,
-        intent,
-        skillPrompt: skill.prompts.planner,
-        signal: input.signal,
-      })
+      resolvedPlan = await runWithStageTimeout(
+        input.signal,
+        CHAT_AGENT_STAGE_TIMEOUT_MS,
+        'AI 规划回答超时，请稍后再试，或检查当前 LLM 配置是否可用',
+        (signal) =>
+          runTaskPlanningAgent({
+            conversationText: conversationDigest,
+            latestUserMessage: input.latestUserMessage,
+            intent,
+            skillPrompt: skill.prompts.planner,
+            signal,
+          })
+      )
       stageTimings.plan += Date.now() - planStartedAt
     }
     throwIfAborted(input.signal)
