@@ -6,6 +6,7 @@ import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import {
+  BookOpenText,
   Loader2,
   Send,
   Database,
@@ -64,6 +65,7 @@ type ChatQueueItem = {
   conversationId: string
   content: string
   useKnowledgeBase: boolean
+  useYijingAgent: boolean
   userMsgId: string
   assistantMsgId: string
 }
@@ -232,6 +234,7 @@ export default function AiChatPageContent() {
   const [editResendMessageId, setEditResendMessageId] = useState<string | null>(null)
   const [editingTitle, setEditingTitle] = useState('')
   const [useKnowledgeBase, setUseKnowledgeBase] = useState(false)
+  const [useYijingAgent, setUseYijingAgent] = useState(false)
   const [followupDrafts, setFollowupDrafts] = useState<Record<string, Record<string, FollowupAnswerDraft>>>({})
   const [operationCardReplyDrafts, setOperationCardReplyDrafts] = useState<Record<string, string>>({})
   const [chatQueue, setChatQueue] = useState<ChatQueueItem[]>([])
@@ -670,6 +673,7 @@ export default function AiChatPageContent() {
       conversationId,
       content,
       useKnowledgeBase,
+      useYijingAgent,
       userMsgId: userMsg.id,
       assistantMsgId: assistantMsg.id,
     }
@@ -789,7 +793,7 @@ export default function AiChatPageContent() {
           setError(err)
         },
         {
-          useKnowledgeBase: job.useKnowledgeBase,
+          useKnowledgeBase: job.useKnowledgeBase || job.useYijingAgent,
           signal: controller.signal,
           onEvent: (event) => {
             const progress = toChatProgressState(event)
@@ -918,7 +922,7 @@ export default function AiChatPageContent() {
           setError(err)
         },
         {
-          useKnowledgeBase,
+          useKnowledgeBase: useKnowledgeBase || useYijingAgent,
           signal: controller.signal,
           onEvent: (event) => {
             const progress = toChatProgressState(event)
@@ -1131,7 +1135,7 @@ export default function AiChatPageContent() {
           setError(err)
         },
         {
-          useKnowledgeBase,
+          useKnowledgeBase: useKnowledgeBase || useYijingAgent,
           signal: controller.signal,
           onEvent: (event) => {
             const progress = toChatProgressState(event)
@@ -1884,6 +1888,9 @@ export default function AiChatPageContent() {
   const panelClass =
     'rounded-[1.5rem] border border-line-glass bg-surface-glass/88 shadow-[0_18px_48px_rgba(15,23,42,0.06)] backdrop-blur-lg'
   let inputPlaceholder = '输入你的问题，按 Enter 发送，Shift+Enter 换行…'
+  if (useYijingAgent) {
+    inputPlaceholder = '问我易经原文、卦辞、爻辞或学习问题…'
+  }
   if (sending) {
     inputPlaceholder = '继续输入内容，按 Enter 加入队列，或点击中断并发送…'
   }
@@ -2612,6 +2619,22 @@ export default function AiChatPageContent() {
             </div>
 
             <div className="flex w-full min-w-0 flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setUseYijingAgent((prev) => !prev)
+                  setUseKnowledgeBase(true)
+                }}
+                aria-pressed={useYijingAgent}
+                className={`inline-flex h-10 shrink-0 items-center gap-2 rounded-2xl border px-3 text-sm font-medium transition-colors ${
+                  useYijingAgent
+                    ? 'border-accent-primary/30 bg-accent-primary/10 text-accent-primary'
+                    : 'border-line-glass bg-white/70 text-content-secondary hover:border-accent-primary/20 hover:text-content-primary'
+                }`}
+              >
+                <BookOpenText className="h-4 w-4" />
+                <span className="hidden sm:inline">易经</span>
+              </button>
               <button
                 type="button"
                 onClick={() => setUseKnowledgeBase((prev) => !prev)}

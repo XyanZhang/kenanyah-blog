@@ -3,12 +3,13 @@ import {
   searchSemanticAll,
   type UnifiedSearchHit,
 } from '../lib/semantic-search'
+import { searchYijingKnowledge, type YijingSearchHit } from '../lib/yijing-knowledge'
 import { type ChatToolCall } from '../agents/chat-coordinator-agents'
 
 function isKnowledgeBaseToolCall(
   toolCall: ChatToolCall
-): toolCall is Extract<ChatToolCall, { tool: 'knowledge_base_search' }> {
-  return toolCall.tool === 'knowledge_base_search'
+): toolCall is Extract<ChatToolCall, { tool: 'knowledge_base_search' | 'yijing_knowledge_search' }> {
+  return toolCall.tool === 'knowledge_base_search' || toolCall.tool === 'yijing_knowledge_search'
 }
 
 export type ChatToolHit = {
@@ -64,17 +65,29 @@ function mapHit(hit: UnifiedSearchHit): ChatToolHit {
   }
 }
 
+function mapYijingHit(hit: YijingSearchHit): ChatToolHit {
+  return {
+    source: `易经:${hit.sourceId}#${hit.chunkIndex}`,
+    title: hit.title,
+    snippet: hit.snippet.trim().slice(0, 280),
+    score: Number(hit.score),
+  }
+}
+
 export async function executeChatToolCall(
   toolCall: ChatToolCall,
   signal?: AbortSignal
 ): Promise<ChatToolExecutionResult> {
   throwIfAborted(signal)
 
-  if (toolCall.tool !== 'knowledge_base_search') {
+  if (toolCall.tool !== 'knowledge_base_search' && toolCall.tool !== 'yijing_knowledge_search') {
     throw new Error(`暂不支持的工具: ${toolCall.tool}`)
   }
 
-  const hits = await searchSemanticAll(toolCall.query, toolCall.limit)
+  const hits =
+    toolCall.tool === 'yijing_knowledge_search'
+      ? await searchYijingKnowledge(toolCall.query, { limit: toolCall.limit })
+      : await searchSemanticAll(toolCall.query, toolCall.limit)
   throwIfAborted(signal)
 
   return {
@@ -83,7 +96,9 @@ export async function executeChatToolCall(
     limit: toolCall.limit,
     reason: toolCall.reason,
     hitCount: hits.length,
-    hits: hits.map(mapHit),
+    hits: toolCall.tool === 'yijing_knowledge_search'
+      ? (hits as YijingSearchHit[]).map(mapYijingHit)
+      : (hits as UnifiedSearchHit[]).map(mapHit),
   }
 }
 
@@ -92,7 +107,7 @@ export async function executeChatToolCalls(
   signal?: AbortSignal
 ): Promise<ChatToolExecutionResult[]> {
   const seen = new Set<string>()
-  const uniqueToolCalls: Extract<ChatToolCall, { tool: 'knowledge_base_search' }>[] = []
+  const uniqueToolCalls: Extract<ChatToolCall, { tool: 'knowledge_base_search' | 'yijing_knowledge_search' }>[] = []
 
   for (const toolCall of toolCalls.filter(isKnowledgeBaseToolCall)) {
     const cacheKey = `${toolCall.tool}:${toolCall.query.trim().toLowerCase()}`

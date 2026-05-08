@@ -174,7 +174,9 @@ function getUserStatusLabel(status: ChatUserFacingStatus): string {
 }
 
 function inferToolStatus(toolCall: ChatToolCall): ChatUserFacingStatus {
-  return toolCall.tool === 'knowledge_base_search' ? 'searching' : 'organizing'
+  return toolCall.tool === 'knowledge_base_search' || toolCall.tool === 'yijing_knowledge_search'
+    ? 'searching'
+    : 'organizing'
 }
 
 function buildFollowupMessage(questions: string[]): string {
@@ -191,8 +193,8 @@ function buildFollowupMessage(questions: string[]): string {
 
 function isBusinessToolCall(
   toolCall: ChatToolCall
-): toolCall is Exclude<ChatToolCall, { tool: 'knowledge_base_search' }> {
-  return toolCall.tool !== 'knowledge_base_search'
+): toolCall is Exclude<ChatToolCall, { tool: 'knowledge_base_search' | 'yijing_knowledge_search' }> {
+  return toolCall.tool !== 'knowledge_base_search' && toolCall.tool !== 'yijing_knowledge_search'
 }
 
 function buildToolResultsContext(toolResults: ChatToolExecutionResult[]): string {
@@ -278,7 +280,10 @@ function buildDirectResponsePlan(intent: Awaited<ReturnType<typeof runIntentReco
 }
 
 function shouldUseDirectKnowledgeSearch(availableTools: ChatToolName[]): boolean {
-  return availableTools.length > 0 && availableTools.every((tool) => tool === 'knowledge_base_search')
+  return (
+    availableTools.length > 0 &&
+    availableTools.every((tool) => tool === 'knowledge_base_search' || tool === 'yijing_knowledge_search')
+  )
 }
 
 function buildKnowledgeSearchQuery(input: {
@@ -306,6 +311,7 @@ function buildDirectKnowledgeToolCalls(input: {
   skill: ResolvedChatAppSkill
 }): ChatToolCall[] {
   const shouldUseKnowledgeBase =
+    input.skill.id === 'yijing_learning' ||
     input.skill.id === 'knowledge_context' ||
     (input.skill.id === 'implementation_advice' && input.intent.shouldUseKnowledgeBase) ||
     input.intent.shouldUseKnowledgeBase
@@ -325,11 +331,13 @@ function buildDirectKnowledgeToolCalls(input: {
 
   return [
     {
-      tool: 'knowledge_base_search',
+      tool: input.skill.id === 'yijing_learning' ? 'yijing_knowledge_search' : 'knowledge_base_search',
       query,
       limit: input.skill.id === 'implementation_advice' ? 4 : 6,
       reason:
-        input.skill.id === 'implementation_advice'
+        input.skill.id === 'yijing_learning'
+          ? '检索《易经》原文以辅助学习和解释'
+          : input.skill.id === 'implementation_advice'
           ? '补充与当前实施问题相关的本地上下文'
           : '补充与当前问题相关的本地知识上下文',
     },

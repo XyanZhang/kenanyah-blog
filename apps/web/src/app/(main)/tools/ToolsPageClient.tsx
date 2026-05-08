@@ -3,7 +3,7 @@
 import type { Route } from 'next'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
-import { ArrowUpRight, FileText, Image as ImageIcon, LibraryBig } from 'lucide-react'
+import { ArrowUpRight, BookOpenText, FileText, Image as ImageIcon, LibraryBig } from 'lucide-react'
 
 const tools: Array<{
   name: string
@@ -22,6 +22,15 @@ const tools: Array<{
     note: '适合长文档阅读、整理和提炼。',
     icon: <FileText className="h-5 w-5" />,
     mode: 'Document Parsing',
+  },
+  {
+    name: '易经学习 Agent',
+    description: '导入《易经》全文，完成切分、向量化和原文检索，并进入专门的学习对话。',
+    href: '/tools/yijing',
+    tags: ['I Ching', 'RAG', 'Learning'],
+    note: '适合逐卦学习、原文解释和文化参考式解读。',
+    icon: <BookOpenText className="h-5 w-5" />,
+    mode: 'Classics Study',
   },
   {
     name: 'Divination Knowledge Lab',

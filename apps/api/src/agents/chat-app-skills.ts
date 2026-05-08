@@ -8,6 +8,7 @@ import type { IntentContext } from './chat-intent-state'
 
 export type ChatAppSkillId =
   | 'general_chat'
+  | 'yijing_learning'
   | 'knowledge_context'
   | 'implementation_advice'
   | 'scenario_planning'
@@ -26,18 +27,21 @@ type ChatAppSkillPromptSet = {
   businessTool?: string
 }
 
+type RetrievalToolName = Extract<ChatToolName, 'knowledge_base_search' | 'yijing_knowledge_search'>
+type BusinessToolName = Exclude<ChatToolName, RetrievalToolName>
+
 type ChatAppSkillToolPolicy =
   | {
       mode: 'none'
     }
   | {
       mode: 'knowledge'
-      tools: Array<Extract<ChatToolName, 'knowledge_base_search'>>
+      tools: RetrievalToolName[]
       requiresKnowledgeBase: boolean
     }
   | {
       mode: 'business'
-      tools: Exclude<ChatToolName, 'knowledge_base_search'>[]
+      tools: BusinessToolName[]
     }
 
 export type ChatAppSkill = {
@@ -74,11 +78,41 @@ function looksLikeImplementationAdviceRequest(latestUserMessage: string): boolea
   )
 }
 
+function looksLikeYijingLearningRequest(latestUserMessage: string): boolean {
+  const text = normalizeMessageText(latestUserMessage)
+  return /(?:易经|周易|卦辞|爻辞|彖传|象传|文言|十翼|乾卦|坤卦|屯卦|蒙卦|需卦|讼卦|师卦|比卦|小畜|履卦|泰卦|否卦|同人|大有|谦卦|豫卦|随卦|蛊卦|临卦|观卦|噬嗑|贲卦|剥卦|复卦|无妄|大畜|颐卦|大过|坎卦|离卦|咸卦|恒卦|遁卦|大壮|晋卦|明夷|家人|睽卦|蹇卦|解卦|损卦|益卦|夬卦|姤卦|萃卦|升卦|困卦|井卦|革卦|鼎卦|震卦|艮卦|渐卦|归妹|丰卦|旅卦|巽卦|兑卦|涣卦|节卦|中孚|小过|既济|未济)/.test(text)
+}
+
 function intentIn(intent: ChatIntentName, values: ChatIntentName[]): boolean {
   return values.includes(intent)
 }
 
 const APP_SKILL_DEFINITIONS: ChatAppSkillDefinition[] = [
+  {
+    id: 'yijing_learning',
+    label: '易经学习',
+    description: '围绕《易经》原文进行学习、解释、对话和文化参考式解读。',
+    route: 'respond',
+    toolPolicy: {
+      mode: 'knowledge',
+      tools: ['yijing_knowledge_search'],
+      requiresKnowledgeBase: false,
+    },
+    prompts: {
+      planner:
+        '当前启用 skill=yijing_learning。把任务视为《易经》学习辅导：先明确用户想学的卦、句子、概念或应用场景，再组织解释路径。',
+      toolRouting:
+        '当前启用 skill=yijing_learning。优先调用 yijing_knowledge_search 检索《易经》原文。query 应包含用户提到的卦名、原文关键词或学习问题。',
+      responder: [
+        '当前启用的是易经学习 skill。你是一位耐心的《易经》学习伙伴，不做玄虚化、绝对化表达。',
+        '回答时优先基于《易经》检索结果解释原文；如果检索结果不足，要明确说明。',
+        '适合初学者：先用现代中文解释，再补充关键词、原文脉络和可思考的问题。',
+        '如果涉及占卜或人生决策，只给文化参考和反思角度，不做确定预测。',
+      ].join('\n'),
+    },
+    matches: ({ latestUserMessage, state }) =>
+      looksLikeYijingLearningRequest(latestUserMessage) || state.activeDomain === 'knowledge',
+  },
   {
     id: 'blog_workflow',
     label: '博客工作流',
@@ -233,8 +267,8 @@ const APP_SKILL_DEFINITIONS: ChatAppSkillDefinition[] = [
 ]
 
 export type ResolvedChatAppSkill = ChatAppSkill & {
-  businessTools: Exclude<ChatToolName, 'knowledge_base_search'>[]
-  retrievalTools: Array<Extract<ChatToolName, 'knowledge_base_search'>>
+  businessTools: BusinessToolName[]
+  retrievalTools: RetrievalToolName[]
 }
 
 export function resolveChatAppSkill(input: SkillMatcherInput): ResolvedChatAppSkill {
