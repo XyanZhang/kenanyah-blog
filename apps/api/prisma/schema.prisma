@@ -291,6 +291,7 @@ model ChatConversation {
   userId         String?
   isShared       Boolean  @default(false)
   intentStateJson String? @db.Text
+  roleSnapshotJson String? @db.Text
   messageCount   Int      @default(0)
   lastMessageAt  DateTime @default(now())
   createdAt      DateTime @default(now())

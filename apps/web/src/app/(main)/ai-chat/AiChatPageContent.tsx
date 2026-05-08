@@ -38,6 +38,7 @@ import {
   type ChatProgressState,
   type ChatConversation,
   type ChatMessage,
+  type ChatRoleSnapshot,
 } from '@/lib/ai-chat-api'
 import { AgentStatusCard } from '@/components/chat/AgentStatusCard'
 import { Switch } from '@/components/ui/switch'
@@ -51,7 +52,7 @@ import {
 } from '@/lib/operation-cards'
 import { VoiceRecorder } from '@/components/voice-recorder'
 import { AiChatSessionSidebar } from './AiChatSessionSidebar'
-import { getChatRoleCard, type ChatRoleCardId } from './role-cards'
+import { CHAT_ROLE_CARDS, getChatRoleCard, type ChatRoleCard, type ChatRoleCardId } from './role-cards'
 
 type UiMessage = ChatMessage & {
   pending?: boolean
@@ -208,6 +209,48 @@ function formatConversationTranscript(messages: UiMessage[]): string {
     .trim()
 }
 
+function isChatRoleCardId(value: string): value is ChatRoleCardId {
+  return CHAT_ROLE_CARDS.some((role) => role.id === value)
+}
+
+function buildRoleSnapshot(activeRole: ChatRoleCard, useKnowledgeBase: boolean): ChatRoleSnapshot {
+  return {
+    activeRoleId: activeRole.id,
+    useKnowledgeBase,
+    roles: [
+      {
+        id: activeRole.id,
+        name: activeRole.name,
+        shortName: activeRole.shortName,
+        description: activeRole.description,
+        useKnowledgeBase: activeRole.useKnowledgeBase,
+        useYijingAgent: activeRole.useYijingAgent,
+      },
+    ],
+  }
+}
+
+function parseRoleSnapshot(conversation: ChatConversation | null): ChatRoleSnapshot | null {
+  if (!conversation?.roleSnapshotJson) {
+    return null
+  }
+
+  try {
+    const parsed = JSON.parse(conversation.roleSnapshotJson) as Partial<ChatRoleSnapshot>
+    if (typeof parsed.activeRoleId !== 'string') {
+      return null
+    }
+
+    return {
+      activeRoleId: parsed.activeRoleId,
+      useKnowledgeBase: parsed.useKnowledgeBase === true,
+      roles: Array.isArray(parsed.roles) ? parsed.roles : [],
+    }
+  } catch {
+    return null
+  }
+}
+
 export default function AiChatPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -275,6 +318,17 @@ export default function AiChatPageContent() {
     }, 0)
   }
 
+  const applyConversationRoleSnapshot = useCallback((conversation: ChatConversation | null) => {
+    const snapshot = parseRoleSnapshot(conversation)
+    if (!snapshot || !isChatRoleCardId(snapshot.activeRoleId)) {
+      return
+    }
+
+    const snapshotRole = getChatRoleCard(snapshot.activeRoleId)
+    setActiveRoleId(snapshotRole.id)
+    setUseKnowledgeBase(snapshot.useKnowledgeBase && !snapshotRole.useKnowledgeBase)
+  }, [])
+
   const focusTextInput = useCallback(() => {
     if (typeof window === 'undefined') {
       return
@@ -294,6 +348,43 @@ export default function AiChatPageContent() {
     element.style.height = '0px'
     element.style.height = `${Math.min(element.scrollHeight, 160)}px`
   }, [inputMode])
+
+  async function persistCurrentRoleSnapshot(role: ChatRoleCard, nextUseKnowledgeBase: boolean) {
+    if (!currentId || !isCurrentConversationOwner) {
+      return
+    }
+
+    try {
+      const updated = await updateConversation(currentId, {
+        roleSnapshot: buildRoleSnapshot(role, nextUseKnowledgeBase),
+      })
+      setActiveConversation(updated)
+      setConversations((prev) =>
+        prev.map((conversation) => (conversation.id === updated.id ? updated : conversation))
+      )
+    } catch {
+      // Role snapshot persistence should not block chatting.
+    }
+  }
+
+  function handleSelectRole(roleId: ChatRoleCardId) {
+    const nextRole = getChatRoleCard(roleId)
+    const nextUseKnowledgeBase = useKnowledgeBase && !nextRole.useKnowledgeBase
+
+    setActiveRoleId(nextRole.id)
+    setUseKnowledgeBase(nextUseKnowledgeBase)
+    void persistCurrentRoleSnapshot(nextRole, nextUseKnowledgeBase)
+  }
+
+  function handleToggleKnowledgeBase() {
+    if (activeRole.useKnowledgeBase) {
+      return
+    }
+
+    const nextUseKnowledgeBase = !useKnowledgeBase
+    setUseKnowledgeBase(nextUseKnowledgeBase)
+    void persistCurrentRoleSnapshot(activeRole, nextUseKnowledgeBase)
+  }
 
   const switchToTextInput = useCallback(() => {
     setInputMode('text')
@@ -372,13 +463,14 @@ export default function AiChatPageContent() {
     if (currentIdRef.current !== activeId) return
 
     setActiveConversation(detail.conversation)
+    applyConversationRoleSnapshot(detail.conversation)
     const loaded = detail.messages as UiMessage[]
     setMessages(loaded)
     const lastAssistant = [...loaded].reverse().find((message) => message.role === 'assistant')
     setWorkflowFollowupMode(
       lastAssistant ? isWorkflowFollowupMessage(lastAssistant.content || '') : false
     )
-  }, [])
+  }, [applyConversationRoleSnapshot])
 
   const isCurrentConversationOwner =
     Boolean(activeConversation?.userId) && activeConversation?.userId === user?.id
@@ -436,6 +528,7 @@ export default function AiChatPageContent() {
       .then((detail) => {
         if (cancelled) return
         setActiveConversation(detail.conversation)
+        applyConversationRoleSnapshot(detail.conversation)
         const loaded = detail.messages as UiMessage[]
         setMessages((prev) => {
           const pendingLocalMessages = prev.filter(
@@ -460,7 +553,7 @@ export default function AiChatPageContent() {
     return () => {
       cancelled = true
     }
-  }, [currentId])
+  }, [applyConversationRoleSnapshot, currentId])
 
   useEffect(() => {
     if (!bottomRef.current) return
@@ -597,9 +690,12 @@ export default function AiChatPageContent() {
     setConversationCreationPending(true)
 
     try {
-      const conversation = await createConversation()
+      const conversation = await createConversation({
+        roleSnapshot: buildRoleSnapshot(activeRole, useKnowledgeBase),
+      })
       setConversations((prev) => [conversation, ...prev])
       setActiveConversation(conversation)
+      applyConversationRoleSnapshot(conversation)
       setCurrentId(conversation.id)
       startTransition(() => {
         router.push(buildConversationRoute(conversation.id) as Route)
@@ -1942,7 +2038,7 @@ export default function AiChatPageContent() {
           editingTitle={editingTitle}
           panelClass={panelClass}
           activeRole={activeRole}
-          onSelectRole={setActiveRoleId}
+          onSelectRole={handleSelectRole}
           onCreateConversation={() => {
             void handleCreateConversation()
           }}
@@ -2638,7 +2734,7 @@ export default function AiChatPageContent() {
             <div className="flex w-full min-w-0 flex-wrap items-center gap-2">
               <button
                 type="button"
-                onClick={() => setUseKnowledgeBase((prev) => !prev)}
+                onClick={handleToggleKnowledgeBase}
                 aria-pressed={effectiveUseKnowledgeBase}
                 disabled={activeRole.useKnowledgeBase}
                 className={`inline-flex h-10 shrink-0 items-center gap-2 rounded-2xl border px-3 text-sm font-medium transition-colors ${
@@ -2768,7 +2864,7 @@ export default function AiChatPageContent() {
                 editingTitle={editingTitle}
                 panelClass={panelClass}
                 activeRole={activeRole}
-                onSelectRole={setActiveRoleId}
+                onSelectRole={handleSelectRole}
                 onCreateConversation={() => {
                   void handleCreateConversation()
                 }}

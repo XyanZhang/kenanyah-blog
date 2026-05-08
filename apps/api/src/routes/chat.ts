@@ -18,6 +18,7 @@ type ChatVariables = {
 const chat = new Hono<{ Variables: ChatVariables }>()
 
 const MAX_MESSAGE_LEN = 4000
+const MAX_ROLE_SNAPSHOT_LEN = 4000
 
 chat.use('*', optionalAuthMiddleware)
 chat.use('*', rateLimit({ windowMs: 60_000, max: 60, message: '聊天请求过于频繁，请稍后再试' }))
@@ -73,6 +74,27 @@ function canWriteConversation(
 type HistoryMessageInput = {
   role: string
   content: string
+}
+
+function normalizeRoleSnapshotJson(input: unknown): string | null | undefined {
+  if (typeof input === 'undefined') {
+    return undefined
+  }
+
+  if (input === null) {
+    return null
+  }
+
+  if (typeof input !== 'object') {
+    return undefined
+  }
+
+  try {
+    const serialized = JSON.stringify(input)
+    return serialized.length <= MAX_ROLE_SNAPSHOT_LEN ? serialized : undefined
+  } catch {
+    return undefined
+  }
 }
 
 async function streamAssistantReply(
@@ -201,6 +223,7 @@ chat.post('/conversations', async (c) => {
   }
   const body = await c.req.json().catch(() => ({} as any))
   const initialMessage = typeof body.initialMessage === 'string' ? body.initialMessage.trim() : ''
+  const roleSnapshotJson = normalizeRoleSnapshotJson(body.roleSnapshot)
 
   if (initialMessage && initialMessage.length > MAX_MESSAGE_LEN) {
     return c.json(
@@ -213,6 +236,7 @@ chat.post('/conversations', async (c) => {
     data: {
       title: initialMessage ? initialMessage.slice(0, 50) : null,
       userId: user.userId,
+      roleSnapshotJson: roleSnapshotJson ?? null,
     },
   })
 
@@ -252,6 +276,7 @@ chat.patch('/conversations/:id', async (c) => {
   const title =
     typeof body.title === 'string' ? body.title.trim().slice(0, TITLE_MAX_LEN) : undefined
   const isShared = typeof body.isShared === 'boolean' ? body.isShared : undefined
+  const roleSnapshotJson = normalizeRoleSnapshotJson(body.roleSnapshot)
 
   const conversation = await getConversationById(id)
 
@@ -263,7 +288,11 @@ chat.patch('/conversations/:id', async (c) => {
     return c.json({ success: false, error: '你无权修改这个会话' }, 403)
   }
 
-  if (typeof title === 'undefined' && typeof isShared === 'undefined') {
+  if (
+    typeof title === 'undefined' &&
+    typeof isShared === 'undefined' &&
+    typeof roleSnapshotJson === 'undefined'
+  ) {
     return c.json({ success: false, error: '没有可更新的内容' }, 400)
   }
 
@@ -272,6 +301,7 @@ chat.patch('/conversations/:id', async (c) => {
     data: {
       ...(typeof title !== 'undefined' ? { title: title || null } : {}),
       ...(typeof isShared !== 'undefined' ? { isShared } : {}),
+      ...(typeof roleSnapshotJson !== 'undefined' ? { roleSnapshotJson } : {}),
     },
   })
 
@@ -419,6 +449,7 @@ chat.post('/conversations/:id/branch', async (c) => {
       title: branchTitle,
       userId: user.userId,
       isShared: false,
+      roleSnapshotJson: conversation.roleSnapshotJson,
       messageCount: branchMessages.length,
       lastMessageAt: new Date(),
     },

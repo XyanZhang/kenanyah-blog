@@ -128,6 +128,7 @@ Conversation fields:
 - `userId`
 - `isShared`
 - `intentStateJson`
+- `roleSnapshotJson`
 - `messageCount`
 - `lastMessageAt`
 

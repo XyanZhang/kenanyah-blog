@@ -23,10 +23,24 @@ export interface ChatConversation {
   title: string | null
   userId: string | null
   isShared: boolean
+  roleSnapshotJson: string | null
   messageCount: number
   lastMessageAt: string
   createdAt: string
   updatedAt: string
+}
+
+export interface ChatRoleSnapshot {
+  activeRoleId: string
+  useKnowledgeBase: boolean
+  roles: {
+    id: string
+    name: string
+    shortName: string
+    description: string
+    useKnowledgeBase: boolean
+    useYijingAgent: boolean
+  }[]
 }
 
 export interface ChatMessage {
@@ -227,12 +241,18 @@ export async function listConversations(): Promise<ChatConversation[]> {
   return parseApiResponse(res, '加载会话失败')
 }
 
-export async function createConversation(initialMessage?: string): Promise<ChatConversation> {
+export async function createConversation(options?: {
+  initialMessage?: string
+  roleSnapshot?: ChatRoleSnapshot
+}): Promise<ChatConversation> {
   const res = await fetch(`${API_BASE_URL}/chat/conversations`, {
     method: 'POST',
     credentials: 'include',
     headers: getAuthHeaders(),
-    body: JSON.stringify({ initialMessage }),
+    body: JSON.stringify({
+      initialMessage: options?.initialMessage,
+      roleSnapshot: options?.roleSnapshot,
+    }),
   })
   return parseApiResponse(res, '创建会话失败')
 }
@@ -247,7 +267,7 @@ export async function getConversation(id: string): Promise<ChatConversationDetai
 
 export async function updateConversation(
   id: string,
-  payload: { title?: string; isShared?: boolean }
+  payload: { title?: string; isShared?: boolean; roleSnapshot?: ChatRoleSnapshot | null }
 ): Promise<ChatConversation> {
   const res = await fetch(`${API_BASE_URL}/chat/conversations/${encodeURIComponent(id)}`, {
     method: 'PATCH',
