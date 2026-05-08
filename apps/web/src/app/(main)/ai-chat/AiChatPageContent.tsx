@@ -6,7 +6,6 @@ import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import {
-  BookOpenText,
   Loader2,
   Send,
   Database,
@@ -52,6 +51,7 @@ import {
 } from '@/lib/operation-cards'
 import { VoiceRecorder } from '@/components/voice-recorder'
 import { AiChatSessionSidebar } from './AiChatSessionSidebar'
+import { getChatRoleCard, type ChatRoleCardId } from './role-cards'
 
 type UiMessage = ChatMessage & {
   pending?: boolean
@@ -234,13 +234,15 @@ export default function AiChatPageContent() {
   const [editResendMessageId, setEditResendMessageId] = useState<string | null>(null)
   const [editingTitle, setEditingTitle] = useState('')
   const [useKnowledgeBase, setUseKnowledgeBase] = useState(false)
-  const [useYijingAgent, setUseYijingAgent] = useState(false)
+  const [activeRoleId, setActiveRoleId] = useState<ChatRoleCardId>('general')
   const [followupDrafts, setFollowupDrafts] = useState<Record<string, Record<string, FollowupAnswerDraft>>>({})
   const [operationCardReplyDrafts, setOperationCardReplyDrafts] = useState<Record<string, string>>({})
   const [chatQueue, setChatQueue] = useState<ChatQueueItem[]>([])
   const [workflowQueue, setWorkflowQueue] = useState<WorkflowQueueItem[]>([])
   const [mobileSessionsOpen, setMobileSessionsOpen] = useState(false)
   const [highlightedMessageId, setHighlightedMessageId] = useState<string | null>(null)
+  const activeRole = getChatRoleCard(activeRoleId)
+  const effectiveUseKnowledgeBase = useKnowledgeBase || activeRole.useKnowledgeBase
   const bottomRef = useRef<HTMLDivElement | null>(null)
   const messageRefs = useRef<Record<string, HTMLDivElement | null>>({})
   const isComposingRef = useRef(false)
@@ -673,7 +675,7 @@ export default function AiChatPageContent() {
       conversationId,
       content,
       useKnowledgeBase,
-      useYijingAgent,
+      useYijingAgent: activeRole.useYijingAgent,
       userMsgId: userMsg.id,
       assistantMsgId: assistantMsg.id,
     }
@@ -922,7 +924,7 @@ export default function AiChatPageContent() {
           setError(err)
         },
         {
-          useKnowledgeBase: useKnowledgeBase || useYijingAgent,
+          useKnowledgeBase: effectiveUseKnowledgeBase,
           signal: controller.signal,
           onEvent: (event) => {
             const progress = toChatProgressState(event)
@@ -1135,7 +1137,7 @@ export default function AiChatPageContent() {
           setError(err)
         },
         {
-          useKnowledgeBase: useKnowledgeBase || useYijingAgent,
+          useKnowledgeBase: effectiveUseKnowledgeBase,
           signal: controller.signal,
           onEvent: (event) => {
             const progress = toChatProgressState(event)
@@ -1887,10 +1889,7 @@ export default function AiChatPageContent() {
     !currentId && !currentConversation && messages.length === 0 && !showFullMessagesLoading
   const panelClass =
     'rounded-[1.5rem] border border-line-glass bg-surface-glass/88 shadow-[0_18px_48px_rgba(15,23,42,0.06)] backdrop-blur-lg'
-  let inputPlaceholder = '输入你的问题，按 Enter 发送，Shift+Enter 换行…'
-  if (useYijingAgent) {
-    inputPlaceholder = '问我易经原文、卦辞、爻辞或学习问题…'
-  }
+  let inputPlaceholder = activeRole.placeholder
   if (sending) {
     inputPlaceholder = '继续输入内容，按 Enter 加入队列，或点击中断并发送…'
   }
@@ -1942,6 +1941,8 @@ export default function AiChatPageContent() {
           editingId={editingId}
           editingTitle={editingTitle}
           panelClass={panelClass}
+          activeRole={activeRole}
+          onSelectRole={setActiveRoleId}
           onCreateConversation={() => {
             void handleCreateConversation()
           }}
@@ -1961,25 +1962,41 @@ export default function AiChatPageContent() {
           <div className="flex min-h-0 flex-1 flex-col">
             <div className={`${panelClass} flex min-h-[320px] flex-1 flex-col justify-center p-6 md:p-8`}>
               <div className="mx-auto flex w-full max-w-3xl flex-col items-center text-center">
-                <div className="inline-flex items-center rounded-full border border-accent-primary/20 bg-accent-primary/8 px-4 py-1 text-xs font-medium tracking-[0.18em] text-accent-primary">
-                  AI CHAT
+                <div className={`inline-flex h-12 w-12 items-center justify-center rounded-2xl ${activeRole.accentClassName}`}>
+                  {activeRole.logoUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={activeRole.logoUrl} alt="" className="h-8 w-8 rounded-xl object-cover" />
+                  ) : (
+                    activeRole.icon
+                  )}
                 </div>
                 <h1 className="mt-5 text-3xl font-semibold tracking-[-0.04em] text-content-primary sm:text-4xl">
-                  开始一段新的 AI 对话
+                  {activeRole.headline}
                 </h1>
                 <p className="mt-3 max-w-2xl text-sm leading-7 text-content-secondary sm:text-base">
-                  输入你的第一条消息后，我们再创建会话并进入完整对话视图。
+                  {activeRole.intro}
                 </p>
                 <div className="mt-6 flex flex-wrap items-center justify-center gap-2 text-xs text-content-tertiary">
-                  <span className="rounded-full border border-line-glass bg-white/60 px-3 py-1.5">
-                    日程安排
-                  </span>
-                  <span className="rounded-full border border-line-glass bg-white/60 px-3 py-1.5">
-                    博客撰写
-                  </span>
-                  <span className="rounded-full border border-line-glass bg-white/60 px-3 py-1.5">
-                    知识问答
-                  </span>
+                  {activeRole.skills.map((skill) => (
+                    <span key={skill} className="rounded-full border border-line-glass bg-white/60 px-3 py-1.5">
+                      {skill}
+                    </span>
+                  ))}
+                </div>
+                <div className="mt-7 grid w-full max-w-2xl gap-2 sm:grid-cols-3">
+                  {activeRole.starters.map((starter) => (
+                    <button
+                      key={starter}
+                      type="button"
+                      onClick={() => {
+                        setInput(starter)
+                        inputRef.current?.focus()
+                      }}
+                      className="min-h-12 rounded-2xl border border-line-glass bg-white/58 px-3 py-2 text-sm leading-5 text-content-secondary transition hover:border-accent-primary/25 hover:bg-white/78 hover:text-content-primary"
+                    >
+                      {starter}
+                    </button>
+                  ))}
                 </div>
               </div>
             </div>
@@ -2621,29 +2638,15 @@ export default function AiChatPageContent() {
             <div className="flex w-full min-w-0 flex-wrap items-center gap-2">
               <button
                 type="button"
-                onClick={() => {
-                  setUseYijingAgent((prev) => !prev)
-                  setUseKnowledgeBase(true)
-                }}
-                aria-pressed={useYijingAgent}
-                className={`inline-flex h-10 shrink-0 items-center gap-2 rounded-2xl border px-3 text-sm font-medium transition-colors ${
-                  useYijingAgent
-                    ? 'border-accent-primary/30 bg-accent-primary/10 text-accent-primary'
-                    : 'border-line-glass bg-white/70 text-content-secondary hover:border-accent-primary/20 hover:text-content-primary'
-                }`}
-              >
-                <BookOpenText className="h-4 w-4" />
-                <span className="hidden sm:inline">易经</span>
-              </button>
-              <button
-                type="button"
                 onClick={() => setUseKnowledgeBase((prev) => !prev)}
-                aria-pressed={useKnowledgeBase}
+                aria-pressed={effectiveUseKnowledgeBase}
+                disabled={activeRole.useKnowledgeBase}
                 className={`inline-flex h-10 shrink-0 items-center gap-2 rounded-2xl border px-3 text-sm font-medium transition-colors ${
-                  useKnowledgeBase
+                  effectiveUseKnowledgeBase
                     ? 'border-accent-primary/30 bg-accent-primary/10 text-accent-primary'
                     : 'border-line-glass bg-white/70 text-content-secondary hover:border-accent-primary/20 hover:text-content-primary'
                 }`}
+                title={activeRole.useKnowledgeBase ? `${activeRole.shortName}角色会自动使用知识库` : '切换知识库检索'}
               >
                 <Database className="h-4 w-4" />
                 <span className="hidden sm:inline">知识库</span>
@@ -2764,6 +2767,8 @@ export default function AiChatPageContent() {
                 editingId={editingId}
                 editingTitle={editingTitle}
                 panelClass={panelClass}
+                activeRole={activeRole}
+                onSelectRole={setActiveRoleId}
                 onCreateConversation={() => {
                   void handleCreateConversation()
                 }}

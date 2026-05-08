@@ -1,7 +1,9 @@
 'use client'
 
-import { Bot, Loader2, Pencil, Plus, Trash2 } from 'lucide-react'
+import { useState } from 'react'
+import { ChevronDown, Loader2, Pencil, Plus, Trash2 } from 'lucide-react'
 import type { ChatConversation } from '@/lib/ai-chat-api'
+import { CHAT_ROLE_CARDS, type ChatRoleCard, type ChatRoleCardId } from './role-cards'
 
 function getConversationDisplayTitle(title?: string | null): string {
   const normalizedTitle = title?.trim()
@@ -16,6 +18,8 @@ interface AiChatSessionSidebarProps {
   editingId: string | null
   editingTitle: string
   panelClass: string
+  activeRole: ChatRoleCard
+  onSelectRole: (roleId: ChatRoleCardId) => void
   onCreateConversation: () => void
   onSelectConversation: (conversationId: string) => void
   onDeleteConversation: (conversationId: string) => void
@@ -33,6 +37,8 @@ export function AiChatSessionSidebar({
   editingId,
   editingTitle,
   panelClass,
+  activeRole,
+  onSelectRole,
   onCreateConversation,
   onSelectConversation,
   onDeleteConversation,
@@ -41,18 +47,74 @@ export function AiChatSessionSidebar({
   onCommitEdit,
   onCancelEdit,
 }: AiChatSessionSidebarProps) {
+  const [rolePickerOpen, setRolePickerOpen] = useState(false)
+
   return (
     <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-      <div className={`${panelClass} mb-4 shrink-0 p-3.5`}>
-        <div className="flex items-start gap-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-accent-primary/12 text-accent-primary">
-            <Bot className="h-5 w-5" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <h1 className="text-base font-semibold text-content-primary">AI 工作台</h1>
-            <p className="mt-1 text-xs leading-5 text-content-secondary">切换会话、进入当前上下文。</p>
-          </div>
+      <div className={`${panelClass} relative z-20 mb-4 shrink-0 overflow-visible p-3.5`}>
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => setRolePickerOpen((open) => !open)}
+            aria-expanded={rolePickerOpen}
+            className="flex w-full items-center gap-2 rounded-2xl border border-line-glass/70 bg-white/55 px-2.5 py-2 text-left transition hover:border-line-hover hover:bg-white/70"
+          >
+            <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl ${activeRole.accentClassName}`}>
+              {activeRole.logoUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={activeRole.logoUrl} alt="" className="h-6 w-6 rounded-lg object-cover" />
+              ) : (
+                activeRole.icon
+              )}
+            </span>
+            <span className="min-w-0 flex-1 truncate text-sm font-semibold text-content-primary">{activeRole.name}</span>
+            <ChevronDown
+              className={`h-4 w-4 shrink-0 text-content-muted transition-transform ${rolePickerOpen ? 'rotate-180' : ''}`}
+            />
+          </button>
+
+          {rolePickerOpen ? (
+            <div className="absolute left-0 right-0 top-[calc(100%+0.5rem)] z-50 rounded-2xl border border-line-glass bg-surface-primary/95 p-2 shadow-[0_18px_46px_rgba(15,23,42,0.14)] backdrop-blur-xl">
+              <div className="px-2 pb-2 pt-1 text-[11px] uppercase tracking-[0.22em] text-content-muted">选择角色</div>
+              <div className="grid gap-1.5">
+                {CHAT_ROLE_CARDS.map((role) => {
+                  const active = role.id === activeRole.id
+                  return (
+                    <button
+                      key={role.id}
+                      type="button"
+                      onClick={() => {
+                        onSelectRole(role.id)
+                        setRolePickerOpen(false)
+                      }}
+                      className={[
+                        'flex min-w-0 items-center gap-3 rounded-xl border px-2.5 py-2 text-left transition-colors',
+                        active
+                          ? 'border-accent-primary/30 bg-accent-primary/10 text-content-primary'
+                          : 'border-transparent text-content-secondary hover:bg-surface-hover hover:text-content-primary',
+                      ].join(' ')}
+                      aria-pressed={active}
+                    >
+                      <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${role.accentClassName}`}>
+                        {role.logoUrl ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={role.logoUrl} alt="" className="h-6 w-6 rounded-lg object-cover" />
+                        ) : (
+                          role.icon
+                        )}
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-sm font-semibold">{role.name}</span>
+                        <span className="mt-0.5 block truncate text-xs text-content-muted">{role.description}</span>
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          ) : null}
         </div>
+
         <div className="mt-4">
           <button
             type="button"
@@ -66,7 +128,7 @@ export function AiChatSessionSidebar({
         </div>
       </div>
 
-      <div className={`${panelClass} flex min-h-0 flex-1 flex-col overflow-hidden p-2`}>
+      <div className={`${panelClass} relative z-0 flex min-h-0 flex-1 flex-col overflow-hidden p-2`}>
         <div className="border-b border-line-glass/60 px-2 pb-3 pt-1">
           <div className="text-[11px] uppercase tracking-[0.28em] text-content-muted">Sessions</div>
           <div className="mt-2 text-sm text-content-secondary">当前共 {conversations.length} 个会话</div>
