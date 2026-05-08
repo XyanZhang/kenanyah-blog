@@ -1,0 +1,25 @@
+{
+  "name": "chm-to-pdf",
+  "version": "0.1.0",
+  "private": true,
+  "bin": {
+    "chm-to-pdf": "dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc --build",
+    "start": "node dist/index.js",
+    "dev": "tsx src/index.ts",
+    "convert:example": "bash scripts/convert-example.sh",
+    "type-check": "tsc --noEmit",
+    "clean": "rm -rf dist tmp"
+  },
+  "dependencies": {
+    "playwright": "^1.57.0"
+  },
+  "devDependencies": {
+    "@blog/config": "workspace:*",
+    "@types/node": "^22.10.5",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3"
+  }
+}
