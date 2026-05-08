@@ -111,6 +111,11 @@ export const metadata: Metadata = {
     template: '%s | Blog',
   },
   description: 'A modern blog application',
+  icons: {
+    icon: '/logo_kenanyah.png',
+    shortcut: '/logo_kenanyah.png',
+    apple: '/logo_kenanyah.png',
+  },
 }
 
 export default function RootLayout({

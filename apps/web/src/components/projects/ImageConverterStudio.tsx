@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Download, ImagePlus, RefreshCcw, Scissors, Sparkles } from 'lucide-react'
-import { Button, Label, Select, SelectContent, SelectItem, SelectTrigger, Slider, Switch } from '@/components/ui'
+import { Button, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, Slider, Switch } from '@/components/ui'
 import { cn } from '@/lib/utils'
 import {
   createCropFromPoints,
@@ -20,6 +20,7 @@ import {
   getSuggestedOutputFormat,
   lockCropToAspectRatio,
   sanitizeCropPoint,
+  supportsOutputQuality,
   translateCrop,
   type CropRect,
   type CropPoint,
@@ -46,6 +47,10 @@ interface ExportSummary {
 }
 
 type AspectLockPreset = 'current' | 'original' | '1:1' | '3:2' | '4:5' | '16:9'
+
+const DEFAULT_EXPORT_QUALITY = 100
+const MIN_EXPORT_SIZE = 1
+const MAX_EXPORT_SIZE = 10000
 
 async function loadImageFromUrl(url: string) {
   const image = new Image()
@@ -120,7 +125,8 @@ export function ImageConverterStudio() {
   const [source, setSource] = useState<LoadedImage | null>(null)
   const [crop, setCrop] = useState<CropRect>(DEFAULT_CROP)
   const [format, setFormat] = useState<OutputFormat>('image/png')
-  const [quality, setQuality] = useState(92)
+  const [quality, setQuality] = useState(DEFAULT_EXPORT_QUALITY)
+  const [exportWidth, setExportWidth] = useState<number | null>(null)
   const [cornerRadius, setCornerRadius] = useState(0)
   const [jpegBackground, setJpegBackground] = useState('#ffffff')
   const [exporting, setExporting] = useState(false)
@@ -152,6 +158,21 @@ export function ImageConverterStudio() {
   const previewImageLeft = -(crop.x / crop.width) * 100
   const previewImageTop = -(crop.y / crop.height) * 100
   const selectedFormat = OUTPUT_FORMAT_OPTIONS.find((option) => option.value === format)
+  const canAdjustQuality = supportsOutputQuality(format)
+  const exportDimensions = useMemo(() => {
+    if (!cropPixels) return null
+
+    const width = Math.min(
+      MAX_EXPORT_SIZE,
+      Math.max(MIN_EXPORT_SIZE, Math.round(exportWidth ?? cropPixels.width))
+    )
+    const height = Math.min(
+      MAX_EXPORT_SIZE,
+      Math.max(MIN_EXPORT_SIZE, Math.round((width * cropPixels.height) / cropPixels.width))
+    )
+
+    return { width, height }
+  }, [cropPixels, exportWidth])
   const mobileWorkspaceHeightClass = 'h-[min(50dvh,29rem)] min-h-[17.5rem] sm:h-[min(54dvh,33rem)]'
   const cropAreaCursorClass = activeDragMode === 'move'
     ? 'cursor-grabbing'
@@ -181,7 +202,8 @@ export function ImageConverterStudio() {
   const resetEditor = () => {
     setCrop(DEFAULT_CROP)
     setCornerRadius(0)
-    setQuality(92)
+    setQuality(DEFAULT_EXPORT_QUALITY)
+    setExportWidth(null)
     setJpegBackground('#ffffff')
     setLastExport(null)
     setError(null)
@@ -427,16 +449,32 @@ export function ImageConverterStudio() {
     stopDrag(event.pointerId)
   }
 
+  const updateQuality = (value: number) => {
+    if (!Number.isFinite(value)) return
+    setQuality(Math.min(100, Math.max(20, Math.round(value))))
+  }
+
+  const updateExportWidth = (value: number) => {
+    if (!Number.isFinite(value)) return
+    setExportWidth(Math.min(MAX_EXPORT_SIZE, Math.max(MIN_EXPORT_SIZE, Math.round(value))))
+  }
+
+  const updateExportHeight = (value: number) => {
+    if (!Number.isFinite(value) || !cropPixels) return
+    const nextWidth = (value * cropPixels.width) / cropPixels.height
+    updateExportWidth(nextWidth)
+  }
+
   const handleDownload = async () => {
-    if (!source || !cropPixels || !sourceImageRef.current) return
+    if (!source || !cropPixels || !exportDimensions || !sourceImageRef.current) return
 
     setExporting(true)
     setError(null)
 
     try {
       const canvas = document.createElement('canvas')
-      canvas.width = cropPixels.width
-      canvas.height = cropPixels.height
+      canvas.width = exportDimensions.width
+      canvas.height = exportDimensions.height
       const context = canvas.getContext('2d')
 
       if (!context) {
@@ -468,7 +506,7 @@ export function ImageConverterStudio() {
       )
       context.restore()
 
-      const blob = await canvasToBlob(canvas, format, format === 'image/png' ? undefined : quality / 100)
+      const blob = await canvasToBlob(canvas, format, canAdjustQuality ? quality / 100 : undefined)
       const filename = getOutputFilename(source.name, format)
       const downloadUrl = URL.createObjectURL(blob)
       const anchor = document.createElement('a')
@@ -631,18 +669,37 @@ export function ImageConverterStudio() {
                 </Select>
               </div>
 
-              <div className="grid grid-cols-[3.8rem_minmax(0,1fr)_2.5rem] items-center gap-2">
+              <div className="grid grid-cols-[3.8rem_minmax(0,1fr)_4rem] items-center gap-2">
                 <Label className="text-[11px] text-content-primary sm:text-xs">压缩质量</Label>
                 <Slider
                   value={quality}
                   min={20}
                   max={100}
                   step={1}
-                  disabled={format === 'image/png'}
-                  onValueChange={setQuality}
+                  disabled={!canAdjustQuality}
+                  onValueChange={updateQuality}
+                  className={!canAdjustQuality ? 'opacity-45' : undefined}
                 />
-                <span className="text-right text-[11px] text-content-muted">{quality}%</span>
+                <div className="relative">
+                  <Input
+                    type="number"
+                    value={quality}
+                    min={20}
+                    max={100}
+                    step={1}
+                    disabled={!canAdjustQuality}
+                    aria-label="压缩质量百分比"
+                    onChange={(event) => updateQuality(Number(event.currentTarget.value))}
+                    className="h-8 rounded-lg border-line-glass bg-surface-glass/40 px-2 pr-5 text-right text-xs"
+                  />
+                  <span className="pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2 text-[10px] text-content-muted">
+                    %
+                  </span>
+                </div>
               </div>
+              <p className="text-[10px] leading-4 text-content-muted">
+                {canAdjustQuality ? 'JPEG / WebP 可调。数值越低，文件通常越小。' : 'PNG 不使用有损压缩质量，请切换 JPEG 或 WebP 调节。'}
+              </p>
 
               {format === 'image/jpeg' ? (
                 <div className="flex items-center gap-2 rounded-xl border border-line-glass/70 bg-surface-glass/30 px-2.5 py-1.5">
@@ -654,6 +711,42 @@ export function ImageConverterStudio() {
                     className="h-7 w-8 cursor-pointer rounded-md border border-line-glass bg-transparent"
                   />
                   <span className="text-[10px] font-medium text-content-secondary">{jpegBackground.toUpperCase()}</span>
+                </div>
+              ) : null}
+
+              {cropPixels && exportDimensions ? (
+                <div className="grid grid-cols-[3.8rem_minmax(0,1fr)_auto] items-center gap-2">
+                  <Label className="text-[11px] text-content-primary sm:text-xs">导出尺寸</Label>
+                  <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-1.5">
+                    <Input
+                      type="number"
+                      value={exportDimensions.width}
+                      min={MIN_EXPORT_SIZE}
+                      max={MAX_EXPORT_SIZE}
+                      step={1}
+                      aria-label="导出宽度"
+                      onChange={(event) => updateExportWidth(Number(event.currentTarget.value))}
+                      className="h-8 rounded-lg border-line-glass bg-surface-glass/40 px-2 text-center text-xs"
+                    />
+                    <span className="text-[10px] text-content-muted">×</span>
+                    <Input
+                      type="number"
+                      value={exportDimensions.height}
+                      min={MIN_EXPORT_SIZE}
+                      max={MAX_EXPORT_SIZE}
+                      step={1}
+                      aria-label="导出高度"
+                      onChange={(event) => updateExportHeight(Number(event.currentTarget.value))}
+                      className="h-8 rounded-lg border-line-glass bg-surface-glass/40 px-2 text-center text-xs"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setExportWidth(null)}
+                    className="whitespace-nowrap text-[10px] font-medium text-content-muted transition-colors hover:text-content-primary"
+                  >
+                    原尺寸
+                  </button>
                 </div>
               ) : null}
             </div>
@@ -761,6 +854,14 @@ export function ImageConverterStudio() {
                   {currentCropAspectRatio ? currentCropAspectRatio.toFixed(2) : '--'}
                 </span>
               </div>
+              {exportDimensions ? (
+                <div className="flex items-center justify-between gap-2">
+                  <span>尺寸</span>
+                  <span className="font-medium text-content-primary">
+                    {exportDimensions.width}×{exportDimensions.height}
+                  </span>
+                </div>
+              ) : null}
               {lastExport ? (
                 <div className="flex items-center justify-between gap-2">
                   <span>导出</span>

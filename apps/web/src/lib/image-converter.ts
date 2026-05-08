@@ -34,6 +34,10 @@ export const OUTPUT_FORMAT_OPTIONS: Array<{ value: OutputFormat; label: string; 
   { value: 'image/webp', label: 'WebP', extension: 'webp' },
 ]
 
+export function supportsOutputQuality(format: OutputFormat) {
+  return format === 'image/jpeg' || format === 'image/webp'
+}
+
 export function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value))
 }
