@@ -892,6 +892,7 @@ export default function AiChatPageContent() {
         },
         {
           useKnowledgeBase: job.useKnowledgeBase || job.useYijingAgent,
+          activeRoleId: job.useYijingAgent ? 'yijing-teacher' : activeRoleId,
           signal: controller.signal,
           onEvent: (event) => {
             const progress = toChatProgressState(event)
@@ -1021,6 +1022,7 @@ export default function AiChatPageContent() {
         },
         {
           useKnowledgeBase: effectiveUseKnowledgeBase,
+          activeRoleId,
           signal: controller.signal,
           onEvent: (event) => {
             const progress = toChatProgressState(event)
@@ -1234,6 +1236,7 @@ export default function AiChatPageContent() {
         },
         {
           useKnowledgeBase: effectiveUseKnowledgeBase,
+          activeRoleId,
           signal: controller.signal,
           onEvent: (event) => {
             const progress = toChatProgressState(event)

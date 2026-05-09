@@ -76,6 +76,10 @@ type HistoryMessageInput = {
   content: string
 }
 
+type ChatRoleSnapshot = {
+  activeRoleId?: string
+}
+
 function normalizeRoleSnapshotJson(input: unknown): string | null | undefined {
   if (typeof input === 'undefined') {
     return undefined
@@ -97,6 +101,33 @@ function normalizeRoleSnapshotJson(input: unknown): string | null | undefined {
   }
 }
 
+function parseRoleSnapshot(json: string | null | undefined): ChatRoleSnapshot | null {
+  if (!json) {
+    return null
+  }
+
+  try {
+    const parsed = JSON.parse(json) as ChatRoleSnapshot
+    return parsed && typeof parsed === 'object' ? parsed : null
+  } catch {
+    return null
+  }
+}
+
+function resolveActiveRoleId(
+  body: Record<string, unknown>,
+  conversation: Awaited<ReturnType<typeof getConversationById>>
+): string | null {
+  if (typeof body.activeRoleId === 'string' && body.activeRoleId.trim()) {
+    return body.activeRoleId.trim()
+  }
+
+  const snapshot = parseRoleSnapshot(conversation?.roleSnapshotJson)
+  return typeof snapshot?.activeRoleId === 'string' && snapshot.activeRoleId.trim()
+    ? snapshot.activeRoleId.trim()
+    : null
+}
+
 async function streamAssistantReply(
   c: any,
   params: {
@@ -105,6 +136,7 @@ async function streamAssistantReply(
     user: ChatVariables['user']
     latestUserMessage: string
     useKnowledgeBase: boolean
+    activeRoleId: string | null
     historyMessages: HistoryMessageInput[]
     persistAssistant: (payload: {
       assistantContent: string
@@ -143,6 +175,7 @@ async function streamAssistantReply(
         intentContext,
         latestUserMessage: params.latestUserMessage,
         useKnowledgeBase: params.useKnowledgeBase,
+        activeRoleId: params.activeRoleId,
         signal: requestSignal,
       })) {
         if (event.type === 'state') {
@@ -543,6 +576,7 @@ chat.post('/conversations/:id/messages/stream', async (c) => {
     user,
     latestUserMessage: content,
     useKnowledgeBase,
+    activeRoleId: resolveActiveRoleId(body, conversation),
     historyMessages: historyForOrchestrator,
     persistAssistant: async ({ assistantContent, systemMessages, intentStateJson }) => {
       await prisma.chatMessage.create({
@@ -686,6 +720,7 @@ chat.post('/conversations/:id/messages/:messageId/edit-resend/stream', async (c)
     user,
     latestUserMessage: content,
     useKnowledgeBase,
+    activeRoleId: resolveActiveRoleId(body, conversation),
     historyMessages,
     persistAssistant: async ({ assistantContent, systemMessages, intentStateJson }) => {
       await prisma.$transaction(async (tx) => {
@@ -794,6 +829,7 @@ chat.post('/conversations/:id/messages/:messageId/retry/stream', async (c) => {
     user,
     latestUserMessage: previousUserMessage.content,
     useKnowledgeBase,
+    activeRoleId: resolveActiveRoleId(body, conversation),
     historyMessages,
     persistAssistant: async ({ assistantContent, systemMessages, intentStateJson }) => {
       await prisma.$transaction(async (tx) => {

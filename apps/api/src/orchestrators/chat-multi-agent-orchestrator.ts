@@ -75,6 +75,7 @@ type ChatMultiAgentInput = {
   intentContext: IntentContext
   latestUserMessage: string
   useKnowledgeBase: boolean
+  activeRoleId?: string | null
   signal?: AbortSignal
 }
 
@@ -297,7 +298,23 @@ function buildToolResultsContext(toolResults: ChatToolExecutionResult[]): string
     .join('\n\n---\n\n')
 }
 
-function buildResponderSystemPrompt(skill: ResolvedChatAppSkill): string {
+function buildRoleSystemPrompt(activeRoleId?: string | null): string {
+  if (activeRoleId === 'yijing-teacher') {
+    return [
+      '当前用户选择的聊天角色是“易经学习老师”。',
+      '你必须以这个角色身份回答，不要把自己介绍成通用 AI 助手。',
+      '当用户问“你是谁”“介绍一下你自己”等身份问题时，回答：我是你的易经学习老师，主要陪你学习《易经》原文、卦辞、爻辞、象传、彖传和相关思想。',
+      '即使用户的问题没有出现“易经”关键词，也要保持易经学习老师的身份和表达风格。',
+    ].join('\n')
+  }
+
+  return [
+    '当前用户选择的聊天角色是“通用助手”。',
+    '当用户询问身份时，可以说明你是一个通用 AI 助手。',
+  ].join('\n')
+}
+
+function buildResponderSystemPrompt(skill: ResolvedChatAppSkill, activeRoleId?: string | null): string {
   return [
     '你是多 Agent 协作聊天系统中的 Result Agent。',
     '你会收到：对话历史、用户最新消息、意图识别结果、任务拆解结果、工具执行结果。',
@@ -307,6 +324,7 @@ function buildResponderSystemPrompt(skill: ResolvedChatAppSkill): string {
     '3. 如果工具结果为空或不足以支撑结论，要明确说明本地信息不足，再给出下一步建议。',
     '4. 如果用户明显是在准备生成博客/文章，但当前只是聊天链路，可以先帮助澄清需求，同时提醒对方使用博客生成工作流来落库/发布。',
     '5. 默认保持简洁，但不要牺牲可执行性。',
+    buildRoleSystemPrompt(activeRoleId),
     `当前应用 skill：${skill.label}。${skill.description}`,
     skill.prompts.responder?.trim() || '',
   ].join('\n')
@@ -316,6 +334,7 @@ function buildResponderUserPrompt(input: {
   conversationText: string
   latestUserMessage: string
   useKnowledgeBase: boolean
+  activeRoleId?: string | null
   intent: Awaited<ReturnType<typeof runIntentRecognitionAgent>>
   plan: Awaited<ReturnType<typeof runTaskPlanningAgent>>
   toolResults: ChatToolExecutionResult[]
@@ -325,6 +344,7 @@ function buildResponderUserPrompt(input: {
     `用户最新消息：${input.latestUserMessage}`,
     '',
     `是否允许检索本地知识库：${input.useKnowledgeBase ? '是' : '否'}`,
+    `当前聊天角色：${input.activeRoleId || 'general'}`,
     `当前应用 skill：${input.skill.id}`,
     '',
     'Intent Agent 输出：',
@@ -523,6 +543,7 @@ export async function* runChatMultiAgentOrchestrator(
       intent,
       latestUserMessage: input.latestUserMessage,
       useKnowledgeBase: input.useKnowledgeBase,
+      activeRoleId: input.activeRoleId,
       state: currentIntentContext,
     })
     executionRoute = skill.route
@@ -982,6 +1003,7 @@ export async function* runChatMultiAgentOrchestrator(
       conversationText: conversationDigest,
       latestUserMessage: input.latestUserMessage,
       useKnowledgeBase: input.useKnowledgeBase,
+      activeRoleId: input.activeRoleId,
       intent,
       plan: resolvedPlan,
       toolResults,
@@ -989,7 +1011,7 @@ export async function* runChatMultiAgentOrchestrator(
     })
 
     const respondStartedAt = Date.now()
-    for await (const chunk of streamChat(responseUserPrompt, buildResponderSystemPrompt(skill), {
+    for await (const chunk of streamChat(responseUserPrompt, buildResponderSystemPrompt(skill, input.activeRoleId), {
       model: 'default',
       temperature: 0.4,
       signal: input.signal,

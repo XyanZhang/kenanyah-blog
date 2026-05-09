@@ -294,6 +294,7 @@ export async function streamChatMessage(
   onError?: (err: string) => void,
   options?: {
     useKnowledgeBase?: boolean
+    activeRoleId?: string
     signal?: AbortSignal
     onEvent?: (event: ChatStreamEvent) => void
   }
@@ -305,7 +306,11 @@ export async function streamChatMessage(
       credentials: 'include',
       headers: getAuthHeaders(),
       signal: options?.signal,
-      body: JSON.stringify({ content, useKnowledgeBase: options?.useKnowledgeBase === true }),
+      body: JSON.stringify({
+        content,
+        useKnowledgeBase: options?.useKnowledgeBase === true,
+        activeRoleId: options?.activeRoleId,
+      }),
     }
   )
 
@@ -326,6 +331,7 @@ export async function streamRetryChatMessage(
   onError?: (err: string) => void,
   options?: {
     useKnowledgeBase?: boolean
+    activeRoleId?: string
     signal?: AbortSignal
     onEvent?: (event: ChatStreamEvent) => void
   }
@@ -337,7 +343,10 @@ export async function streamRetryChatMessage(
       credentials: 'include',
       headers: getAuthHeaders(),
       signal: options?.signal,
-      body: JSON.stringify({ useKnowledgeBase: options?.useKnowledgeBase === true }),
+      body: JSON.stringify({
+        useKnowledgeBase: options?.useKnowledgeBase === true,
+        activeRoleId: options?.activeRoleId,
+      }),
     }
   )
 
@@ -359,6 +368,7 @@ export async function streamEditAndResendUserMessage(
   onError?: (err: string) => void,
   options?: {
     useKnowledgeBase?: boolean
+    activeRoleId?: string
     signal?: AbortSignal
     onEvent?: (event: ChatStreamEvent) => void
   }
@@ -370,7 +380,11 @@ export async function streamEditAndResendUserMessage(
       credentials: 'include',
       headers: getAuthHeaders(),
       signal: options?.signal,
-      body: JSON.stringify({ content, useKnowledgeBase: options?.useKnowledgeBase === true }),
+      body: JSON.stringify({
+        content,
+        useKnowledgeBase: options?.useKnowledgeBase === true,
+        activeRoleId: options?.activeRoleId,
+      }),
     }
   )
 

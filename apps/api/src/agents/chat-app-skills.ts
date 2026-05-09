@@ -57,6 +57,7 @@ type SkillMatcherInput = {
   intent: ChatIntentRecognition
   latestUserMessage: string
   useKnowledgeBase: boolean
+  activeRoleId?: string | null
   state: IntentContext
 }
 
@@ -110,8 +111,9 @@ const APP_SKILL_DEFINITIONS: ChatAppSkillDefinition[] = [
         '如果涉及占卜或人生决策，只给文化参考和反思角度，不做确定预测。',
       ].join('\n'),
     },
-    matches: ({ latestUserMessage, state }) =>
-      looksLikeYijingLearningRequest(latestUserMessage) || state.activeDomain === 'knowledge',
+    matches: ({ latestUserMessage, activeRoleId }) =>
+      activeRoleId === 'yijing-teacher' ||
+      looksLikeYijingLearningRequest(latestUserMessage),
   },
   {
     id: 'blog_workflow',
