@@ -33,10 +33,21 @@ export type KnowledgeSearchHit = {
   metadata: Record<string, unknown> | null
 }
 
+export type KnowledgePdfImportResult = {
+  sourceId: string
+  chunkCount: number
+  embeddedCount: number
+  skippedCount: number
+  filename: string
+  size: number
+  fileUrl?: string
+}
+
 async function readApiResponse<T>(response: Response, fallback: string): Promise<T> {
   const json = (await response.json().catch(() => ({}))) as ApiResponse<T>
   if (!response.ok || !json.success || !json.data) {
-    throw new Error(json.error || fallback)
+    const message = typeof json.error === 'string' ? json.error : fallback
+    throw new Error(message)
   }
   return json.data
 }
@@ -68,4 +79,48 @@ export async function searchKnowledge(input: {
     credentials: 'include',
   })
   return readApiResponse<KnowledgeSearchHit[]>(response, '检索知识库失败')
+}
+
+export async function importKnowledgePdf(input: {
+  file: File
+  domain: Exclude<KnowledgeDomain, 'all'>
+  title: string
+  sourceId?: string
+  description?: string
+}): Promise<KnowledgePdfImportResult> {
+  const form = new FormData()
+  form.set('file', input.file)
+  form.set('domain', input.domain)
+  form.set('title', input.title)
+  if (input.sourceId) form.set('sourceId', input.sourceId)
+  if (input.description) form.set('description', input.description)
+
+  const response = await fetch(`${API_BASE_URL}/knowledge/import/pdf`, {
+    method: 'POST',
+    credentials: 'include',
+    body: form,
+  })
+  return readApiResponse<KnowledgePdfImportResult>(response, '导入 PDF 到知识库失败')
+}
+
+export async function importKnowledgeTextFile(input: {
+  file: File
+  domain: Exclude<KnowledgeDomain, 'all'>
+  title: string
+  sourceId?: string
+  description?: string
+}): Promise<KnowledgePdfImportResult> {
+  const form = new FormData()
+  form.set('file', input.file)
+  form.set('domain', input.domain)
+  form.set('title', input.title)
+  if (input.sourceId) form.set('sourceId', input.sourceId)
+  if (input.description) form.set('description', input.description)
+
+  const response = await fetch(`${API_BASE_URL}/knowledge/import/text`, {
+    method: 'POST',
+    credentials: 'include',
+    body: form,
+  })
+  return readApiResponse<KnowledgePdfImportResult>(response, '导入 OCR 文本到知识库失败')
 }

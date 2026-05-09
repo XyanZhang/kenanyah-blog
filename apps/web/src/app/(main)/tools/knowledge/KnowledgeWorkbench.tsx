@@ -1,12 +1,13 @@
 'use client'
 
 import Link from 'next/link'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { Route } from 'next'
 import {
   ArrowUpRight,
   BookOpenText,
   Database,
+  FileUp,
   Layers3,
   Loader2,
   RefreshCcw,
@@ -15,8 +16,11 @@ import {
 } from 'lucide-react'
 import {
   getKnowledgeSources,
+  importKnowledgePdf,
+  importKnowledgeTextFile,
   searchKnowledge,
   type KnowledgeDomain,
+  type KnowledgePdfImportResult,
   type KnowledgeSearchHit,
   type KnowledgeSource,
 } from '@/lib/knowledge-api'
@@ -59,10 +63,24 @@ function getReadyDomains(sources: KnowledgeSource[]): string[] {
   return Array.from(new Set(sources.filter((source) => source.chunkCount > 0).map((source) => source.domain))).sort()
 }
 
+function formatSize(size?: number): string {
+  if (!size) return '未知'
+  if (size < 1024 * 1024) return `${Math.round(size / 1024)} KB`
+  return `${(size / 1024 / 1024).toFixed(1)} MB`
+}
+
 export function KnowledgeWorkbench() {
+  const fileInputRef = useRef<HTMLInputElement | null>(null)
   const [activeDomain, setActiveDomain] = useState<KnowledgeDomain>('all')
   const [sources, setSources] = useState<KnowledgeSource[]>([])
   const [loadingSources, setLoadingSources] = useState(false)
+  const [importDomain, setImportDomain] = useState<Exclude<KnowledgeDomain, 'all'>>('bazi')
+  const [importMode, setImportMode] = useState<'pdf' | 'text'>('text')
+  const [importTitle, setImportTitle] = useState('《三命通会》')
+  const [importSourceId, setImportSourceId] = useState('bazi-sanming-tonghui')
+  const [importDescription, setImportDescription] = useState('《三命通会》PDF 导入，用于八字学习、资料检索和后续命理 Agent 引用。')
+  const [importing, setImporting] = useState(false)
+  const [importResult, setImportResult] = useState<KnowledgePdfImportResult | null>(null)
   const [query, setQuery] = useState('乾卦 自强不息')
   const [hits, setHits] = useState<KnowledgeSearchHit[]>([])
   const [searching, setSearching] = useState(false)
@@ -107,6 +125,38 @@ export function KnowledgeWorkbench() {
       setError(err instanceof Error ? err.message : String(err))
     } finally {
       setSearching(false)
+    }
+  }
+
+  const handleImportFile = async (file: File | null | undefined) => {
+    if (!file) return
+    const title = importTitle.trim()
+    if (!title) {
+      setError('请先填写资料标题')
+      return
+    }
+
+    setImporting(true)
+    setError(null)
+    try {
+      const payload = {
+        file,
+        domain: importDomain,
+        title,
+        sourceId: importSourceId.trim() || undefined,
+        description: importDescription.trim() || undefined,
+      }
+      const result = importMode === 'pdf'
+        ? await importKnowledgePdf(payload)
+        : await importKnowledgeTextFile(payload)
+      setImportResult(result)
+      setActiveDomain(importDomain)
+      await loadSources(importDomain)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setImporting(false)
+      if (fileInputRef.current) fileInputRef.current.value = ''
     }
   }
 
@@ -158,6 +208,119 @@ export function KnowledgeWorkbench() {
 
       <section className="grid gap-5 lg:grid-cols-[22rem_minmax(0,1fr)]">
         <aside className="grid gap-5">
+          <section className="rounded-3xl border border-line-glass bg-surface-glass/60 p-4 backdrop-blur-sm md:p-5">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h2 className="text-base font-semibold text-content-primary">导入资料</h2>
+                <p className="mt-1 text-xs text-content-secondary">PDF 或 OCR 文本入库。</p>
+              </div>
+              <FileUp className="h-5 w-5 text-content-muted" />
+            </div>
+
+            <div className="mt-4 grid gap-3">
+              <div className="grid grid-cols-2 gap-2 rounded-2xl border border-line-glass bg-surface-primary/45 p-1">
+                {[
+                  { id: 'text' as const, label: 'OCR 文本' },
+                  { id: 'pdf' as const, label: 'PDF' },
+                ].map((mode) => (
+                  <button
+                    key={mode.id}
+                    type="button"
+                    onClick={() => setImportMode(mode.id)}
+                    className={[
+                      'h-9 rounded-xl text-sm font-medium transition',
+                      importMode === mode.id
+                        ? 'bg-content-primary text-content-inverse'
+                        : 'text-content-secondary hover:bg-black/[0.04] hover:text-content-primary',
+                    ].join(' ')}
+                  >
+                    {mode.label}
+                  </button>
+                ))}
+              </div>
+
+              <p className="rounded-2xl bg-black/[0.03] px-3 py-2 text-xs leading-5 text-content-secondary">
+                {importMode === 'text'
+                  ? '扫描版古籍建议先用 OCR 识别为 .txt 或 .md，再从这里导入。'
+                  : '只适合带可复制文本层的 PDF；扫描版 PDF 会提示改用 OCR 文本。'}
+              </p>
+
+              <label className="grid gap-1.5">
+                <span className="text-xs font-medium text-content-secondary">门类</span>
+                <select
+                  value={importDomain}
+                  onChange={(event) => {
+                    const value = event.target.value as Exclude<KnowledgeDomain, 'all'>
+                    setImportDomain(value)
+                    setActiveDomain(value)
+                  }}
+                  className="h-10 rounded-2xl border border-line-glass bg-surface-primary/70 px-3 text-sm text-content-primary outline-none transition focus:border-accent-primary/40"
+                >
+                  {domains.filter((domain) => domain.id !== 'all').map((domain) => (
+                    <option key={domain.id} value={domain.id}>
+                      {domain.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="grid gap-1.5">
+                <span className="text-xs font-medium text-content-secondary">标题</span>
+                <input
+                  value={importTitle}
+                  onChange={(event) => setImportTitle(event.target.value)}
+                  className="h-10 rounded-2xl border border-line-glass bg-surface-primary/70 px-3 text-sm text-content-primary outline-none transition placeholder:text-content-tertiary focus:border-accent-primary/40"
+                  placeholder="例如：《三命通会》"
+                />
+              </label>
+
+              <label className="grid gap-1.5">
+                <span className="text-xs font-medium text-content-secondary">Source ID</span>
+                <input
+                  value={importSourceId}
+                  onChange={(event) => setImportSourceId(event.target.value)}
+                  className="h-10 rounded-2xl border border-line-glass bg-surface-primary/70 px-3 text-sm text-content-primary outline-none transition placeholder:text-content-tertiary focus:border-accent-primary/40"
+                  placeholder="bazi-sanming-tonghui"
+                />
+              </label>
+
+              <label className="grid gap-1.5">
+                <span className="text-xs font-medium text-content-secondary">描述</span>
+                <textarea
+                  value={importDescription}
+                  onChange={(event) => setImportDescription(event.target.value)}
+                  rows={3}
+                  className="resize-none rounded-2xl border border-line-glass bg-surface-primary/70 px-3 py-2 text-sm leading-6 text-content-primary outline-none transition placeholder:text-content-tertiary focus:border-accent-primary/40"
+                  placeholder="这份资料用于哪个门类、哪个老师或哪个实验室。"
+                />
+              </label>
+
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept={importMode === 'pdf' ? 'application/pdf,.pdf' : 'text/plain,text/markdown,.txt,.md'}
+                className="hidden"
+                onChange={(event) => void handleImportFile(event.target.files?.[0])}
+              />
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={importing || !importTitle.trim()}
+                className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-accent-primary px-4 text-sm font-semibold text-content-inverse transition hover:bg-accent-primary-hover disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {importing ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileUp className="h-4 w-4" />}
+                {importMode === 'pdf' ? '上传 PDF 并索引' : '上传文本并索引'}
+              </button>
+
+              {importResult ? (
+                <div className="rounded-2xl border border-line-glass bg-accent-primary/8 p-4 text-sm leading-6 text-content-secondary">
+                  已导入 {importResult.chunkCount} 个 chunks，新增/更新向量 {importResult.embeddedCount} 个，跳过 {importResult.skippedCount} 个。
+                  {importResult.filename ? ` 文件：${importResult.filename}（${formatSize(importResult.size)}）。` : ''}
+                </div>
+              ) : null}
+            </div>
+          </section>
+
           <section className="rounded-3xl border border-line-glass bg-surface-glass/60 p-4 backdrop-blur-sm md:p-5">
             <div className="flex items-center justify-between gap-3">
               <div>
