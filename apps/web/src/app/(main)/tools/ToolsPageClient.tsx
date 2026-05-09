@@ -77,7 +77,7 @@ export function ToolsPageClient() {
           </div>
         </section>
 
-        <section className="mt-8 grid gap-5 sm:grid-cols-2">
+        <section className="mt-8 columns-1 gap-5 sm:columns-2">
           {tools.map((tool, index) => {
             const isPrimary = index % 2 === 0
 
@@ -85,7 +85,7 @@ export function ToolsPageClient() {
               <Link
                 key={tool.name}
                 href={tool.href}
-                className="group block cursor-pointer rounded-[2rem] focus:outline-hidden focus:ring-2 focus:ring-accent-primary/35"
+                className="group mb-5 block break-inside-avoid cursor-pointer rounded-[2rem] focus:outline-hidden focus:ring-2 focus:ring-accent-primary/35"
               >
                 <motion.article
                   initial={{ opacity: 0, scale: 0.9, y: 18 }}
