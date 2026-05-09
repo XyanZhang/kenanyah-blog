@@ -11,6 +11,12 @@ type StatusStep = {
   label: string
 }
 
+type StatusStepIndicatorProps = {
+  step: StatusStep
+  isActive: boolean
+  isCompleted: boolean
+}
+
 function getStatusSteps(mode: ChatStatusMode): StatusStep[] {
   if (mode === 'workflow') {
     return [
@@ -43,51 +49,78 @@ function getStatusOrder(status: ChatUserFacingStatus, mode: ChatStatusMode): num
   return 0
 }
 
+function StatusStepIndicator({ step, isActive, isCompleted }: StatusStepIndicatorProps) {
+  return (
+    <div className="flex min-w-0 items-center gap-1.5">
+      <span
+        className={`h-1.5 w-1.5 shrink-0 rounded-full transition-colors ${
+          isActive
+            ? 'bg-accent-primary'
+            : isCompleted
+              ? 'bg-accent-primary/55'
+              : 'bg-content-dim/45'
+        }`}
+      />
+      <span
+        className={`truncate text-[11px] leading-4 transition-colors ${
+          isActive
+            ? 'font-medium text-accent-primary'
+            : isCompleted
+              ? 'text-content-secondary'
+              : 'text-content-tertiary/70'
+        }`}
+      >
+        {step.label}
+      </span>
+    </div>
+  )
+}
+
 export function AgentStatusCard(props: AgentStatusCardProps) {
   const steps = getStatusSteps(props.mode)
   const activeIndex = getStatusOrder(props.status, props.mode)
 
   return (
-    <div className="mb-3 overflow-hidden rounded-[1.35rem] border border-line-glass/75 bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.92),rgba(246,252,250,0.9)_42%,rgba(233,245,242,0.94))] shadow-[0_14px_38px_rgba(15,23,42,0.08)]">
-      <div className="relative overflow-hidden px-3.5 py-3">
-        <div className="pointer-events-none absolute inset-0 opacity-70">
-          <div className="absolute inset-y-0 left-0 w-full animate-pulse bg-[linear-gradient(110deg,rgba(255,255,255,0.02),rgba(255,255,255,0.3),rgba(255,255,255,0.02))]" />
-        </div>
-        <div className="relative">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <div className="text-[10px] font-semibold uppercase tracking-[0.26em] text-content-tertiary">
-                正在处理中
-              </div>
-              <div className="mt-1 text-sm font-medium text-content-primary">{props.label}</div>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-full bg-accent-primary shadow-[0_0_0_4px_rgba(13,148,136,0.14)]" />
-              <span className="h-2 w-2 rounded-full bg-accent-primary/45" />
-              <span className="h-2 w-2 rounded-full bg-accent-primary/25" />
-            </div>
+    <div className="mb-2.5 w-full max-w-full rounded-xl border border-line-glass/45 bg-surface-primary/35 px-3 py-2.5 text-content-primary sm:w-[30rem]">
+      <div className="flex min-w-0 items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <span className="relative flex h-2 w-2 shrink-0">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-accent-primary/35" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-accent-primary/80" />
+            </span>
+            <span className="text-[11px] font-medium leading-4 text-content-tertiary">正在思考</span>
           </div>
-          <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
-            {steps.map((step, index) => {
-              const isActive = index === activeIndex
-              const isCompleted = index < activeIndex
-              return (
-                <div
-                  key={`${props.mode}-${step.label}`}
-                  className={`rounded-2xl border px-2.5 py-2 text-center transition-all ${
-                    isActive
-                      ? 'border-accent-primary/28 bg-accent-primary/12 text-accent-primary shadow-[inset_0_1px_0_rgba(255,255,255,0.78)]'
-                      : isCompleted
-                        ? 'border-line-glass/80 bg-white/72 text-content-secondary'
-                        : 'border-line-glass/65 bg-white/45 text-content-tertiary'
-                  }`}
-                >
-                  <div className="text-[11px] font-medium">{step.label}</div>
-                </div>
-              )
-            })}
-          </div>
+          <div className="mt-1 truncate text-sm leading-5 text-content-primary">{props.label}</div>
         </div>
+        <div className="hidden shrink-0 items-center gap-1.5 pt-1 sm:flex">
+          {steps.map((step, index) => {
+            const isActive = index === activeIndex
+            const isCompleted = index < activeIndex
+            return (
+              <StatusStepIndicator
+                key={`${props.mode}-${step.label}`}
+                step={step}
+                isActive={isActive}
+                isCompleted={isCompleted}
+              />
+            )
+          })}
+        </div>
+      </div>
+      <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1.5 sm:hidden">
+        {steps.map((step, index) => {
+          const isActive = index === activeIndex
+          const isCompleted = index < activeIndex
+          return (
+            <StatusStepIndicator
+              key={`${props.mode}-mobile-${step.label}`}
+              step={step}
+              isActive={isActive}
+              isCompleted={isCompleted}
+            />
+          )
+        })}
       </div>
     </div>
   )
