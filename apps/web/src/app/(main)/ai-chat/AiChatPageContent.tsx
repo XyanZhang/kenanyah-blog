@@ -66,7 +66,7 @@ type ChatQueueItem = {
   conversationId: string
   content: string
   useKnowledgeBase: boolean
-  useYijingAgent: boolean
+  activeRoleId: ChatRoleCardId
   userMsgId: string
   assistantMsgId: string
 }
@@ -770,8 +770,8 @@ export default function AiChatPageContent() {
       id: `chat-job-${timestamp}`,
       conversationId,
       content,
-      useKnowledgeBase,
-      useYijingAgent: activeRole.useYijingAgent,
+      useKnowledgeBase: effectiveUseKnowledgeBase,
+      activeRoleId,
       userMsgId: userMsg.id,
       assistantMsgId: assistantMsg.id,
     }
@@ -891,8 +891,8 @@ export default function AiChatPageContent() {
           setError(err)
         },
         {
-          useKnowledgeBase: job.useKnowledgeBase || job.useYijingAgent,
-          activeRoleId: job.useYijingAgent ? 'yijing-teacher' : activeRoleId,
+          useKnowledgeBase: job.useKnowledgeBase,
+          activeRoleId: job.activeRoleId,
           signal: controller.signal,
           onEvent: (event) => {
             const progress = toChatProgressState(event)

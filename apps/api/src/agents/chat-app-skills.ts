@@ -9,6 +9,7 @@ import type { IntentContext } from './chat-intent-state'
 export type ChatAppSkillId =
   | 'general_chat'
   | 'yijing_learning'
+  | 'ziwei_learning'
   | 'knowledge_context'
   | 'implementation_advice'
   | 'scenario_planning'
@@ -27,7 +28,7 @@ type ChatAppSkillPromptSet = {
   businessTool?: string
 }
 
-type RetrievalToolName = Extract<ChatToolName, 'knowledge_base_search' | 'yijing_knowledge_search'>
+type RetrievalToolName = Extract<ChatToolName, 'knowledge_base_search' | 'yijing_knowledge_search' | 'ziwei_knowledge_search'>
 type BusinessToolName = Exclude<ChatToolName, RetrievalToolName>
 
 type ChatAppSkillToolPolicy =
@@ -84,6 +85,11 @@ function looksLikeYijingLearningRequest(latestUserMessage: string): boolean {
   return /(?:易经|周易|卦辞|爻辞|彖传|象传|文言|十翼|乾卦|坤卦|屯卦|蒙卦|需卦|讼卦|师卦|比卦|小畜|履卦|泰卦|否卦|同人|大有|谦卦|豫卦|随卦|蛊卦|临卦|观卦|噬嗑|贲卦|剥卦|复卦|无妄|大畜|颐卦|大过|坎卦|离卦|咸卦|恒卦|遁卦|大壮|晋卦|明夷|家人|睽卦|蹇卦|解卦|损卦|益卦|夬卦|姤卦|萃卦|升卦|困卦|井卦|革卦|鼎卦|震卦|艮卦|渐卦|归妹|丰卦|旅卦|巽卦|兑卦|涣卦|节卦|中孚|小过|既济|未济)/.test(text)
 }
 
+function looksLikeZiweiLearningRequest(latestUserMessage: string): boolean {
+  const text = normalizeMessageText(latestUserMessage)
+  return /(?:紫微斗数|紫微|斗数|命宫|身宫|十二宫|十四主星|主星|辅星|煞星|紫微星|天机|太阳|武曲|天同|廉贞|天府|太阴|贪狼|巨门|天相|天梁|七杀|破军|文昌|文曲|左辅|右弼|天魁|天钺|擎羊|陀罗|火星|铃星|地空|地劫|化禄|化权|化科|化忌|四化|大限|流年|流月|庙旺|落陷|格局|三方四正|迁移宫|官禄宫|财帛宫|夫妻宫|福德宫|田宅宫|疾厄宫|父母宫|兄弟宫|子女宫|交友宫|奴仆宫)/.test(text)
+}
+
 function intentIn(intent: ChatIntentName, values: ChatIntentName[]): boolean {
   return values.includes(intent)
 }
@@ -114,6 +120,33 @@ const APP_SKILL_DEFINITIONS: ChatAppSkillDefinition[] = [
     matches: ({ latestUserMessage, activeRoleId }) =>
       activeRoleId === 'yijing-teacher' ||
       looksLikeYijingLearningRequest(latestUserMessage),
+  },
+  {
+    id: 'ziwei_learning',
+    label: '紫微斗数学习',
+    description: '围绕《紫微斗数全书》资料进行星曜、宫位、格局、四化和命盘概念学习。',
+    route: 'respond',
+    toolPolicy: {
+      mode: 'knowledge',
+      tools: ['ziwei_knowledge_search'],
+      requiresKnowledgeBase: false,
+    },
+    prompts: {
+      planner:
+        '当前启用 skill=ziwei_learning。把任务视为紫微斗数学习辅导：先明确用户想学的星曜、宫位、格局、四化、限运或命盘背景，再组织解释路径。',
+      toolRouting:
+        '当前启用 skill=ziwei_learning。优先调用 ziwei_knowledge_search 检索《紫微斗数全书》资料。query 应包含用户提到的星曜、宫位、格局、四化、限运或学习问题。',
+      responder: [
+        '当前启用的是紫微斗数学习 skill。你是一位耐心、谨慎的紫微斗数学习老师，不做玄虚化、绝对化表达。',
+        '回答时优先基于《紫微斗数全书》检索结果解释资料；如果检索结果不足，要明确说明。',
+        '适合初学者：先用现代中文解释，再补充术语拆解、资料脉络和可继续学习的问题。',
+        '如果用户提供 birthInfo 或 chartContext，可把它当作学习案例背景，但不要假装已经完成精确排盘。',
+        '如果涉及命盘判断、人生决策、健康、感情或财富，只给文化参考和反思角度，不做确定预测。',
+      ].join('\n'),
+    },
+    matches: ({ latestUserMessage, activeRoleId }) =>
+      activeRoleId === 'ziwei-teacher' ||
+      looksLikeZiweiLearningRequest(latestUserMessage),
   },
   {
     id: 'blog_workflow',

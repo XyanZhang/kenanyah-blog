@@ -69,6 +69,13 @@ const yijingKnowledgeToolCallSchema = z.object({
   reason: z.string().trim().max(160).catch(''),
 })
 
+const ziweiKnowledgeToolCallSchema = z.object({
+  tool: z.enum(['ziwei_knowledge_search']).catch('ziwei_knowledge_search'),
+  query: z.string().trim().min(1).max(200).catch(''),
+  limit: z.number().int().min(1).max(8).catch(6),
+  reason: z.string().trim().max(160).catch(''),
+})
+
 const publishPostToolCallSchema = z.object({
   tool: z.literal('publish_post'),
   postQuery: z.string().trim().max(200).catch(''),
@@ -163,6 +170,7 @@ const answerThoughtsToolCallSchema = z.object({
 const toolCallSchema = z.discriminatedUnion('tool', [
   knowledgeBaseToolCallSchema,
   yijingKnowledgeToolCallSchema,
+  ziweiKnowledgeToolCallSchema,
   publishPostToolCallSchema,
   updatePostToolCallSchema,
   deletePostToolCallSchema,
@@ -724,8 +732,8 @@ export function buildIntentCandidates(input: {
 
 function isKnowledgeBaseToolCall(
   toolCall: ChatToolCall
-): toolCall is Extract<ChatToolCall, { tool: 'knowledge_base_search' | 'yijing_knowledge_search' }> {
-  return toolCall.tool === 'knowledge_base_search' || toolCall.tool === 'yijing_knowledge_search'
+): toolCall is Extract<ChatToolCall, { tool: 'knowledge_base_search' | 'yijing_knowledge_search' | 'ziwei_knowledge_search' }> {
+  return toolCall.tool === 'knowledge_base_search' || toolCall.tool === 'yijing_knowledge_search' || toolCall.tool === 'ziwei_knowledge_search'
 }
 
 function canSkipIntentLlmReview(input: {
@@ -1144,6 +1152,8 @@ export async function runToolRoutingAgent(input: {
 
   const fallbackTool = input.availableTools.includes('yijing_knowledge_search')
     ? 'yijing_knowledge_search'
+    : input.availableTools.includes('ziwei_knowledge_search')
+    ? 'ziwei_knowledge_search'
     : 'knowledge_base_search'
 
   const fallback: ChatToolPlan = {
@@ -1157,6 +1167,8 @@ export async function runToolRoutingAgent(input: {
             reason:
               fallbackTool === 'yijing_knowledge_search'
                 ? '用户问题可能依赖《易经》原文知识'
+                : fallbackTool === 'ziwei_knowledge_search'
+                ? '用户问题可能依赖紫微斗数资料'
                 : '用户问题可能依赖本地知识库内容',
           },
         ]
@@ -1168,10 +1180,11 @@ export async function runToolRoutingAgent(input: {
     '职责：决定当前是否需要调用工具，以及要调用什么工具。',
     '严格输出 JSON，不要输出任何额外解释。',
     '返回字段：shouldUseTools, toolCalls。',
-    '如果返回 knowledge_base_search 或 yijing_knowledge_search，则字段必须是 tool, query, limit, reason。',
+    '如果返回 knowledge_base_search、yijing_knowledge_search 或 ziwei_knowledge_search，则字段必须是 tool, query, limit, reason。',
     '只有在工具能明显提升答案质量时才调用；无必要时返回空数组。',
     '如果当前可用工具只有 knowledge_base_search，则只能返回该工具，它表示检索本地博客、历史对话和 PDF 知识库。',
     '如果当前可用工具只有 yijing_knowledge_search，则只能返回该工具，它表示检索《易经》原文知识库。',
+    '如果当前可用工具只有 ziwei_knowledge_search，则只能返回该工具，它表示检索《紫微斗数全书》资料库。',
     'query 要简洁，limit 为 1 到 8 的整数。',
     input.skillPrompt?.trim() || '',
   ].join('\n')

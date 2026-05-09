@@ -3,7 +3,7 @@
 import type { Route } from 'next'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
-import { ArrowUpRight, BookOpenText, FileText, Image as ImageIcon, LibraryBig } from 'lucide-react'
+import { ArrowUpRight, BookOpenText, FileText, Image as ImageIcon, LibraryBig, Sparkles } from 'lucide-react'
 
 const tools: Array<{
   name: string
@@ -31,6 +31,15 @@ const tools: Array<{
     note: '适合逐卦学习、原文解释和文化参考式解读。',
     icon: <BookOpenText className="h-5 w-5" />,
     mode: 'Classics Study',
+  },
+  {
+    name: '紫微斗数老师',
+    description: '上传《紫微斗数全书》PDF，完成 chunk 切分、向量化和资料检索。',
+    href: '/tools/ziwei',
+    tags: ['Zi Wei', 'RAG', 'Learning'],
+    note: '适合系统学习紫微斗数，后续可接命理实验室。',
+    icon: <Sparkles className="h-5 w-5" />,
+    mode: 'Zi Wei Study',
   },
   {
     name: 'Divination Knowledge Lab',

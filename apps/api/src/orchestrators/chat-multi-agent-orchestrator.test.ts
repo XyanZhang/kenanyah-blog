@@ -93,7 +93,7 @@ describe('chat multi-agent orchestrator', () => {
       JSON.stringify({
         intent: 'delete_post',
         summary: '删除文章',
-        confidence: 0.79,
+        confidence: 0.91,
         needsFollowup: false,
         followupQuestions: [],
         needPlanning: false,
@@ -112,7 +112,7 @@ describe('chat multi-agent orchestrator', () => {
         siteBaseUrl: 'http://localhost:3000',
         messages: [],
         intentContext: DEFAULT_INTENT_CONTEXT,
-        latestUserMessage: '帮我删一下',
+        latestUserMessage: '删除文章',
         useKnowledgeBase: false,
       })
     )
@@ -182,6 +182,46 @@ describe('chat multi-agent orchestrator', () => {
     )
 
     expect(executeChatToolCallsMock).toHaveBeenCalledTimes(1)
+    expect(streamChatMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('uses Zi Wei retrieval for the selected Zi Wei teacher role', async () => {
+    streamChatMock.mockReturnValue(makeStream(['我是你的紫微斗数学习老师。']))
+    executeChatToolCallsMock.mockResolvedValue([
+      {
+        tool: 'ziwei_knowledge_search',
+        query: '你是谁',
+        limit: 6,
+        reason: '检索《紫微斗数全书》资料以辅助学习和解释',
+        hitCount: 0,
+        hits: [],
+      },
+    ])
+
+    const { runChatMultiAgentOrchestrator } = await import('./chat-multi-agent-orchestrator')
+    await collectEvents(
+      runChatMultiAgentOrchestrator({
+        conversationId: 'conv-4',
+        userId: 'user-1',
+        userRole: 'USER',
+        siteBaseUrl: 'http://localhost:3000',
+        messages: [],
+        intentContext: DEFAULT_INTENT_CONTEXT,
+        latestUserMessage: '你是谁',
+        useKnowledgeBase: true,
+        activeRoleId: 'ziwei-teacher',
+      })
+    )
+
+    expect(executeChatToolCallsMock).toHaveBeenCalledTimes(1)
+    const firstCall = executeChatToolCallsMock.mock.calls[0]
+    expect(firstCall[0]).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          tool: 'ziwei_knowledge_search',
+        }),
+      ])
+    )
     expect(streamChatMock).toHaveBeenCalledTimes(1)
   })
 })

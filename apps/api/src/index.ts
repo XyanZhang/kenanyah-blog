@@ -32,6 +32,7 @@ import projects from './routes/projects'
 import admin from './routes/admin'
 import divination from './routes/divination'
 import yijing from './routes/yijing'
+import ziwei from './routes/ziwei'
 
 // 根应用：/uploads 在根路径（图片等静态资源无需 /api 前缀），/api 下为接口
 const root = new Hono()
@@ -86,6 +87,7 @@ app.get('/', (c) => {
         projects: '/projects',
         divination: '/divination',
         yijing: '/yijing',
+        ziwei: '/ziwei',
         admin: '/admin',
       },
     },
@@ -113,6 +115,7 @@ app.route('/voice', voice)
 app.route('/projects', projects)
 app.route('/divination', divination)
 app.route('/yijing', yijing)
+app.route('/ziwei', ziwei)
 app.route('/admin', admin)
 
 root.route('/api', app)

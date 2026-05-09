@@ -19,6 +19,7 @@
     "backfill-events": "tsx --env-file=../../.env.test scripts/backfill-event-items.ts",
     "index-posts": "tsx --env-file=../../.env.test scripts/index-all-posts.ts",
     "import-yijing": "tsx --env-file=../../.env.test scripts/import-yijing.ts",
+    "import-ziwei": "tsx --env-file=../../.env.test scripts/import-ziwei.ts",
     "check-embeddings": "tsx --env-file=../../.env.test scripts/check-embeddings.ts",
     "gen-password": "tsx scripts/gen-password.ts",
     "fetch-statics-images": "tsx scripts/fetch-statics-images.ts"

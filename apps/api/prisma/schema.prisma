@@ -443,6 +443,57 @@ model YijingChunkEmbedding {
   @@map("yijing_chunk_embeddings")
 }
 
+model ZiweiSource {
+  id          String   @id
+  title       String
+  description String?  @db.Text
+  status      String   @default("ready")
+  chunkCount  Int      @default(0) @map("chunk_count")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  chunks ZiweiChunk[]
+
+  @@index([status])
+  @@map("ziwei_sources")
+}
+
+model ZiweiChunk {
+  id           String   @id @default(cuid())
+  sourceId     String   @map("source_id")
+  chunkIndex   Int      @map("chunk_index")
+  title        String
+  sectionTitle String?  @map("section_title")
+  content      String   @db.Text
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  source    ZiweiSource          @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  embedding ZiweiChunkEmbedding?
+
+  @@unique([sourceId, chunkIndex])
+  @@index([sourceId])
+  @@index([sectionTitle])
+  @@map("ziwei_chunks")
+}
+
+model ZiweiChunkEmbedding {
+  id           String   @id
+  sourceId     String   @map("source_id")
+  chunkId      String   @unique @map("chunk_id")
+  chunkIndex   Int      @map("chunk_index")
+  title        String
+  sectionTitle String?  @map("section_title")
+  content      String   @db.Text
+  embedding    Unsupported("vector(1024)")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  chunk ZiweiChunk @relation(fields: [chunkId], references: [id], onDelete: Cascade)
+
+  @@index([sourceId], map: "idx_ziwei_chunk_embeddings_source_id")
+  @@map("ziwei_chunk_embeddings")
+}
+
 // 收藏文章：标题、地址、备注，供浏览器插件同步；暂不关联用户
 model Bookmark {
   id        String   @id @default(cuid())

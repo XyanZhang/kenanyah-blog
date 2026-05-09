@@ -252,7 +252,11 @@ async function runWithStageTimeout<T>(
 }
 
 function inferToolStatus(toolCall: ChatToolCall): ChatUserFacingStatus {
-  return toolCall.tool === 'knowledge_base_search' || toolCall.tool === 'yijing_knowledge_search'
+  return (
+    toolCall.tool === 'knowledge_base_search' ||
+    toolCall.tool === 'yijing_knowledge_search' ||
+    toolCall.tool === 'ziwei_knowledge_search'
+  )
     ? 'searching'
     : 'organizing'
 }
@@ -271,8 +275,12 @@ function buildFollowupMessage(questions: string[]): string {
 
 function isBusinessToolCall(
   toolCall: ChatToolCall
-): toolCall is Exclude<ChatToolCall, { tool: 'knowledge_base_search' | 'yijing_knowledge_search' }> {
-  return toolCall.tool !== 'knowledge_base_search' && toolCall.tool !== 'yijing_knowledge_search'
+): toolCall is Exclude<ChatToolCall, { tool: 'knowledge_base_search' | 'yijing_knowledge_search' | 'ziwei_knowledge_search' }> {
+  return (
+    toolCall.tool !== 'knowledge_base_search' &&
+    toolCall.tool !== 'yijing_knowledge_search' &&
+    toolCall.tool !== 'ziwei_knowledge_search'
+  )
 }
 
 function buildToolResultsContext(toolResults: ChatToolExecutionResult[]): string {
@@ -305,6 +313,16 @@ function buildRoleSystemPrompt(activeRoleId?: string | null): string {
       '你必须以这个角色身份回答，不要把自己介绍成通用 AI 助手。',
       '当用户问“你是谁”“介绍一下你自己”等身份问题时，回答：我是你的易经学习老师，主要陪你学习《易经》原文、卦辞、爻辞、象传、彖传和相关思想。',
       '即使用户的问题没有出现“易经”关键词，也要保持易经学习老师的身份和表达风格。',
+    ].join('\n')
+  }
+
+  if (activeRoleId === 'ziwei-teacher') {
+    return [
+      '当前用户选择的聊天角色是“紫微斗数老师”。',
+      '你必须以这个角色身份回答，不要把自己介绍成通用 AI 助手。',
+      '当用户问“你是谁”“介绍一下你自己”等身份问题时，回答：我是你的紫微斗数学习老师，主要陪你学习星曜、十二宫、四化、格局、限运和《紫微斗数全书》资料。',
+      '即使用户的问题没有出现“紫微斗数”关键词，也要保持紫微斗数学习老师的身份和表达风格。',
+      '如果用户提供 birthInfo 或 chartContext，可以作为学习案例背景，但不要声称已经完成精确排盘。',
     ].join('\n')
   }
 
@@ -379,7 +397,9 @@ function buildDirectResponsePlan(intent: Awaited<ReturnType<typeof runIntentReco
 function shouldUseDirectKnowledgeSearch(availableTools: ChatToolName[]): boolean {
   return (
     availableTools.length > 0 &&
-    availableTools.every((tool) => tool === 'knowledge_base_search' || tool === 'yijing_knowledge_search')
+    availableTools.every((tool) =>
+      tool === 'knowledge_base_search' || tool === 'yijing_knowledge_search' || tool === 'ziwei_knowledge_search'
+    )
   )
 }
 
@@ -409,6 +429,7 @@ function buildDirectKnowledgeToolCalls(input: {
 }): ChatToolCall[] {
   const shouldUseKnowledgeBase =
     input.skill.id === 'yijing_learning' ||
+    input.skill.id === 'ziwei_learning' ||
     input.skill.id === 'knowledge_context' ||
     (input.skill.id === 'implementation_advice' && input.intent.shouldUseKnowledgeBase) ||
     input.intent.shouldUseKnowledgeBase
@@ -428,12 +449,19 @@ function buildDirectKnowledgeToolCalls(input: {
 
   return [
     {
-      tool: input.skill.id === 'yijing_learning' ? 'yijing_knowledge_search' : 'knowledge_base_search',
+      tool:
+        input.skill.id === 'yijing_learning'
+          ? 'yijing_knowledge_search'
+          : input.skill.id === 'ziwei_learning'
+            ? 'ziwei_knowledge_search'
+            : 'knowledge_base_search',
       query,
       limit: input.skill.id === 'implementation_advice' ? 4 : 6,
       reason:
         input.skill.id === 'yijing_learning'
           ? '检索《易经》原文以辅助学习和解释'
+          : input.skill.id === 'ziwei_learning'
+          ? '检索《紫微斗数全书》资料以辅助学习和解释'
           : input.skill.id === 'implementation_advice'
           ? '补充与当前实施问题相关的本地上下文'
           : '补充与当前问题相关的本地知识上下文',
