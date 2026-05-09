@@ -494,6 +494,67 @@ model ZiweiChunkEmbedding {
   @@map("ziwei_chunk_embeddings")
 }
 
+model KnowledgeSource {
+  id          String   @id
+  domain      String
+  title       String
+  description String?  @db.Text
+  sourceType  String   @default("text") @map("source_type")
+  status      String   @default("ready")
+  metadata    Json?
+  chunkCount  Int      @default(0) @map("chunk_count")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  chunks KnowledgeChunk[]
+
+  @@index([domain])
+  @@index([status])
+  @@index([domain, status])
+  @@map("knowledge_sources")
+}
+
+model KnowledgeChunk {
+  id         String   @id @default(cuid())
+  sourceId   String   @map("source_id")
+  domain     String
+  chunkIndex Int      @map("chunk_index")
+  title      String
+  content    String   @db.Text
+  metadata   Json?
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  source    KnowledgeSource          @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  embedding KnowledgeChunkEmbedding?
+
+  @@unique([sourceId, chunkIndex])
+  @@index([domain])
+  @@index([sourceId])
+  @@index([domain, sourceId])
+  @@map("knowledge_chunks")
+}
+
+model KnowledgeChunkEmbedding {
+  id         String   @id
+  sourceId   String   @map("source_id")
+  domain     String
+  chunkId    String   @unique @map("chunk_id")
+  chunkIndex Int      @map("chunk_index")
+  title      String
+  content    String   @db.Text
+  metadata   Json?
+  embedding  Unsupported("vector(1024)")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  chunk KnowledgeChunk @relation(fields: [chunkId], references: [id], onDelete: Cascade)
+
+  @@index([domain], map: "idx_knowledge_chunk_embeddings_domain")
+  @@index([sourceId], map: "idx_knowledge_chunk_embeddings_source_id")
+  @@index([domain, sourceId], map: "idx_knowledge_chunk_embeddings_domain_source_id")
+  @@map("knowledge_chunk_embeddings")
+}
+
 // 收藏文章：标题、地址、备注，供浏览器插件同步；暂不关联用户
 model Bookmark {
   id        String   @id @default(cuid())

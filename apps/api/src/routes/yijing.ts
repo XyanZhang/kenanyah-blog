@@ -3,12 +3,13 @@ import fs from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { z } from 'zod'
-import { prisma } from '../lib/db'
+import { listKnowledgeSources } from '../lib/knowledge-base'
 import {
   indexYijingSource,
   parseYijingText,
   searchYijingKnowledge,
   upsertYijingSourceAndChunks,
+  YIJING_DOMAIN,
   YIJING_SOURCE_ID,
 } from '../lib/yijing-knowledge'
 import { authMiddleware } from '../middleware/auth'
@@ -24,27 +25,9 @@ const searchQuerySchema = z.object({
 })
 
 yijing.get('/sources', async (c) => {
-  const sources = (await (prisma as any).$queryRawUnsafe(
-    `SELECT id, title, description, status,
-            chunk_count AS "chunkCount",
-            updated_at AS "updatedAt"
-     FROM yijing_sources
-     ORDER BY updated_at DESC`
-  )) as Array<{
-    id: string
-    title: string
-    description: string | null
-    status: string
-    chunkCount: number
-    updatedAt: Date
-  }>
-
   return c.json({
     success: true,
-    data: sources.map((source) => ({
-      ...source,
-      updatedAt: source.updatedAt.toISOString(),
-    })),
+    data: await listKnowledgeSources({ domain: YIJING_DOMAIN }),
   })
 })
 

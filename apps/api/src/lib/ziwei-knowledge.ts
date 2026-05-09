@@ -1,11 +1,15 @@
-import { randomUUID } from 'node:crypto'
-import { embedDocuments, embedQuery, getEmbeddingsModel } from './embeddings'
-import { prisma } from './db'
 import { cleanPdfText, mergeSoftLineBreaks, removeSpacesKeepNewlines } from './pdf-clean'
 import { extractPdfText } from './pdf-text'
 import { splitTextForRag } from './text-splitter'
+import {
+  indexKnowledgeSource,
+  searchKnowledge,
+  upsertKnowledgeSourceAndChunks,
+  type KnowledgeSearchHit,
+} from './knowledge-base'
 
 export const ZIWEI_SOURCE_ID = 'ziwei-doushu-quanshu'
+export const ZIWEI_DOMAIN = 'ziwei'
 
 export type ZiweiParsedChunk = {
   chunkIndex: number
@@ -28,10 +32,6 @@ type ZiweiSection = {
   heading: string
   sectionTitle: string | null
   body: string
-}
-
-function vectorToPgString(vec: number[]): string {
-  return `[${vec.join(',')}]`
 }
 
 function normalizeZiweiText(text: string): string {
@@ -131,50 +131,23 @@ export async function upsertZiweiSourceAndChunks(input: {
   chunks: ZiweiParsedChunk[]
 }): Promise<{ sourceId: string; chunkCount: number }> {
   const sourceId = input.sourceId ?? ZIWEI_SOURCE_ID
-
-  await (prisma as any).$executeRawUnsafe(
-    `INSERT INTO ziwei_sources (id, title, description, status, chunk_count)
-     VALUES ($1, $2, $3, 'ready', $4)
-     ON CONFLICT (id) DO UPDATE SET
-       title = EXCLUDED.title,
-       description = EXCLUDED.description,
-       status = EXCLUDED.status,
-       chunk_count = EXCLUDED.chunk_count,
-       updated_at = now()`,
+  return upsertKnowledgeSourceAndChunks({
+    domain: ZIWEI_DOMAIN,
     sourceId,
-    input.title,
-    input.description ?? null,
-    input.chunks.length
-  )
-
-  for (const chunk of input.chunks) {
-    await (prisma as any).$executeRawUnsafe(
-      `INSERT INTO ziwei_chunks (id, source_id, chunk_index, title, section_title, content)
-       VALUES ($1, $2, $3, $4, $5, $6)
-       ON CONFLICT (source_id, chunk_index) DO UPDATE SET
-         title = EXCLUDED.title,
-         section_title = EXCLUDED.section_title,
-         content = EXCLUDED.content,
-         updated_at = now()`,
-      `zc_${sourceId}_${chunk.chunkIndex}`,
-      sourceId,
-      chunk.chunkIndex,
-      chunk.title,
-      chunk.sectionTitle,
-      chunk.content
-    )
-  }
-
-  await (prisma as any).$executeRawUnsafe(
-    `DELETE FROM ziwei_chunks WHERE source_id = $1 AND chunk_index >= $2`,
-    sourceId,
-    input.chunks.length
-  )
-
-  return {
-    sourceId,
-    chunkCount: input.chunks.length,
-  }
+    title: input.title,
+    description: input.description,
+    sourceType: 'pdf',
+    metadata: { canonicalWork: '紫微斗数全书' },
+    chunks: input.chunks.map((chunk) => ({
+      id: `zc_${sourceId}_${chunk.chunkIndex}`,
+      chunkIndex: chunk.chunkIndex,
+      title: chunk.title,
+      content: chunk.content,
+      metadata: {
+        sectionTitle: chunk.sectionTitle,
+      },
+    })),
+  })
 }
 
 export async function indexZiweiSource(sourceId: string = ZIWEI_SOURCE_ID): Promise<{
@@ -183,82 +156,10 @@ export async function indexZiweiSource(sourceId: string = ZIWEI_SOURCE_ID): Prom
   embeddedCount: number
   skippedCount: number
 }> {
-  const model = getEmbeddingsModel()
-  if (!model) {
-    throw new Error('Embedding 未配置：请设置 EMBEDDINGS_API_KEY 或 OPENAI_API_KEY')
-  }
-
-  const chunks = (await (prisma as any).$queryRawUnsafe(
-    `SELECT id, source_id AS "sourceId", chunk_index AS "chunkIndex", title,
-            section_title AS "sectionTitle", content
-     FROM ziwei_chunks
-     WHERE source_id = $1
-     ORDER BY chunk_index ASC`,
+  return indexKnowledgeSource({
+    domain: ZIWEI_DOMAIN,
     sourceId
-  )) as Array<{
-    id: string
-    sourceId: string
-    chunkIndex: number
-    title: string
-    sectionTitle: string | null
-    content: string
-  }>
-
-  type ExistingRow = { chunk_id: string; content: string; title: string }
-  const existing = (await (prisma as any).$queryRawUnsafe(
-    `SELECT chunk_id, content, title FROM ziwei_chunk_embeddings WHERE source_id = $1`,
-    sourceId
-  )) as ExistingRow[]
-  const existingMap = new Map(existing.map((row) => [row.chunk_id, `${row.title}\n${row.content}`]))
-  const toEmbed = chunks.filter((chunk) => existingMap.get(chunk.id) !== `${chunk.title}\n${chunk.content}`)
-
-  if (toEmbed.length > 0) {
-    const vectors = await embedDocuments(toEmbed.map((chunk) => `${chunk.title}\n${chunk.content}`))
-    if (vectors.length !== toEmbed.length) {
-      throw new Error('Embedding 返回数量异常')
-    }
-
-    for (let i = 0; i < toEmbed.length; i++) {
-      const chunk = toEmbed[i]
-      const embedding = vectors[i]
-      await (prisma as any).$executeRawUnsafe(
-        `INSERT INTO ziwei_chunk_embeddings (id, source_id, chunk_id, chunk_index, title, section_title, content, embedding)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8::vector)
-         ON CONFLICT (chunk_id) DO UPDATE SET
-           chunk_index = EXCLUDED.chunk_index,
-           title = EXCLUDED.title,
-           section_title = EXCLUDED.section_title,
-           content = EXCLUDED.content,
-           embedding = EXCLUDED.embedding`,
-        `zwe_${randomUUID().replace(/-/g, '')}`,
-        sourceId,
-        chunk.id,
-        chunk.chunkIndex,
-        chunk.title,
-        chunk.sectionTitle,
-        chunk.content,
-        vectorToPgString(embedding)
-      )
-    }
-  }
-
-  await (prisma as any).$executeRawUnsafe(
-    `DELETE FROM ziwei_chunk_embeddings zwe
-     WHERE zwe.source_id = $1
-       AND NOT EXISTS (SELECT 1 FROM ziwei_chunks zc WHERE zc.id = zwe.chunk_id)`,
-    sourceId
-  )
-
-  return {
-    sourceId,
-    chunkCount: chunks.length,
-    embeddedCount: toEmbed.length,
-    skippedCount: chunks.length - toEmbed.length,
-  }
-}
-
-function toSnippet(text: string, maxLen = 240): string {
-  return text.replace(/\s+/g, ' ').trim().slice(0, maxLen)
+  })
 }
 
 export async function searchZiweiKnowledge(
@@ -268,55 +169,22 @@ export async function searchZiweiKnowledge(
     limit?: number
   } = {}
 ): Promise<ZiweiSearchHit[]> {
-  const model = getEmbeddingsModel()
-  if (!model) {
-    throw new Error('Embedding 未配置：请设置 EMBEDDINGS_API_KEY 或 OPENAI_API_KEY')
+  const hits = await searchKnowledge(query, {
+    domain: ZIWEI_DOMAIN,
+    sourceIds: options.sourceIds,
+    limit: options.limit,
+  })
+  return hits.map(toZiweiSearchHit)
+}
+
+function toZiweiSearchHit(hit: KnowledgeSearchHit): ZiweiSearchHit {
+  return {
+    sourceId: hit.sourceId,
+    chunkId: hit.chunkId,
+    chunkIndex: hit.chunkIndex,
+    title: hit.title,
+    sectionTitle: typeof hit.metadata?.sectionTitle === 'string' ? hit.metadata.sectionTitle : null,
+    snippet: hit.snippet,
+    score: hit.score,
   }
-
-  const limit = Math.min(Math.max(options.limit ?? 6, 1), 10)
-  const sourceIds = options.sourceIds?.filter(Boolean)
-  const queryVector = await embedQuery(query)
-  const vectorStr = vectorToPgString(queryVector)
-
-  type Row = {
-    source_id: string
-    chunk_id: string
-    chunk_index: number
-    title: string
-    section_title: string | null
-    content: string
-    score: number
-  }
-
-  const rows = sourceIds && sourceIds.length > 0
-    ? (await (prisma as any).$queryRawUnsafe(
-        `SELECT source_id, chunk_id, chunk_index, title, section_title, content,
-                1 - (embedding <=> $1::vector) AS score
-         FROM ziwei_chunk_embeddings
-         WHERE source_id = ANY($2::text[])
-         ORDER BY embedding <=> $1::vector
-         LIMIT $3`,
-        vectorStr,
-        sourceIds,
-        limit
-      )) as Row[]
-    : (await (prisma as any).$queryRawUnsafe(
-        `SELECT source_id, chunk_id, chunk_index, title, section_title, content,
-                1 - (embedding <=> $1::vector) AS score
-         FROM ziwei_chunk_embeddings
-         ORDER BY embedding <=> $1::vector
-         LIMIT $2`,
-        vectorStr,
-        limit
-      )) as Row[]
-
-  return rows.map((row) => ({
-    sourceId: row.source_id,
-    chunkId: row.chunk_id,
-    chunkIndex: row.chunk_index,
-    title: row.title,
-    sectionTitle: row.section_title,
-    snippet: toSnippet(row.content),
-    score: Number(row.score),
-  }))
 }

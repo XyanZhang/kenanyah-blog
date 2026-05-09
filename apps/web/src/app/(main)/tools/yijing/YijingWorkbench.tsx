@@ -106,7 +106,7 @@ export function YijingWorkbench() {
               易经学习工作台
             </h1>
             <p className="mt-2 max-w-[68ch] text-sm leading-7 text-content-secondary">
-              把根目录的《易经》文本导入知识库，完成切分和向量化后，就可以检索原文，并跳转到专门的易经学习 Agent 继续交流。
+              把根目录的《易经》文本导入通用知识库，完成切分和向量化后，就可以按 domain=yijing 检索原文，并跳转到易经学习 Agent 继续交流。
             </p>
           </div>
 
@@ -145,7 +145,7 @@ export function YijingWorkbench() {
             <div>
               <h2 className="text-base font-semibold text-content-primary">资料源</h2>
               <p className="mt-1 text-xs text-content-secondary">
-                当前专用于易经学习 Agent。
+                专用学习入口，底层使用通用知识库。
               </p>
             </div>
             <span
@@ -167,7 +167,7 @@ export function YijingWorkbench() {
                 {primarySource?.title ?? '《易经》全文'}
               </div>
               <p className="mt-2 text-sm leading-6 text-content-secondary">
-                {primarySource?.description ?? '还没有导入。点击“导入并索引”读取项目根目录的 易经.txt。'}
+                {primarySource?.description ?? '还没有导入。点击“导入并索引”读取项目根目录的 易经.txt，并写入通用知识库。'}
               </p>
             </div>
 

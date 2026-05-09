@@ -117,7 +117,7 @@ export function ZiweiWorkbench() {
               紫微斗数学习工作台
             </h1>
             <p className="mt-2 max-w-[68ch] text-sm leading-7 text-content-secondary">
-              上传《紫微斗数全书》PDF 后，系统会按专用知识库流程完成文本抽取、chunk 切分和向量化索引，再供紫微斗数老师检索引用。
+              上传《紫微斗数全书》PDF 后，系统会写入通用知识库，完成文本抽取、chunk 切分和向量化索引，再按 domain=ziwei 供紫微斗数老师检索引用。
             </p>
           </div>
 
@@ -162,7 +162,7 @@ export function ZiweiWorkbench() {
           <div className="flex items-center justify-between gap-3">
             <div>
               <h2 className="text-base font-semibold text-content-primary">资料源</h2>
-              <p className="mt-1 text-xs text-content-secondary">当前专用于紫微斗数老师。</p>
+              <p className="mt-1 text-xs text-content-secondary">专用学习入口，底层使用通用知识库。</p>
             </div>
             <span
               className={[
@@ -181,7 +181,7 @@ export function ZiweiWorkbench() {
                 {primarySource?.title ?? '《紫微斗数全书》'}
               </div>
               <p className="mt-2 text-sm leading-6 text-content-secondary">
-                {primarySource?.description ?? '还没有上传。点击“上传并索引 PDF”后会自动写入紫微专用知识库。'}
+                {primarySource?.description ?? '还没有上传。点击“上传并索引 PDF”后会自动写入通用知识库。'}
               </p>
             </div>
 
@@ -206,7 +206,7 @@ export function ZiweiWorkbench() {
             ) : null}
 
             <div className="rounded-2xl border border-line-glass bg-surface-primary/55 p-4 text-sm leading-6 text-content-secondary">
-              这条链路复用 PDF Agent 的上传体验，但数据会进入紫微专用表，后续命理实验室可以按资料源调用。
+              这条链路复用 PDF Agent 的上传体验，但数据会进入统一 knowledge 表，后续命理实验室可以按 domain 和资料源调用。
             </div>
           </div>
         </aside>

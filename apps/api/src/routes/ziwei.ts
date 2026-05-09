@@ -9,9 +9,10 @@ import {
   parseZiweiPdfFile,
   searchZiweiKnowledge,
   upsertZiweiSourceAndChunks,
+  ZIWEI_DOMAIN,
   ZIWEI_SOURCE_ID,
 } from '../lib/ziwei-knowledge'
-import { prisma } from '../lib/db'
+import { listKnowledgeSources } from '../lib/knowledge-base'
 import { authMiddleware } from '../middleware/auth'
 import { env } from '../env'
 
@@ -71,27 +72,9 @@ async function importZiweiPdfFile(input: {
 }
 
 ziwei.get('/sources', async (c) => {
-  const sources = (await (prisma as any).$queryRawUnsafe(
-    `SELECT id, title, description, status,
-            chunk_count AS "chunkCount",
-            updated_at AS "updatedAt"
-     FROM ziwei_sources
-     ORDER BY updated_at DESC`
-  )) as Array<{
-    id: string
-    title: string
-    description: string | null
-    status: string
-    chunkCount: number
-    updatedAt: Date
-  }>
-
   return c.json({
     success: true,
-    data: sources.map((source) => ({
-      ...source,
-      updatedAt: source.updatedAt.toISOString(),
-    })),
+    data: await listKnowledgeSources({ domain: ZIWEI_DOMAIN }),
   })
 })
 
