@@ -1,15 +1,12 @@
 'use client'
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
-import {
-  MessageCircle,
-  ThumbsUp,
-  ThumbsDown,
-  HelpCircle,
-  Pencil,
-} from 'lucide-react'
+import { MessageCircle, ThumbsUp, ThumbsDown, HelpCircle, Pencil } from 'lucide-react'
+import Lightbox from 'yet-another-react-lightbox'
+import Zoom from 'yet-another-react-lightbox/plugins/zoom'
+import 'yet-another-react-lightbox/styles.css'
 import { cn } from '@/lib/utils'
 import type { ThoughtPostWithInteraction } from './types'
 
@@ -35,6 +32,8 @@ export function ThoughtCard({
   const [disliked, setDisliked] = useState(!!post.disliked)
   const [questioned, setQuestioned] = useState(!!post.questioned)
   const [likeCount, setLikeCount] = useState(post.likeCount)
+  const [previewIndex, setPreviewIndex] = useState(-1)
+  const slides = useMemo(() => post.images.map((src) => ({ src })), [post.images])
 
   const handleLike = () => {
     const next = !liked
@@ -75,134 +74,129 @@ export function ThoughtCard({
           : 'grid-cols-3'
 
   return (
-    <article className="rounded-2xl border border-line-glass/40 bg-card p-4 shadow-sm sm:p-5">
-      <div className="flex gap-3">
-        <div className="shrink-0">
-          <Image
-            src={post.avatar}
-            alt={post.authorName}
-            width={44}
-            height={44}
-            className="rounded-full object-cover h-11 w-11"
-          />
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex flex-col gap-2 text-content-secondary sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
-              <span className="font-medium text-content-primary truncate">
-                {post.authorName}
-              </span>
-              <span className="text-sm text-content-tertiary shrink-0">
-                {post.date}
-              </span>
-            </div>
-            {canEdit && (
-              <Link
-                href={`/thoughts/${post.id}/edit`}
-                className="inline-flex shrink-0 items-center gap-1 self-start text-sm text-content-tertiary transition-colors hover:text-accent-primary sm:self-auto"
-              >
-                <Pencil className="h-3.5 w-3.5" />
-                编辑
-              </Link>
-            )}
+    <>
+      <article className="rounded-2xl border border-line-glass/40 bg-card p-4 shadow-sm sm:p-5">
+        <div className="flex gap-3">
+          <div className="shrink-0">
+            <Image
+              src={post.avatar}
+              alt={post.authorName}
+              width={44}
+              height={44}
+              className="rounded-full object-cover h-11 w-11"
+            />
           </div>
-          {post.content && (
-            <p className="mt-1 font-blog text-content-primary text-[15px] leading-[1.75] tracking-[0.01em] whitespace-pre-wrap wrap-break-word">
-              {post.content}
-            </p>
-          )}
-          {post.images.length > 0 && (
-            <div
-              className={cn(
-                'grid gap-1 mt-3 rounded-lg overflow-hidden',
-                gridClass
-              )}
-            >
-              {post.images.map((src, i) => (
-                <div
-                  key={i}
-                  className={cn(
-                    'relative aspect-4/3 bg-muted',
-                    imageCount === 1 ? 'max-h-64' : ''
-                  )}
+          <div className="flex-1 min-w-0">
+            <div className="flex flex-col gap-2 text-content-secondary sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+                <span className="font-medium text-content-primary truncate">{post.authorName}</span>
+                <span className="text-sm text-content-tertiary shrink-0">{post.date}</span>
+              </div>
+              {canEdit && (
+                <Link
+                  href={`/thoughts/${post.id}/edit`}
+                  className="inline-flex shrink-0 items-center gap-1 self-start text-sm text-content-tertiary transition-colors hover:text-accent-primary sm:self-auto"
                 >
-                  <Image
-                    src={src}
-                    alt=""
-                    fill
-                    className="object-cover"
-                    sizes="(max-width: 640px) 100vw, 240px"
-                    unoptimized
-                  />
-                </div>
-              ))}
+                  <Pencil className="h-3.5 w-3.5" />
+                  编辑
+                </Link>
+              )}
             </div>
-          )}
-          <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-3 border-border pt-3">
-            <button
-              type="button"
-              onClick={() => onComment(post.id)}
-              className="flex items-center gap-1.5 text-content-tertiary hover:text-accent-primary transition-colors"
-              aria-label="评论"
-            >
-              <MessageCircle className="h-4 w-4" />
-              <span className="text-sm">
-                {post.commentCount > 0 ? post.commentCount : '评论'}
-              </span>
-            </button>
-            <button
-              type="button"
-              onClick={handleLike}
-              className={cn(
-                'flex items-center gap-1.5 transition-colors',
-                liked
-                  ? 'text-accent-primary'
-                  : 'text-content-tertiary hover:text-accent-primary'
-              )}
-              aria-label="点赞"
-            >
-              <ThumbsUp
-                className={cn('h-4 w-4', liked && 'fill-current')}
-              />
-              <span className="text-sm">
-                {likeCount > 0 ? likeCount : '点赞'}
-              </span>
-            </button>
-            <button
-              type="button"
-              onClick={handleDislike}
-              className={cn(
-                'flex items-center gap-1.5 transition-colors',
-                disliked
-                  ? 'text-red-500'
-                  : 'text-content-tertiary hover:text-red-500'
-              )}
-              aria-label="不喜欢"
-            >
-              <ThumbsDown
-                className={cn('h-4 w-4', disliked && 'fill-current')}
-              />
-              <span className="text-sm">不喜欢</span>
-            </button>
-            <button
-              type="button"
-              onClick={handleQuestion}
-              className={cn(
-                'flex items-center gap-1.5 transition-colors',
-                questioned
-                  ? 'text-amber-500'
-                  : 'text-content-tertiary hover:text-amber-500'
-              )}
-              aria-label="疑问"
-            >
-              <HelpCircle
-                className={cn('h-4 w-4', questioned && 'fill-current')}
-              />
-              <span className="text-sm">疑问</span>
-            </button>
+            {post.content && (
+              <p className="mt-1 font-blog text-content-primary text-[15px] leading-[1.75] tracking-[0.01em] whitespace-pre-wrap wrap-break-word">
+                {post.content}
+              </p>
+            )}
+            {post.images.length > 0 && (
+              <div className={cn('grid gap-1 mt-3 rounded-lg overflow-hidden', gridClass)}>
+                {post.images.map((src, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => setPreviewIndex(i)}
+                    className={cn(
+                      'relative block bg-muted text-left transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary',
+                      imageCount === 1 ? 'h-[min(37vh,16rem)]' : 'aspect-4/3'
+                    )}
+                  >
+                    <Image
+                      src={src}
+                      alt=""
+                      fill
+                      className="object-contain object-left"
+                      sizes="(max-width: 640px) 100vw, 240px"
+                      unoptimized
+                    />
+                  </button>
+                ))}
+              </div>
+            )}
+            <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-3 border-border pt-3">
+              <button
+                type="button"
+                onClick={() => onComment(post.id)}
+                className="flex items-center gap-1.5 text-content-tertiary hover:text-accent-primary transition-colors"
+                aria-label="评论"
+              >
+                <MessageCircle className="h-4 w-4" />
+                <span className="text-sm">
+                  {post.commentCount > 0 ? post.commentCount : '评论'}
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={handleLike}
+                className={cn(
+                  'flex items-center gap-1.5 transition-colors',
+                  liked ? 'text-accent-primary' : 'text-content-tertiary hover:text-accent-primary'
+                )}
+                aria-label="点赞"
+              >
+                <ThumbsUp className={cn('h-4 w-4', liked && 'fill-current')} />
+                <span className="text-sm">{likeCount > 0 ? likeCount : '点赞'}</span>
+              </button>
+              <button
+                type="button"
+                onClick={handleDislike}
+                className={cn(
+                  'flex items-center gap-1.5 transition-colors',
+                  disliked ? 'text-red-500' : 'text-content-tertiary hover:text-red-500'
+                )}
+                aria-label="不喜欢"
+              >
+                <ThumbsDown className={cn('h-4 w-4', disliked && 'fill-current')} />
+                <span className="text-sm">不喜欢</span>
+              </button>
+              <button
+                type="button"
+                onClick={handleQuestion}
+                className={cn(
+                  'flex items-center gap-1.5 transition-colors',
+                  questioned ? 'text-amber-500' : 'text-content-tertiary hover:text-amber-500'
+                )}
+                aria-label="疑问"
+              >
+                <HelpCircle className={cn('h-4 w-4', questioned && 'fill-current')} />
+                <span className="text-sm">疑问</span>
+              </button>
+            </div>
           </div>
         </div>
-      </div>
-    </article>
+      </article>
+      <Lightbox
+        open={previewIndex >= 0}
+        close={() => setPreviewIndex(-1)}
+        slides={slides}
+        index={previewIndex >= 0 ? previewIndex : 0}
+        plugins={[Zoom]}
+        controller={{ closeOnBackdropClick: true }}
+        styles={{
+          container: {
+            backgroundColor: 'rgba(10, 8, 6, 0.88)',
+            backdropFilter: 'blur(10px)',
+          },
+        }}
+      />
+    </>
   )
 }
