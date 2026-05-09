@@ -60,7 +60,7 @@ SELECT
   description,
   'text',
   status,
-  jsonb_build_object('legacyTable', 'yijing_sources'),
+  NULL,
   chunk_count,
   created_at,
   updated_at
@@ -83,7 +83,7 @@ SELECT
   chunk_index,
   title,
   content,
-  jsonb_strip_nulls(jsonb_build_object('hexagramName', hexagram_name, 'legacyTable', 'yijing_chunks')),
+  jsonb_strip_nulls(jsonb_build_object('hexagramName', hexagram_name)),
   created_at,
   updated_at
 FROM yijing_chunks
@@ -104,7 +104,7 @@ SELECT
   chunk_index,
   title,
   content,
-  jsonb_build_object('legacyTable', 'yijing_chunk_embeddings'),
+  NULL,
   embedding,
   created_at
 FROM yijing_chunk_embeddings
@@ -125,7 +125,7 @@ SELECT
   description,
   'pdf',
   status,
-  jsonb_build_object('legacyTable', 'ziwei_sources'),
+  NULL,
   chunk_count,
   created_at,
   updated_at
@@ -148,7 +148,7 @@ SELECT
   chunk_index,
   title,
   content,
-  jsonb_strip_nulls(jsonb_build_object('sectionTitle', section_title, 'legacyTable', 'ziwei_chunks')),
+  jsonb_strip_nulls(jsonb_build_object('sectionTitle', section_title)),
   created_at,
   updated_at
 FROM ziwei_chunks
@@ -169,7 +169,7 @@ SELECT
   chunk_index,
   title,
   content,
-  jsonb_strip_nulls(jsonb_build_object('sectionTitle', section_title, 'legacyTable', 'ziwei_chunk_embeddings')),
+  jsonb_strip_nulls(jsonb_build_object('sectionTitle', section_title)),
   embedding,
   created_at
 FROM ziwei_chunk_embeddings
