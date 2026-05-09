@@ -1,14 +1,27 @@
 'use client'
 
 import { useMemo, useState } from 'react'
+import { createPortal } from 'react-dom'
 import Image from 'next/image'
 import Link from 'next/link'
-import { MessageCircle, ThumbsUp, ThumbsDown, HelpCircle, Pencil } from 'lucide-react'
+import {
+  ChevronDown,
+  HelpCircle,
+  MessageCircle,
+  Pencil,
+  ThumbsDown,
+  ThumbsUp,
+  X,
+} from 'lucide-react'
 import Lightbox from 'yet-another-react-lightbox'
 import Zoom from 'yet-another-react-lightbox/plugins/zoom'
 import 'yet-another-react-lightbox/styles.css'
 import { cn } from '@/lib/utils'
 import type { ThoughtPostWithInteraction } from './types'
+
+const LONG_CONTENT_CHAR_LIMIT = 220
+const LONG_CONTENT_LINE_LIMIT = 6
+const COLLAPSED_CONTENT_HEIGHT = '6.6rem'
 
 interface ThoughtCardProps {
   post: ThoughtPostWithInteraction
@@ -33,7 +46,16 @@ export function ThoughtCard({
   const [questioned, setQuestioned] = useState(!!post.questioned)
   const [likeCount, setLikeCount] = useState(post.likeCount)
   const [previewIndex, setPreviewIndex] = useState(-1)
+  const [drawerOpen, setDrawerOpen] = useState(false)
   const slides = useMemo(() => post.images.map((src) => ({ src })), [post.images])
+  const contentLineCount = useMemo(
+    () => post.content.split(/\r\n|\r|\n/).length,
+    [post.content]
+  )
+  const isLongContent =
+    post.content.length > LONG_CONTENT_CHAR_LIMIT ||
+    contentLineCount > LONG_CONTENT_LINE_LIMIT
+  const contentId = `thought-preview-${post.id}`
 
   const handleLike = () => {
     const next = !liked
@@ -103,9 +125,34 @@ export function ThoughtCard({
               )}
             </div>
             {post.content && (
-              <p className="mt-1 font-blog text-content-primary text-[15px] leading-[1.75] tracking-[0.01em] whitespace-pre-wrap wrap-break-word">
-                {post.content}
-              </p>
+              <div className="mt-1">
+                <div
+                  id={contentId}
+                  className={cn(
+                    'relative overflow-hidden',
+                    isLongContent && 'after:pointer-events-none after:absolute after:inset-x-0 after:bottom-0 after:h-10 after:bg-gradient-to-b after:from-transparent after:to-card'
+                  )}
+                  style={{
+                    maxHeight:
+                      isLongContent ? COLLAPSED_CONTENT_HEIGHT : undefined,
+                  }}
+                >
+                  <p className="font-blog text-content-primary text-[15px] leading-[1.75] tracking-[0.01em] whitespace-pre-wrap wrap-break-word">
+                    {post.content}
+                  </p>
+                </div>
+                {isLongContent && (
+                  <button
+                    type="button"
+                    onClick={() => setDrawerOpen(true)}
+                    className="mt-2 inline-flex items-center gap-1.5 text-sm font-medium text-accent-primary transition-colors hover:text-accent-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary focus-visible:ring-offset-2"
+                    aria-haspopup="dialog"
+                  >
+                    <ChevronDown className="h-4 w-4" />
+                    查看详情
+                  </button>
+                )}
+              </div>
             )}
             {post.images.length > 0 && (
               <div className={cn('grid gap-1 mt-3 rounded-lg overflow-hidden', gridClass)}>
@@ -197,6 +244,96 @@ export function ThoughtCard({
           },
         }}
       />
+      {isLongContent && (
+        <ThoughtDetailDrawer
+          post={post}
+          open={drawerOpen}
+          onOpenChange={setDrawerOpen}
+        />
+      )}
     </>
+  )
+}
+
+interface ThoughtDetailDrawerProps {
+  post: ThoughtPostWithInteraction
+  open: boolean
+  onOpenChange: (open: boolean) => void
+}
+
+function ThoughtDetailDrawer({
+  post,
+  open,
+  onOpenChange,
+}: ThoughtDetailDrawerProps) {
+  const titleId = `thought-detail-title-${post.id}`
+
+  if (!open || typeof document === 'undefined') return null
+
+  const stopPropagation = (
+    event: React.MouseEvent | React.PointerEvent | React.KeyboardEvent
+  ) => {
+    event.stopPropagation()
+  }
+
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[120] flex justify-end"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby={titleId}
+      onKeyDown={(event) => {
+        if (event.key === 'Escape') onOpenChange(false)
+      }}
+    >
+      <button
+        type="button"
+        className="absolute inset-0 cursor-default bg-black/35 backdrop-blur-[2px]"
+        onClick={() => onOpenChange(false)}
+        aria-label="关闭思考详情"
+      />
+      <aside
+        className="relative z-[121] flex h-full w-full max-w-[min(92vw,34rem)] flex-col border-l border-line-glass/50 bg-surface-primary shadow-2xl"
+        onClick={stopPropagation}
+        onPointerDown={stopPropagation}
+        onPointerMove={stopPropagation}
+        onPointerUp={stopPropagation}
+        onKeyDown={stopPropagation}
+        onKeyUp={stopPropagation}
+      >
+        <div className="flex shrink-0 items-start justify-between gap-4 border-b border-line-glass/40 px-5 py-4 sm:px-6">
+          <div className="min-w-0">
+            <h2 id={titleId} className="text-base font-semibold text-content-primary">
+              思考详情
+            </h2>
+            <div className="mt-2 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-sm text-content-tertiary">
+              <Image
+                src={post.avatar}
+                alt={post.authorName}
+                width={24}
+                height={24}
+                className="h-6 w-6 rounded-full object-cover"
+              />
+              <span className="font-medium text-content-secondary">{post.authorName}</span>
+              <span>{post.date}</span>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => onOpenChange(false)}
+            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-content-tertiary transition-colors hover:bg-surface-hover hover:text-content-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary"
+            aria-label="关闭"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5 sm:px-6">
+          <p className="font-blog text-[15px] leading-[1.8] tracking-[0.01em] text-content-primary whitespace-pre-wrap wrap-break-word">
+            {post.content}
+          </p>
+        </div>
+      </aside>
+    </div>,
+    document.body
   )
 }
