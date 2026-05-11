@@ -1,6 +1,6 @@
 export type InnerNavMode = 'rail' | 'topbar' | 'immersive'
 
-const IMMERSIVE_ROUTE_PREFIXES = ['/ai-chat', '/works/pictures-3d'] as const
+const IMMERSIVE_ROUTE_PREFIXES = ['/workspace/ai-chat', '/ai-chat', '/works/pictures-3d'] as const
 
 export function getInnerNavMode(pathname: string): InnerNavMode {
   if (IMMERSIVE_ROUTE_PREFIXES.some((route) => pathname === route || pathname.startsWith(`${route}/`))) {
@@ -21,4 +21,3 @@ export const INNER_NAV_SAFE_AREAS = {
   immersiveTop: 28,
   immersiveLeft: 0,
 } as const
-

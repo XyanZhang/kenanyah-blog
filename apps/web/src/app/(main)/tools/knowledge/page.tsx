@@ -1,10 +1,5 @@
-import type { Metadata } from 'next'
-import { KnowledgeWorkbench } from './KnowledgeWorkbench'
+import { redirect } from 'next/navigation'
 
-export const metadata: Metadata = {
-  title: '知识库管理',
-}
-
-export default function KnowledgeToolPage() {
-  return <KnowledgeWorkbench />
+export default function LegacyKnowledgeToolPage() {
+  redirect('/workspace/knowledge')
 }

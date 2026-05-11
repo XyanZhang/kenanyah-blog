@@ -67,7 +67,7 @@ export function ThemeSwitcher() {
   const { extraActions } = useFloatingActions()
   const { isAuthenticated, authChecked } = useAuthSession()
   const pathname = usePathname()
-  const isAiChatPage = pathname === '/ai-chat'
+  const isAiChatPage = pathname === '/workspace/ai-chat' || pathname.startsWith('/workspace/ai-chat/')
   const ActiveColorModeIcon = colorModeIcons[colorModePreference]
   const presetThemesForAi = themes.map((theme) => ({
     id: theme.id,
@@ -192,7 +192,7 @@ export function ThemeSwitcher() {
       <Tooltip>
         <TooltipTrigger asChild>
           <Link
-            href={'/ai-chat' as Route}
+            href={'/workspace/ai-chat' as Route}
             className={`
               flex h-12 w-12 items-center justify-center rounded-full shadow-lg transition-all
               ${isAiChatPage

@@ -19,7 +19,7 @@ export function AiChatCard({ card }: AiChatCardProps) {
   const subtitle = config.subtitle ?? '和智能助手聊聊想法、写作灵感或技术问题。'
 
   const handleClick = useCallback(() => {
-    router.push('/ai-chat' as Route)
+    router.push('/workspace/ai-chat' as Route)
   }, [router])
 
   return (

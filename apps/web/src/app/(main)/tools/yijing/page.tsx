@@ -1,10 +1,5 @@
-import type { Metadata } from 'next'
-import { YijingWorkbench } from './YijingWorkbench'
+import { redirect } from 'next/navigation'
 
-export const metadata: Metadata = {
-  title: '易经学习',
-}
-
-export default function YijingToolPage() {
-  return <YijingWorkbench />
+export default function LegacyYijingToolPage() {
+  redirect('/workspace/yijing')
 }

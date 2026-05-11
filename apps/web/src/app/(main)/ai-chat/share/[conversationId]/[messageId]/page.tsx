@@ -55,7 +55,7 @@ export default async function AiChatSharePreviewPage({
             这条消息可能未开放分享，或者链接已经失效。
           </p>
           <Link
-            href={'/ai-chat' as Route}
+            href={'/workspace/ai-chat' as Route}
             className="mt-6 inline-flex items-center gap-2 rounded-2xl bg-accent-primary px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-accent-primary/90"
           >
             返回 AI 对话
@@ -65,7 +65,7 @@ export default async function AiChatSharePreviewPage({
     )
   }
 
-  const fullConversationHref = `/ai-chat/${encodeURIComponent(preview.conversation.id)}?message=${encodeURIComponent(preview.message.id)}`
+  const fullConversationHref = `/workspace/ai-chat/${encodeURIComponent(preview.conversation.id)}?message=${encodeURIComponent(preview.message.id)}`
 
   return (
     <main className="mx-auto flex min-h-[calc(100vh-4rem)] w-full max-w-5xl px-4 py-8 md:py-10">

@@ -636,7 +636,7 @@ export default function AiChatPageContent() {
     setWorkflowFollowupMode(false)
     setMobileSessionsOpen(false)
     startTransition(() => {
-      router.push('/ai-chat' as Route)
+      router.push('/workspace/ai-chat' as Route)
     })
   }
 
@@ -666,7 +666,7 @@ export default function AiChatPageContent() {
         setActiveConversation(null)
         setMessages([])
         startTransition(() => {
-          router.push('/ai-chat' as Route)
+          router.push('/workspace/ai-chat' as Route)
         })
       }
     } catch (err) {

@@ -90,7 +90,7 @@ export function YijingWorkbench() {
     const prompt = query.trim()
       ? `请用适合初学者的方式解释《易经》中和「${query.trim()}」相关的内容，并结合原文说明。`
       : '请带我学习《易经》的基础知识。'
-    return `/ai-chat?prompt=${encodeURIComponent(prompt)}` as Route
+    return `/workspace/ai-chat?prompt=${encodeURIComponent(prompt)}` as Route
   }, [query])
 
   return (

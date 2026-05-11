@@ -33,8 +33,8 @@ const domains: Array<{
   href?: Route
 }> = [
   { id: 'all', label: '全部资料', shortLabel: '全部', description: '跨门类查看与检索' },
-  { id: 'yijing', label: '易经', shortLabel: '易经', description: '卦辞、爻辞、经传', href: '/tools/yijing' },
-  { id: 'ziwei', label: '紫微斗数', shortLabel: '紫微', description: '星曜、宫位、四化', href: '/tools/ziwei' },
+  { id: 'yijing', label: '易经', shortLabel: '易经', description: '卦辞、爻辞、经传', href: '/workspace/yijing' },
+  { id: 'ziwei', label: '紫微斗数', shortLabel: '紫微', description: '星曜、宫位、四化', href: '/workspace/ziwei' },
   { id: 'bazi', label: '八字', shortLabel: '八字', description: '预留门类' },
   { id: 'qimen', label: '奇门', shortLabel: '奇门', description: '预留门类' },
   { id: 'liuren', label: '六壬', shortLabel: '六壬', description: '预留门类' },

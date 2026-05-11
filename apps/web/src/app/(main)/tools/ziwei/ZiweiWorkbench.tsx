@@ -101,7 +101,7 @@ export function ZiweiWorkbench() {
     const prompt = query.trim()
       ? `请以紫微斗数学习老师的身份，用适合初学者的方式解释「${query.trim()}」，并结合《紫微斗数全书》资料说明。`
       : '请带我学习紫微斗数的基础知识。'
-    return `/ai-chat?prompt=${encodeURIComponent(prompt)}` as Route
+    return `/workspace/ai-chat?prompt=${encodeURIComponent(prompt)}` as Route
   }, [query])
 
   return (

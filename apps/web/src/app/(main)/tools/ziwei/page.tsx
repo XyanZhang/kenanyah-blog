@@ -1,10 +1,5 @@
-import type { Metadata } from 'next'
-import { ZiweiWorkbench } from './ZiweiWorkbench'
+import { redirect } from 'next/navigation'
 
-export const metadata: Metadata = {
-  title: '紫微斗数学习',
-}
-
-export default function ZiweiToolPage() {
-  return <ZiweiWorkbench />
+export default function LegacyZiweiToolPage() {
+  redirect('/workspace/ziwei')
 }

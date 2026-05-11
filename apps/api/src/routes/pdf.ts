@@ -38,6 +38,8 @@ const pdf = new Hono<{ Variables: PdfVariables }>()
 
 const MAX_PDF_BYTES = 20 * 1024 * 1024
 
+pdf.use('*', authMiddleware)
+
 function sanitizeFilename(name: string): string {
   const base = path.basename(name)
   // 仅保留常见安全字符；其余替换为下划线，避免奇怪的路径/URL 问题
@@ -731,7 +733,7 @@ function stripMarkdownForExcerpt(md: string): string {
 }
 
 // POST /pdf/documents/:id/save-post (默认不触发 embedding，避免重复成本)
-pdf.post('/documents/:id/save-post', authMiddleware, async (c) => {
+pdf.post('/documents/:id/save-post', async (c) => {
   const startedAt = Date.now()
   const { id } = c.req.param()
   const doc = await prisma.pdfDocument.findUnique({ where: { id } })

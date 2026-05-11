@@ -470,7 +470,7 @@ export function CalendarDayView({ date }: { date: string }) {
                 回到今天
               </button>
               <Link
-                href={{ pathname: '/ai-chat', query: { quickDate: date } }}
+                href={{ pathname: '/workspace/ai-chat', query: { quickDate: date } }}
                 className="inline-flex h-10 items-center justify-center gap-2 rounded-full bg-accent-primary px-4 text-sm font-medium text-content-inverse shadow-[0_10px_24px_color-mix(in_srgb,var(--theme-accent-primary)_20%,transparent)] transition-colors hover:bg-[color-mix(in_srgb,var(--theme-accent-primary)_88%,black_12%)]"
               >
                 <Sparkles className="h-4 w-4" />
@@ -1042,7 +1042,7 @@ export function CalendarDayView({ date }: { date: string }) {
               <h2 className="text-lg font-semibold text-content-primary">常用入口</h2>
               <div className="mt-4 space-y-2">
                 <Link
-                  href={{ pathname: '/ai-chat', query: { quickDate: date } }}
+                  href={{ pathname: '/workspace/ai-chat', query: { quickDate: date } }}
                   className="inline-flex w-full items-center justify-between rounded-[1.15rem] border border-black/8 bg-white/78 px-4 py-3 text-sm font-medium text-content-primary transition-colors hover:bg-white"
                 >
                   <span>从 AI 入口补录今天</span>
