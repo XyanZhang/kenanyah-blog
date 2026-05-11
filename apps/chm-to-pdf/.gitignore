@@ -1,3 +1,7 @@
 dist/
 tmp/
 tsconfig.tsbuildinfo
+files/input/*
+files/output/*
+!files/input/.gitkeep
+!files/output/.gitkeep

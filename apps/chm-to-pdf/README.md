@@ -51,6 +51,22 @@ Edit this file and fill in your own file paths:
 apps/chm-to-pdf/scripts/convert-example.sh
 ```
 
+Put source CHM files in:
+
+把待转换的 CHM 文件放到：
+
+```text
+apps/chm-to-pdf/files/input/
+```
+
+Generated PDFs are written to:
+
+生成的 PDF 会输出到：
+
+```text
+apps/chm-to-pdf/files/output/
+```
+
 Then run from the repository root:
 
 然后在仓库根目录运行：
@@ -64,8 +80,8 @@ You usually only need to change:
 通常只需要修改：
 
 ```bash
-INPUT_CHM="./book.chm"
-OUTPUT_PDF="./book.pdf"
+INPUT_CHM="$PROJECT_DIR/files/input/book.chm"
+OUTPUT_PDF="$PROJECT_DIR/files/output/book.pdf"
 ```
 
 After building:

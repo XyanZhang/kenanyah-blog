@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
 # Fill these paths before running.
-INPUT_CHM="./《易经合集》（六壬预测类）.chm"
-OUTPUT_PDF="./《易经合集》（六壬预测类）.pdf"
+INPUT_CHM="$PROJECT_DIR/files/input/《易经合集》（八字预测类）.chm"
+OUTPUT_PDF="$PROJECT_DIR/files/output/《易经合集》（八字预测类）.pdf"
 
 # Optional settings.
 # Leave ENTRY_HTML empty to let the tool find the entry page automatically.
@@ -13,6 +15,8 @@ PDF_MARGIN="12mm"
 KEEP_TEMP="false"
 LANDSCAPE="false"
 SINGLE_PAGE="false"
+
+mkdir -p "$(dirname "$INPUT_CHM")" "$(dirname "$OUTPUT_PDF")"
 
 ARGS=("$INPUT_CHM" "-o" "$OUTPUT_PDF" "--format" "$PDF_FORMAT" "--margin" "$PDF_MARGIN")
 
