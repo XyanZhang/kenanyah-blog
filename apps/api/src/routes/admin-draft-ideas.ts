@@ -312,9 +312,9 @@ adminDraftIdeas.post('/from-source', validateBody(adminDraftIdeaSourceSchema), a
 
   if (body.sourceType === 'thought') {
     const thought = await prisma.thought.findUnique({ where: { id: body.sourceId } })
-    if (!thought) throw new NotFoundError('Thought not found')
+    if (!thought) throw new NotFoundError('Essay not found')
 
-    const title = thought.content.trim().split('\n').find(Boolean)?.slice(0, 80) || 'Untitled thought idea'
+    const title = thought.content.trim().split('\n').find(Boolean)?.slice(0, 80) || 'Untitled essay idea'
     const created = await prisma.draftIdea.create({
       data: {
         title,

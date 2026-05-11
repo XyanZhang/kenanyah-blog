@@ -214,8 +214,8 @@ const APP_SKILL_DEFINITIONS: ChatAppSkillDefinition[] = [
   },
   {
     id: 'thoughts_memory',
-    label: '思考记忆',
-    description: '记录、搜索和基于思考库回答。',
+    label: '随笔记忆',
+    description: '记录、搜索和基于随笔库回答。',
     route: 'tool',
     toolPolicy: {
       mode: 'business',

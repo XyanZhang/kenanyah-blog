@@ -97,7 +97,7 @@ function getHitMeta(hit: SemanticSearchHit) {
   if (hit.type === 'post') return { Icon: FileText, badgeText: '文章' }
   if (hit.type === 'conversation') return { Icon: Bot, badgeText: '对话' }
   if (hit.type === 'pdf') return { Icon: FileSearch, badgeText: 'PDF' }
-  if (hit.type === 'thought') return { Icon: Lightbulb, badgeText: '思考' }
+  if (hit.type === 'thought') return { Icon: Lightbulb, badgeText: '随笔' }
   if (hit.type === 'bookmark') return { Icon: Bookmark, badgeText: '收藏' }
   return { Icon: FolderOpen, badgeText: '项目' }
 }
@@ -251,7 +251,7 @@ export function GlobalSearch() {
                   type="text"
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
-                  placeholder="搜索文章、思考、收藏、PDF、项目或对话 / Search all content"
+                  placeholder="搜索文章、随笔、收藏、PDF、项目或对话 / Search all content"
                   className="relative w-full rounded-2xl border border-white/28 bg-white/18 py-4 pl-12 pr-12 text-[15px] text-content-primary shadow-[inset_0_1px_0_rgba(255,255,255,0.52),0_14px_34px_rgba(15,23,42,0.08)] outline-none backdrop-blur-xl transition-[border-color,background-color,box-shadow] duration-300 placeholder:text-content-tertiary focus:border-white/48 focus:bg-white/26 focus:shadow-[inset_0_1px_0_rgba(255,255,255,0.62),0_18px_44px_rgba(15,23,42,0.12)]"
                   aria-label="全局搜索 / Global Search"
                 />
@@ -279,7 +279,7 @@ export function GlobalSearch() {
             >
               {!searched && !loading ? (
                 <div className="rounded-2xl border border-dashed border-white/24 bg-white/14 p-5 text-sm leading-7 text-content-secondary shadow-[inset_0_1px_0_rgba(255,255,255,0.28)]">
-                  输入关键词后，会同时搜索文章、思考、收藏、PDF、项目和 AI 对话。
+                  输入关键词后，会同时搜索文章、随笔、收藏、PDF、项目和 AI 对话。
                   <br />
                   Type a keyword to search all content together.
                 </div>

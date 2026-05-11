@@ -37,7 +37,7 @@ const websiteProjects: Array<{
   {
     name: 'Writing & Archive',
     description:
-      '围绕博客、thoughts、bookmarks 和搜索建立的内容型网站结构，让记录和检索放在同一个系统里。',
+      '围绕博客、随笔、收藏和搜索建立的内容型网站结构，让记录和检索放在同一个系统里。',
     tags: ['Archive', 'Search', 'CMS'],
     href: '/blog',
     note: '重点不是单篇页面，而是长期积累后的可阅读性和可查找性。',

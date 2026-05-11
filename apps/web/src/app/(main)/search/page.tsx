@@ -92,7 +92,7 @@ function getHitMeta(hit: SemanticSearchHit) {
   if (hit.type === 'post') return { Icon: FileText, badgeText: '文章' }
   if (hit.type === 'conversation') return { Icon: Bot, badgeText: '对话' }
   if (hit.type === 'pdf') return { Icon: FileSearch, badgeText: 'PDF' }
-  if (hit.type === 'thought') return { Icon: Lightbulb, badgeText: '思考' }
+  if (hit.type === 'thought') return { Icon: Lightbulb, badgeText: '随笔' }
   if (hit.type === 'bookmark') return { Icon: Bookmark, badgeText: '收藏' }
   return { Icon: FolderOpen, badgeText: '项目' }
 }
@@ -149,7 +149,7 @@ export default function SearchPage() {
         <section className="rounded-[28px] border border-line-glass bg-surface-glass p-5 backdrop-blur-sm sm:p-6">
           <h1 className="mb-4 text-2xl font-semibold text-content-primary">语义搜索</h1>
           <p className="mb-6 text-sm leading-7 text-content-secondary">
-            输入关键词，同时搜索文章、思考、收藏、PDF、项目和 AI 对话。
+            输入关键词，同时搜索文章、随笔、收藏、PDF、项目和 AI 对话。
           </p>
 
           <div className="relative mb-8">

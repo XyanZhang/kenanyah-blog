@@ -22,7 +22,7 @@ export async function fetchThoughtsPage(
     .json<ApiResponse<ThoughtPost[]>>()
 
   if (!res.success || !res.data) {
-    throw new Error(res.error || '加载思考失败')
+    throw new Error(res.error || '加载随笔失败')
   }
   return res.data
 }
@@ -32,7 +32,7 @@ export async function fetchThoughtById(id: string): Promise<ThoughtRecord> {
     .get(`thoughts/${id}`)
     .json<ApiResponse<ThoughtRecord>>()
   if (!res.success || !res.data) {
-    throw new Error(res.error || '加载思考失败')
+    throw new Error(res.error || '加载随笔失败')
   }
   return res.data
 }
@@ -118,8 +118,7 @@ export async function searchThoughtsSemantic(
     .get('thoughts/semantic', { searchParams: { q, limit } })
     .json<ApiResponse<ThoughtSemanticHit[]>>()
   if (!res.success || !res.data) {
-    throw new Error(res.error || '思考语义搜索失败')
+    throw new Error(res.error || '随笔语义搜索失败')
   }
   return res.data
 }
-

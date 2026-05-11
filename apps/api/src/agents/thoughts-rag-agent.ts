@@ -25,7 +25,7 @@ export class ThoughtsRagAgent {
   buildIndexText(thought: { id: string; content: string; createdAt: Date }): string {
     const date = thought.createdAt.toISOString().slice(0, 10)
     const body = thought.content.slice(0, CHUNK_MAX_LEN)
-    return `类型：思考\n日期：${date}\n内容：${body}`
+    return `类型：随笔\n日期：${date}\n内容：${body}`
   }
 
   async indexThought(thoughtId: string): Promise<void> {
@@ -105,7 +105,7 @@ export class ThoughtsRagAgent {
         const snippet = t.content.slice(0, 180).replace(/\s+/g, ' ')
         return {
           thoughtId: r.thought_id,
-          title: `思考 · ${date}`,
+          title: `随笔 · ${date}`,
           snippet,
           score: Number(r.score),
         }
@@ -117,7 +117,7 @@ export class ThoughtsRagAgent {
   async answer(query: string, limit: number = 6): Promise<ThoughtRagAnswer> {
     const hits = await this.search(query, limit)
     if (hits.length === 0) {
-      return { answer: '我在思考库里没有检索到相关内容。', hits }
+      return { answer: '我在随笔库里没有检索到相关内容。', hits }
     }
 
     const context = hits
@@ -125,11 +125,10 @@ export class ThoughtsRagAgent {
       .join('\n\n')
 
     const systemPrompt =
-      '你是一个基于「思考库」做回答的中文助手。只使用给定的检索片段作答；若信息不足，直接说明不足，不要编造。输出简洁、可执行。'
+      '你是一个基于「随笔库」做回答的中文助手。只使用给定的检索片段作答；若信息不足，直接说明不足，不要编造。输出简洁、可执行。'
 
     const userPrompt = `用户问题：${query}\n\n检索片段：\n${context}\n\n请给出答案：`
     const answer = (await invokeChat(userPrompt, systemPrompt, { model: 'reasoning' })).trim()
     return { answer, hits }
   }
 }
-

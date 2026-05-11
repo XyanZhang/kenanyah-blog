@@ -102,7 +102,7 @@ function getSourceLabel(event: CalendarEventDto) {
     case 'post':
       return '博客'
     case 'thought':
-      return '想法'
+      return '随笔'
     case 'project':
       return '项目'
     case 'photo':

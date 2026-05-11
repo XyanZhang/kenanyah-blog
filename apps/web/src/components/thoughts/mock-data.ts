@@ -19,7 +19,7 @@ export function fetchThoughtsPage(page: number, pageSize: number): ThoughtPost[]
       avatar: AVATAR,
       authorName: '我',
       date: date.toISOString().slice(0, 10),
-      content: `这是第 ${idx + 1} 条思考。可以是一段文字，记录当下的想法、读书笔记或灵感。`,
+      content: `这是第 ${idx + 1} 条随笔。可以是一段文字，记录当下的想法、读书笔记或灵感。`,
       images:
         idx % 4 === 0
           ? []

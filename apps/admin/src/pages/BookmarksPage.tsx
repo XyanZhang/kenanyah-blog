@@ -237,7 +237,7 @@ export function BookmarksPage() {
       const result = await convertAdminBookmark(bookmark.id, target)
       setNotice(
         target === 'thought'
-          ? `Created thought ${result.data.id}`
+          ? `Created essay ${result.data.id}`
           : `Created draft post ${result.data.slug ?? result.data.id}`
       )
     } catch (err) {
@@ -493,7 +493,7 @@ export function BookmarksPage() {
                           disabled={busyId === bookmark.id}
                           onClick={() => void convertBookmark(bookmark, 'thought')}
                         >
-                          To thought
+                          To essay
                         </Button>
                         <Button
                           variant="ghost"

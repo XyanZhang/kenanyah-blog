@@ -467,17 +467,17 @@ function looksLikeBookmarkCreateRequest(latestUserMessage: string): boolean {
 
 function looksLikeThoughtCreateRequest(latestUserMessage: string): boolean {
   const text = normalizeMessageText(latestUserMessage)
-  return /(?:记一条想法|记录想法|保存想法|记到思考库|写一条思考)/.test(text)
+  return /(?:记一条想法|记录想法|保存想法|记到(?:思考库|随笔库)|写一条(?:思考|随笔))/.test(text)
 }
 
 function looksLikeThoughtSearchRequest(latestUserMessage: string): boolean {
   const text = normalizeMessageText(latestUserMessage)
-  return /(?:搜索|查找|回忆).*(?:思考|想法|灵感|思考库)/.test(text)
+  return /(?:搜索|查找|回忆).*(?:思考|随笔|想法|灵感|思考库|随笔库)/.test(text)
 }
 
 function looksLikeThoughtAnswerRequest(latestUserMessage: string): boolean {
   const text = normalizeMessageText(latestUserMessage)
-  return /(?:根据|基于).*(?:思考库|想法).*(?:回答|总结|分析)/.test(text)
+  return /(?:根据|基于).*(?:思考库|随笔库|想法|随笔).*(?:回答|总结|分析)/.test(text)
 }
 
 function looksLikeKnowledgeQaRequest(latestUserMessage: string): boolean {
@@ -519,11 +519,11 @@ function getIntentSummary(intent: ChatIntentName): string {
     get_post_detail: '查看文章详情',
     list_drafts: '查看草稿列表',
     create_calendar_event: '创建或规划日程安排',
-    create_thought: '记录思考',
+    create_thought: '记录随笔',
     create_bookmark: '保存收藏链接',
     list_bookmarks: '查看收藏列表',
-    search_thoughts: '搜索思考库',
-    answer_thoughts: '基于思考库回答问题',
+    search_thoughts: '搜索随笔库',
+    answer_thoughts: '基于随笔库回答问题',
   }
 
   return summaryMap[intent]
@@ -673,15 +673,15 @@ export function buildIntentCandidates(input: {
   }
 
   if (signals.matches.createThought) {
-    addCandidate(candidates, 'create_thought', 'rule', 0.82, '命中记录思考请求')
+    addCandidate(candidates, 'create_thought', 'rule', 0.82, '命中记录随笔请求')
   }
 
   if (signals.matches.searchThoughts) {
-    addCandidate(candidates, 'search_thoughts', 'rule', 0.8, '命中搜索思考库请求')
+    addCandidate(candidates, 'search_thoughts', 'rule', 0.8, '命中搜索随笔库请求')
   }
 
   if (signals.matches.answerThoughts) {
-    addCandidate(candidates, 'answer_thoughts', 'rule', 0.8, '命中基于思考库回答请求')
+    addCandidate(candidates, 'answer_thoughts', 'rule', 0.8, '命中基于随笔库回答请求')
   }
 
   if (input.useKnowledgeBase && signals.matches.knowledgeQa) {
@@ -1322,7 +1322,7 @@ function getFallbackBusinessToolCall(intent: ChatIntentRecognition, latestUserMe
     return {
       tool: 'create_thought',
       content: latestUserMessage.trim().slice(0, 20000),
-      reason: '用户要求记录一条思考',
+      reason: '用户要求记录一条随笔',
     }
   }
 
@@ -1353,7 +1353,7 @@ function getFallbackBusinessToolCall(intent: ChatIntentRecognition, latestUserMe
       tool: 'search_thoughts',
       query: latestUserMessage.trim().slice(0, 500),
       limit: 5,
-      reason: '用户要求搜索思考库',
+      reason: '用户要求搜索随笔库',
     }
   }
 
@@ -1362,7 +1362,7 @@ function getFallbackBusinessToolCall(intent: ChatIntentRecognition, latestUserMe
       tool: 'answer_thoughts',
       query: latestUserMessage.trim().slice(0, 500),
       limit: 5,
-      reason: '用户要求基于思考库回答问题',
+      reason: '用户要求基于随笔库回答问题',
     }
   }
 

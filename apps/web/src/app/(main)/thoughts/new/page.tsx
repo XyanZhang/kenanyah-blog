@@ -4,7 +4,7 @@ import { ChevronLeft } from 'lucide-react'
 import { ThoughtComposeForm } from '@/components/thoughts'
 
 export const metadata: Metadata = {
-  title: '写思考',
+  title: '写随笔',
   description: '记录一条想法',
 }
 
@@ -17,11 +17,11 @@ export default function NewThoughtPage() {
           className="mb-6 inline-flex items-center gap-1 text-sm text-content-tertiary hover:text-accent-primary"
         >
           <ChevronLeft className="h-4 w-4" />
-          返回思考流
+          返回随笔流
         </Link>
         <div className="mb-8 rounded-[28px] border border-line-primary bg-surface-glass p-5 backdrop-blur-sm sm:p-6">
           <h1 className="text-2xl font-semibold text-content-primary">
-            写一条思考
+            写一条随笔
           </h1>
         </div>
         <ThoughtComposeForm mode="create" />

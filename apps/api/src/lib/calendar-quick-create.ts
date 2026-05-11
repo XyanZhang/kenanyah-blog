@@ -43,7 +43,7 @@ export function extractTitle(rawText: string, sourceType: EventSourceType): stri
 
   const patterns: Array<[EventSourceType, RegExp]> = [
     ['post', /(?:写|发|发布|新建|创建)(?:一篇|篇)?(?:博客|文章|博文)?\s*(.+)/],
-    ['thought', /(?:记录|新增|写下|发布)(?:一条|个)?(?:想法|思考|念头)?\s*(.+)/],
+    ['thought', /(?:记录|新增|写下|发布)(?:一条|个)?(?:想法|思考|随笔|念头)?\s*(.+)/],
     ['project', /(?:创建|新建|启动|做)(?:一个|个)?(?:项目|作品)?\s*(.+)/],
     ['photo', /(?:新增|上传|记录)(?:一张|组)?(?:照片|图片|相片)?\s*(.+)/],
     ['manual', /(?:记录|安排|提醒|计划)\s*(.+)/],
@@ -55,7 +55,7 @@ export function extractTitle(rawText: string, sourceType: EventSourceType): stri
   const candidate = matched?.[1] ?? text
   const cleaned = candidate
     .replace(/^(一下|一条|一个|一篇)\s*/, '')
-    .replace(/^(博客|文章|想法|思考|项目|照片|事件)\s*/, '')
+    .replace(/^(博客|文章|想法|思考|随笔|项目|照片|事件)\s*/, '')
     .trim()
 
   return normalizeTitle(cleaned || rawText)
@@ -63,7 +63,7 @@ export function extractTitle(rawText: string, sourceType: EventSourceType): stri
 
 export function inferSourceType(rawText: string): EventSourceType {
   if (/(博客|文章|博文)/.test(rawText)) return 'post'
-  if (/(想法|思考|念头|灵感)/.test(rawText)) return 'thought'
+  if (/(想法|思考|随笔|念头|灵感)/.test(rawText)) return 'thought'
   if (/(项目|作品)/.test(rawText)) return 'project'
   if (/(照片|图片|相片|摄影)/.test(rawText)) return 'photo'
   return 'manual'

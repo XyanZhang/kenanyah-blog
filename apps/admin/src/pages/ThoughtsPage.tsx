@@ -90,7 +90,7 @@ export function ThoughtsPage() {
       setItems(result.data)
       setMeta(result.meta)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load thoughts')
+      setError(err instanceof Error ? err.message : 'Failed to load essays')
     }
   }
 
@@ -133,7 +133,7 @@ export function ThoughtsPage() {
       resetForm()
       await load()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save thought')
+      setError(err instanceof Error ? err.message : 'Failed to save essay')
     } finally {
       setIsSaving(false)
     }
@@ -148,7 +148,7 @@ export function ThoughtsPage() {
   }
 
   const removeThought = async (thought: AdminThoughtItem) => {
-    if (!window.confirm('Delete this thought?')) return
+    if (!window.confirm('Delete this essay?')) return
     await deleteAdminThought(thought.id)
     if (editingId === thought.id) {
       resetForm()
@@ -177,15 +177,15 @@ export function ThoughtsPage() {
     <>
       <div className="admin-sticky space-y-3">
         <PageHeader
-          eyebrow="Thoughts"
-          title="Manage ideas"
-          description="Create, edit, search, and remove short thought records."
+          eyebrow="Essays"
+          title="Manage essays"
+          description="Create, edit, search, and remove short essay records."
           actions={
             <div className="flex flex-wrap gap-2">
               <Button variant="ghost" onClick={() => void load()}>
                 Refresh
               </Button>
-              <Button onClick={openCreateForm}>New thought</Button>
+              <Button onClick={openCreateForm}>New essay</Button>
             </div>
           }
         />
@@ -204,9 +204,9 @@ export function ThoughtsPage() {
           <div className="admin-panel max-h-[calc(100vh-48px)] w-full max-w-2xl overflow-y-auto rounded-2xl p-5 shadow-2xl">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <p className="font-['IBM_Plex_Mono'] text-[11px] uppercase tracking-[0.12em] text-[var(--text-muted)]">Thought</p>
+                <p className="font-['IBM_Plex_Mono'] text-[11px] uppercase tracking-[0.12em] text-[var(--text-muted)]">Essay</p>
                 <h2 id="thought-form-title" className="mt-1 text-lg font-semibold text-[var(--text)]">
-                  {editingThought ? 'Edit thought' : 'New thought'}
+                  {editingThought ? 'Edit essay' : 'New essay'}
                 </h2>
               </div>
               <Button variant="ghost" onClick={resetForm}>
@@ -217,7 +217,7 @@ export function ThoughtsPage() {
             <div className="mt-5 space-y-3">
               <textarea
                 className="min-h-44 w-full resize-y rounded-xl border border-[var(--border)] bg-[var(--surface-strong)] px-3 py-2 text-sm text-[var(--text)] outline-none placeholder:text-[var(--text-muted)] focus:border-[var(--accent)]"
-                placeholder="Thought content"
+                placeholder="Essay content"
                 value={form.content}
                 onChange={(event) => setForm({ ...form, content: event.target.value })}
               />
@@ -238,7 +238,7 @@ export function ThoughtsPage() {
                 Cancel
               </Button>
               <Button disabled={isSaving} onClick={() => void saveThought()}>
-                {isSaving ? 'Saving...' : editingThought ? 'Update thought' : 'Create thought'}
+                {isSaving ? 'Saving...' : editingThought ? 'Update essay' : 'Create essay'}
               </Button>
             </div>
           </div>
@@ -246,10 +246,10 @@ export function ThoughtsPage() {
       ) : null}
 
       <div className="mb-4">
-        <SectionTable title={`Thoughts${meta ? ` · ${meta.total}` : ''}`}>
+        <SectionTable title={`Essays${meta ? ` · ${meta.total}` : ''}`}>
           {!items.length ? (
             <div className="p-5">
-              <EmptyState message="No thoughts match the current filters." />
+              <EmptyState message="No essays match the current filters." />
             </div>
           ) : (
             <table className="admin-table min-w-full text-left text-sm">

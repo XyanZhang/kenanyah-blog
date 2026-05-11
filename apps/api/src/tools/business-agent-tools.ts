@@ -881,7 +881,7 @@ function formatPlanningReferenceSource(hit: PlanningReferenceHit): string {
   }
 
   if (hit.type === 'thought') {
-    return `思考:${hit.thoughtId}`
+    return `随笔:${hit.thoughtId}`
   }
 
   if (hit.type === 'bookmark') {
@@ -1873,15 +1873,15 @@ async function executeCreateThoughtTool(
     return {
       tool: 'create_thought',
       status: 'need_more_info',
-      summary: '在记录这条思考之前，我还需要你提供具体内容。',
-      followupQuestions: ['你想记录的思考内容是什么？'],
+      summary: '在记录这条随笔之前，我还需要你提供具体内容。',
+      followupQuestions: ['你想记录的随笔内容是什么？'],
       assistantMessage: buildFollowupOperationCardMessage({
         scope: 'tool',
-        title: '记录思考前需要补充内容',
+        title: '记录随笔前需要补充内容',
         description: '请把你要保存的想法直接写下来。',
-        questions: ['你想记录的思考内容是什么？'],
+        questions: ['你想记录的随笔内容是什么？'],
         submitMode: 'chat',
-        submitLabel: '记录这条思考',
+        submitLabel: '记录这条随笔',
         inputPlaceholder: '例如：总控 Agent 应该把工具分流和多轮交互彻底解耦',
       }),
     }
@@ -1915,7 +1915,7 @@ async function executeCreateThoughtTool(
   return {
     tool: 'create_thought',
     status: 'created',
-    summary: `已记录一条思考。\n\n内容：${thought.content.slice(0, 120)}${thought.content.length > 120 ? '…' : ''}`,
+    summary: `已记录一条随笔。\n\n内容：${thought.content.slice(0, 120)}${thought.content.length > 120 ? '…' : ''}`,
     thought,
   }
 }
@@ -2400,13 +2400,13 @@ async function executeSearchThoughtsTool(
     return {
       tool: 'search_thoughts',
       status: 'need_more_info',
-      summary: '在搜索思考库之前，我还需要一个明确的关键词或问题。',
-      followupQuestions: ['你想在思考库里搜索什么内容？'],
+      summary: '在搜索随笔库之前，我还需要一个明确的关键词或问题。',
+      followupQuestions: ['你想在随笔库里搜索什么内容？'],
       assistantMessage: buildFollowupOperationCardMessage({
         scope: 'tool',
-        title: '搜索思考库前需要查询内容',
+        title: '搜索随笔库前需要查询内容',
         description: '请告诉我要检索的关键词、主题或问题。',
-        questions: ['你想在思考库里搜索什么内容？'],
+        questions: ['你想在随笔库里搜索什么内容？'],
         submitMode: 'chat',
         submitLabel: '开始搜索',
         inputPlaceholder: '例如：多 Agent 协调、工具分流、对话工作流',
@@ -2421,7 +2421,7 @@ async function executeSearchThoughtsTool(
     return {
       tool: 'search_thoughts',
       status: 'empty',
-      summary: `在思考库里没有找到和“${query}”相关的内容。`,
+      summary: `在随笔库里没有找到和“${query}”相关的内容。`,
     }
   }
 
@@ -2433,7 +2433,7 @@ async function executeSearchThoughtsTool(
   return {
     tool: 'search_thoughts',
     status: 'found',
-    summary: `在思考库中找到 ${hits.length} 条相关内容：\n\n${lines.join('\n\n')}`,
+    summary: `在随笔库中找到 ${hits.length} 条相关内容：\n\n${lines.join('\n\n')}`,
     hits,
   }
 }
@@ -2450,13 +2450,13 @@ async function executeAnswerThoughtsTool(
     return {
       tool: 'answer_thoughts',
       status: 'need_more_info',
-      summary: '在基于思考库回答之前，我还需要一个明确的问题。',
-      followupQuestions: ['你希望我基于思考库回答什么问题？'],
+      summary: '在基于随笔库回答之前，我还需要一个明确的问题。',
+      followupQuestions: ['你希望我基于随笔库回答什么问题？'],
       assistantMessage: buildFollowupOperationCardMessage({
         scope: 'tool',
-        title: '基于思考库回答前需要明确问题',
+        title: '基于随笔库回答前需要明确问题',
         description: '请直接写出你想让我回答的问题。',
-        questions: ['你希望我基于思考库回答什么问题？'],
+        questions: ['你希望我基于随笔库回答什么问题？'],
         submitMode: 'chat',
         submitLabel: '发送问题',
         inputPlaceholder: '例如：我之前关于总控 Agent 的设计思路是什么？',

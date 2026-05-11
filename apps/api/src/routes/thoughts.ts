@@ -190,7 +190,7 @@ thoughts.post('/rag', async (c) => {
   }
 })
 
-// POST /thoughts/images — 思考配图，存 uploads/thoughts/
+// POST /thoughts/images — 随笔配图，存 uploads/thoughts/
 thoughts.post(
   '/images',
   rateLimit({ windowMs: 60_000, max: 30, message: '上传过于频繁，请稍后再试' }),
@@ -267,7 +267,7 @@ thoughts.get('/:id', async (c) => {
     where: { id },
     include: { author: { select: { id: true, name: true, username: true, avatar: true } } },
   })
-  if (!thought) return c.json({ success: false, error: 'Thought not found' }, 404)
+  if (!thought) return c.json({ success: false, error: 'Essay not found' }, 404)
   return c.json({ success: true, data: thought })
 })
 
@@ -294,11 +294,11 @@ thoughts.patch('/:id', authMiddleware, async (c) => {
     where: { id },
     select: { id: true, authorId: true },
   })
-  if (!existing) return c.json({ success: false, error: 'Thought not found' }, 404)
+  if (!existing) return c.json({ success: false, error: 'Essay not found' }, 404)
 
   const { userId, role } = c.get('user')
   if (existing.authorId && existing.authorId !== userId && role !== 'ADMIN') {
-    return c.json({ success: false, error: 'You can only edit your own thoughts' }, 403)
+    return c.json({ success: false, error: 'You can only edit your own essays' }, 403)
   }
 
   const updated = await prisma.thought.update({
@@ -330,11 +330,11 @@ thoughts.delete('/:id', authMiddleware, async (c) => {
     where: { id },
     select: { id: true, authorId: true },
   })
-  if (!existing) return c.json({ success: false, error: 'Thought not found' }, 404)
+  if (!existing) return c.json({ success: false, error: 'Essay not found' }, 404)
 
   const { userId, role } = c.get('user')
   if (existing.authorId && existing.authorId !== userId && role !== 'ADMIN') {
-    return c.json({ success: false, error: 'You can only delete your own thoughts' }, 403)
+    return c.json({ success: false, error: 'You can only delete your own essays' }, 403)
   }
 
   await rag.removeThoughtFromIndex(id).catch((err) =>
@@ -345,7 +345,7 @@ thoughts.delete('/:id', authMiddleware, async (c) => {
   )
   await prisma.thought.delete({ where: { id } })
 
-  return c.json({ success: true, data: { message: 'Thought deleted successfully' } })
+  return c.json({ success: true, data: { message: 'Essay deleted successfully' } })
 })
 
 export default thoughts

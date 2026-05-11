@@ -406,7 +406,7 @@ async function searchThoughtSemanticByVector(
         type: 'thought' as const,
         thoughtId: r.thought_id,
         href: '/thoughts',
-        title: `思考 · ${date}`,
+        title: `随笔 · ${date}`,
         snippet: toSnippet(thought.content),
         score: Number(r.score),
       }

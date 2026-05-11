@@ -311,7 +311,7 @@ function ThoughtDetailDrawer({
           isVisible ? 'opacity-100' : 'opacity-0'
         )}
         onClick={() => onOpenChange(false)}
-        aria-label="关闭思考详情"
+        aria-label="关闭随笔详情"
       />
       <aside
         className={cn(
@@ -328,7 +328,7 @@ function ThoughtDetailDrawer({
         <div className="flex shrink-0 items-start justify-between gap-4 border-b border-line-glass/40 px-5 py-4 sm:px-6">
           <div className="min-w-0">
             <h2 id={titleId} className="text-base font-semibold text-content-primary">
-              思考详情
+              随笔详情
             </h2>
             <div className="mt-2 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-sm text-content-tertiary">
               <Image

@@ -43,7 +43,7 @@ function formatSourceLabel(hit: UnifiedSearchHit): string {
   }
 
   if (hit.type === 'thought') {
-    return `思考:${hit.thoughtId}`
+    return `随笔:${hit.thoughtId}`
   }
 
   if (hit.type === 'bookmark') {

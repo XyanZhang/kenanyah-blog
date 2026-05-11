@@ -27,7 +27,7 @@ const DEFAULT_NAV_ITEMS: NavItemConfig[] = [
   { id: 'projects', label: '项目', href: '/projects', icon: 'FolderOpen', visible: true, sortOrder: 5 },
   { id: 'tools', label: '工具', href: '/tools', icon: 'Wrench', visible: true, sortOrder: 6 },
   { id: 'works', label: '作品', href: '/works', icon: 'LayoutGrid', visible: true, sortOrder: 7 },
-  { id: 'thoughts', label: '思考', href: '/thoughts', icon: 'MessageCircle', visible: true, sortOrder: 8 },
+  { id: 'thoughts', label: '随笔', href: '/thoughts', icon: 'MessageCircle', visible: true, sortOrder: 8 },
   { id: 'bookmarks', label: '收藏', href: '/bookmarks', icon: 'Bookmark', visible: true, sortOrder: 9 },
 ]
 

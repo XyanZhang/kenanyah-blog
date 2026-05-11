@@ -47,10 +47,10 @@ export default function AboutPage() {
 
             <h2 className="mb-4 mt-8 text-lg font-semibold text-content-primary sm:text-xl">这里都在展示什么</h2>
             <ul className="list-disc space-y-2 pl-5 text-sm leading-7 text-content-secondary sm:text-base">
-              <li>技术文章：记录前端工程化、全栈开发、性能优化等方面的实践与思考。</li>
+              <li>技术文章：记录前端工程化、全栈开发、性能优化等方面的实践与心得。</li>
               <li>项目与作品：沉淀日常 side project、组件设计和交互体验上的探索。</li>
               <li>摄影与生活：用图片、文字和音乐，保留一些生活里的细节与情绪。</li>
-              <li>碎片化思考：不成文的想法、读书笔记与灵感片段，也会零散地更新在这里。</li>
+              <li>随笔：不成文的想法、读书笔记与灵感片段，也会零散地更新在这里。</li>
             </ul>
 
             <div className="mt-8 space-y-2 text-xs text-content-tertiary sm:text-sm">

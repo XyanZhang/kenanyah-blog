@@ -49,7 +49,7 @@ export async function saveImageFromUrl(
   return `${baseUrl}/uploads/${subdir}/${filename}`
 }
 
-/** 思考流配图：写入 uploads/thoughts/，与其他业务子目录区分 */
+/** 随笔流配图：写入 uploads/thoughts/，与其他业务子目录区分 */
 const THOUGHT_IMAGES_SUBDIR = 'thoughts'
 const PICTURE_IMAGES_SUBDIR = 'pictures'
 const MEDIA_IMAGES_SUBDIR = 'images'

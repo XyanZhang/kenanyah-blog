@@ -114,7 +114,7 @@ adminThoughts.patch('/:id', validateBody(adminThoughtUpdateSchema), async (c) =>
   const body = c.get('validatedBody') as AdminThoughtUpdateInput
   const existing = await prisma.thought.findUnique({ where: { id } })
   if (!existing) {
-    throw new NotFoundError('Thought not found')
+    throw new NotFoundError('Essay not found')
   }
 
   const updated = await prisma.thought.update({
@@ -146,7 +146,7 @@ adminThoughts.delete('/:id', async (c) => {
   const { id } = c.req.param()
   const existing = await prisma.thought.findUnique({ where: { id } })
   if (!existing) {
-    throw new NotFoundError('Thought not found')
+    throw new NotFoundError('Essay not found')
   }
 
   await rag.removeThoughtFromIndex(id).catch((err) => {
@@ -157,7 +157,7 @@ adminThoughts.delete('/:id', async (c) => {
   })
   await prisma.thought.delete({ where: { id } })
 
-  return c.json({ success: true, data: { message: 'Thought deleted' } })
+  return c.json({ success: true, data: { message: 'Essay deleted' } })
 })
 
 export default adminThoughts

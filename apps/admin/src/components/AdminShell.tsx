@@ -9,7 +9,7 @@ const items = [
   { to: '/posts', label: 'Posts' },
   { to: '/comments', label: 'Comments' },
   { to: '/bookmarks', label: 'Bookmarks' },
-  { to: '/thoughts', label: 'Thoughts' },
+  { to: '/thoughts', label: 'Essays' },
   { to: '/draft-ideas', label: 'Draft Ideas' },
   { to: '/projects', label: 'Projects' },
   { to: '/photos', label: 'Photos' },

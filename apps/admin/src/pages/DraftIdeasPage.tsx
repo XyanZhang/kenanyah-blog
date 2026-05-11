@@ -36,7 +36,7 @@ const statusOptions: Array<{ value: DraftIdeaStatus; label: string }> = [
 
 const sourceOptions: Array<{ value: DraftIdeaSourceType; label: string }> = [
   { value: 'manual', label: 'Manual' },
-  { value: 'thought', label: 'Thought' },
+  { value: 'thought', label: 'Essay' },
   { value: 'bookmark', label: 'Bookmark' },
   { value: 'pdf', label: 'PDF' },
   { value: 'chat', label: 'Chat' },

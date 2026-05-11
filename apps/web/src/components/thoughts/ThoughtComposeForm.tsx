@@ -112,7 +112,7 @@ export function ThoughtComposeForm(props: Props) {
     return (
       <div className="rounded-lg border border-line-secondary bg-card p-6 text-center space-y-3">
         <p className="text-content-secondary text-sm">
-          发布或编辑思考需要先登录。
+          发布或编辑随笔需要先登录。
         </p>
         <Link
           href="/login"

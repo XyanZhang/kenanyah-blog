@@ -5,8 +5,8 @@ import { ThoughtsFeed } from '@/components/thoughts'
 import { cn } from '@/lib/utils'
 
 export const metadata: Metadata = {
-  title: '思考',
-  description: '记录想法与灵感，类似朋友圈的思考流',
+  title: '随笔',
+  description: '记录想法与灵感，类似朋友圈的随笔流',
 }
 
 export default function ThoughtsPage() {
@@ -16,7 +16,7 @@ export default function ThoughtsPage() {
         <div className="mb-8 rounded-[28px] border border-line-primary bg-surface-glass p-5 backdrop-blur-sm sm:p-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <h1 className="text-2xl font-semibold text-content-primary">
-              思考
+              随笔
             </h1>
             <Link
               href="/thoughts/new"
