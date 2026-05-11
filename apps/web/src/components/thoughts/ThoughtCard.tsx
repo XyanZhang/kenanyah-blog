@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import Image from 'next/image'
 import Link from 'next/link'
@@ -244,13 +244,11 @@ export function ThoughtCard({
           },
         }}
       />
-      {isLongContent && (
-        <ThoughtDetailDrawer
-          post={post}
-          open={drawerOpen}
-          onOpenChange={setDrawerOpen}
-        />
-      )}
+      <ThoughtDetailDrawer
+        post={post}
+        open={isLongContent && drawerOpen}
+        onOpenChange={setDrawerOpen}
+      />
     </>
   )
 }
@@ -266,9 +264,29 @@ function ThoughtDetailDrawer({
   open,
   onOpenChange,
 }: ThoughtDetailDrawerProps) {
+  const [shouldRender, setShouldRender] = useState(open)
+  const [isVisible, setIsVisible] = useState(false)
   const titleId = `thought-detail-title-${post.id}`
 
-  if (!open || typeof document === 'undefined') return null
+  useEffect(() => {
+    if (open) {
+      setShouldRender(true)
+      let secondFrame = 0
+      const firstFrame = requestAnimationFrame(() => {
+        secondFrame = requestAnimationFrame(() => setIsVisible(true))
+      })
+      return () => {
+        cancelAnimationFrame(firstFrame)
+        cancelAnimationFrame(secondFrame)
+      }
+    }
+
+    setIsVisible(false)
+    const timeout = window.setTimeout(() => setShouldRender(false), 220)
+    return () => window.clearTimeout(timeout)
+  }, [open])
+
+  if (!shouldRender || typeof document === 'undefined') return null
 
   const stopPropagation = (
     event: React.MouseEvent | React.PointerEvent | React.KeyboardEvent
@@ -288,12 +306,18 @@ function ThoughtDetailDrawer({
     >
       <button
         type="button"
-        className="absolute inset-0 cursor-default bg-black/35 backdrop-blur-[2px]"
+        className={cn(
+          'absolute inset-0 cursor-default bg-black/35 backdrop-blur-[2px] transition-opacity duration-200 ease-out',
+          isVisible ? 'opacity-100' : 'opacity-0'
+        )}
         onClick={() => onOpenChange(false)}
         aria-label="关闭思考详情"
       />
       <aside
-        className="relative z-[121] flex h-full w-full max-w-[min(92vw,34rem)] flex-col border-l border-line-glass/50 bg-surface-primary shadow-2xl"
+        className={cn(
+          'relative z-[121] flex h-full w-full max-w-[min(92vw,34rem)] flex-col border-l border-line-glass/50 bg-surface-primary shadow-2xl transition-transform duration-300 ease-out will-change-transform',
+          isVisible ? 'translate-x-0' : 'translate-x-full'
+        )}
         onClick={stopPropagation}
         onPointerDown={stopPropagation}
         onPointerMove={stopPropagation}
