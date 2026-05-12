@@ -1,0 +1,42 @@
+{
+  "name": "collab-editor",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node scripts/dev.mjs",
+    "dev:client": "vite --host 0.0.0.0 --port ${COLLAB_EDITOR_PORT:-3013}",
+    "dev:server": "tsx watch server/index.ts",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview --host 0.0.0.0 --port ${COLLAB_EDITOR_PORT:-3013}",
+    "type-check": "tsc --noEmit",
+    "clean": "rm -rf dist node_modules"
+  },
+  "dependencies": {
+    "@blocknote/core": "^0.50.0",
+    "@blocknote/mantine": "^0.50.0",
+    "@blocknote/react": "^0.50.0",
+    "@hocuspocus/provider": "^4.0.0",
+    "@hocuspocus/server": "^4.0.0",
+    "@mantine/core": "^8.3.11",
+    "@mantine/hooks": "^8.3.11",
+    "@tiptap/pm": "^3.13.0",
+    "clsx": "^2.1.1",
+    "lucide-react": "^0.563.0",
+    "pg": "^8.13.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "y-protocols": "^1.0.6",
+    "yjs": "^13.6.27"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.4",
+    "@types/node": "^22.10.5",
+    "@types/pg": "^8.11.10",
+    "@types/react": "^19.0.4",
+    "@types/react-dom": "^19.0.2",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2",
+    "vite": "^5.4.21"
+  }
+}

@@ -107,6 +107,34 @@ model AdminUser {
   @@map("admin_users")
 }
 
+model CollaborativeDocument {
+  id           String                      @id @default(cuid())
+  slug         String                      @unique
+  title        String
+  ownerId      String?
+  summary      String?
+  snapshotJson String?                     @db.Text
+  lastEditedAt DateTime?
+  createdAt    DateTime                    @default(now())
+  updatedAt    DateTime                    @updatedAt
+  state        CollaborativeDocumentState?
+
+  @@index([ownerId])
+  @@index([lastEditedAt])
+  @@map("collaborative_documents")
+}
+
+model CollaborativeDocumentState {
+  documentId String                @id
+  ydoc       Bytes
+  version    Int                   @default(1)
+  createdAt  DateTime              @default(now())
+  updatedAt  DateTime              @updatedAt
+  document   CollaborativeDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@map("collaborative_document_states")
+}
+
 model VerificationCode {
   id        String                @id @default(cuid())
   email     String
