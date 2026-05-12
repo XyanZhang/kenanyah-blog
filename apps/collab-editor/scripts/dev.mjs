@@ -39,6 +39,7 @@ const runtimeEnv = {
   COLLAB_EDITOR_PORT,
   VITE_COLLAB_API_URL: env.VITE_COLLAB_API_URL || `http://localhost:${COLLAB_PORT}`,
   VITE_COLLAB_WS_URL: env.VITE_COLLAB_WS_URL || `ws://localhost:${COLLAB_PORT}`,
+  VITE_BLOG_API_URL: env.VITE_BLOG_API_URL || env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api',
 }
 
 const children = [

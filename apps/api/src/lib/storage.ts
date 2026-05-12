@@ -53,6 +53,7 @@ export async function saveImageFromUrl(
 const THOUGHT_IMAGES_SUBDIR = 'thoughts'
 const PICTURE_IMAGES_SUBDIR = 'pictures'
 const MEDIA_IMAGES_SUBDIR = 'images'
+const COLLAB_IMAGES_SUBDIR = 'collab-documents/images'
 
 export type SavedImageVariant = {
   url: string
@@ -184,6 +185,22 @@ export async function savePictureImageBuffer(
   await fs.writeFile(filePath, buffer)
   const baseUrl = getUploadBaseUrl().replace(/\/$/, '')
   return `${baseUrl}/uploads/${PICTURE_IMAGES_SUBDIR}/${filename}`
+}
+
+export async function saveCollabImageBuffer(
+  buffer: Buffer,
+  ext: string
+): Promise<string> {
+  const safeExt = normalizeImageExt(ext)
+  const [year, month] = datePathParts()
+  const filename = `${randomUUID()}${safeExt}`
+  const folder = path.join(COLLAB_IMAGES_SUBDIR, year, month)
+  const dir = path.join(getUploadDir(), folder)
+  await fs.mkdir(dir, { recursive: true })
+  await fs.writeFile(path.join(dir, filename), buffer)
+
+  const baseUrl = getUploadBaseUrl().replace(/\/$/, '')
+  return `${baseUrl}/uploads/${COLLAB_IMAGES_SUBDIR}/${year}/${month}/${filename}`
 }
 
 export async function saveMediaImageSet(buffer: Buffer, ext: string): Promise<SavedImageSet> {

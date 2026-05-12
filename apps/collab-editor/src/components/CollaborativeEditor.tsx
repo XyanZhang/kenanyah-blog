@@ -2,12 +2,22 @@ import '@blocknote/core/fonts/inter.css'
 import '@blocknote/mantine/style.css'
 
 import { BlockNoteView } from '@blocknote/mantine'
-import { useCreateBlockNote } from '@blocknote/react'
+import {
+  FormattingToolbarController,
+  SideMenu,
+  SideMenuController,
+  type SideMenuProps,
+  useCreateBlockNote,
+} from '@blocknote/react'
 import { HocuspocusProvider } from '@hocuspocus/provider'
 import { Pin, PinOff } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import * as Y from 'yjs'
+import { AiFormattingToolbar, AiSlashMenu } from './AiFormattingToolbar'
+import { BlockFormatMenu } from './BlockFormatMenu'
+import { handleCodeAwarePaste } from '../lib/code-paste'
 import { collabWsUrl } from '../lib/env'
+import { uploadEditorFile } from '../lib/file-upload'
 import { getLocalUser } from '../lib/user-presence'
 import { useOnlineUsers } from '../hooks/useOnlineUsers'
 import type { ConnectionStatus, CollaborativeDocumentSummary } from '../types'
@@ -84,6 +94,8 @@ export function CollaborativeEditor({ document, onRename, onPresenceChange }: Co
         user,
         showCursorLabels: 'activity',
       },
+      pasteHandler: handleCodeAwarePaste,
+      uploadFile: uploadEditorFile,
     },
     [collaboration, user]
   )
@@ -106,11 +118,19 @@ export function CollaborativeEditor({ document, onRename, onPresenceChange }: Co
           onTogglePinned={() => setIsOutlinePinned((value) => !value)}
         />
         <div className="editor-surface">
-          <BlockNoteView editor={editor} theme="light" />
+          <BlockNoteView editor={editor} formattingToolbar={false} theme="light">
+            <FormattingToolbarController formattingToolbar={AiFormattingToolbar} />
+            <SideMenuController sideMenu={(props) => <DefaultSideMenuWithFormatMenu {...props} />} />
+            <AiSlashMenu />
+          </BlockNoteView>
         </div>
       </div>
     </section>
   )
+}
+
+function DefaultSideMenuWithFormatMenu({ dragHandleMenu }: SideMenuProps) {
+  return <SideMenu dragHandleMenu={dragHandleMenu ?? BlockFormatMenu} />
 }
 
 function DocumentOutline({

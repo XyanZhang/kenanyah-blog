@@ -34,6 +34,7 @@ import divination from './routes/divination'
 import yijing from './routes/yijing'
 import ziwei from './routes/ziwei'
 import knowledge from './routes/knowledge'
+import collab from './routes/collab'
 
 // 根应用：/uploads 在根路径（图片等静态资源无需 /api 前缀），/api 下为接口
 const root = new Hono()
@@ -87,6 +88,7 @@ app.get('/', (c) => {
         voice: '/voice',
         projects: '/projects',
         divination: '/divination',
+        collab: '/collab',
         knowledge: '/knowledge',
         yijing: '/yijing',
         ziwei: '/ziwei',
@@ -116,6 +118,7 @@ app.route('/blog-workflow', blogWorkflow)
 app.route('/voice', voice)
 app.route('/projects', projects)
 app.route('/divination', divination)
+app.route('/collab', collab)
 app.route('/knowledge', knowledge)
 app.route('/yijing', yijing)
 app.route('/ziwei', ziwei)
