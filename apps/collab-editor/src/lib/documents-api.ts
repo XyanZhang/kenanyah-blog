@@ -1,14 +1,22 @@
 import { collabApiUrl } from './env'
-import type { ApiResponse, CollaborativeDocumentSummary } from '../types'
+import type {
+  ApiResponse,
+  CollaborativeDocumentFolder,
+  CollaborativeDocumentSummary,
+} from '../types'
 
 export async function fetchDocuments() {
   return request<CollaborativeDocumentSummary[]>('/documents')
 }
 
-export async function createDocument(title: string) {
+export async function fetchFolders() {
+  return request<CollaborativeDocumentFolder[]>('/folders')
+}
+
+export async function createDocument(title: string, folderPath = '') {
   return request<CollaborativeDocumentSummary>('/documents', {
     method: 'POST',
-    body: JSON.stringify({ title }),
+    body: JSON.stringify({ title, folderPath }),
   })
 }
 
@@ -16,6 +24,33 @@ export async function renameDocument(documentId: string, title: string) {
   return request<CollaborativeDocumentSummary>(`/documents/${encodeURIComponent(documentId)}`, {
     method: 'PATCH',
     body: JSON.stringify({ title }),
+  })
+}
+
+export async function moveDocument(documentId: string, folderPath: string) {
+  return request<CollaborativeDocumentSummary>(`/documents/${encodeURIComponent(documentId)}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ folderPath }),
+  })
+}
+
+export async function createFolder(path: string) {
+  return request<CollaborativeDocumentFolder>('/folders', {
+    method: 'POST',
+    body: JSON.stringify({ path }),
+  })
+}
+
+export async function deleteFolder(path: string) {
+  return request<{ message: string }>(`/folders?path=${encodeURIComponent(path)}`, {
+    method: 'DELETE',
+  })
+}
+
+export async function renameFolder(path: string, name: string) {
+  return request<CollaborativeDocumentFolder>(`/folders?path=${encodeURIComponent(path)}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ name }),
   })
 }
 

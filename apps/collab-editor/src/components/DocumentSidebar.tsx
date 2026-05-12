@@ -1,24 +1,34 @@
-import { FileText, Plus, RefreshCw } from 'lucide-react'
-import clsx from 'clsx'
-import type { CollaborativeDocumentSummary } from '../types'
+import { FolderPlus, Plus, RefreshCw } from 'lucide-react'
+import { DocumentTree } from './DocumentTree'
+import type { CollaborativeDocumentFolder, CollaborativeDocumentSummary } from '../types'
 
 type DocumentSidebarProps = {
   documents: CollaborativeDocumentSummary[]
+  folders: CollaborativeDocumentFolder[]
   activeDocumentId: string | null
   isLoading: boolean
   error: string | null
   onSelectDocument: (documentId: string) => void
-  onCreateDocument: () => void
+  onCreateDocument: (folderPath?: string) => void
+  onCreateFolder: (parentPath?: string) => void
+  onDeleteFolder: (folderPath: string) => void
+  onRenameFolder: (folderPath: string, currentName: string) => void
+  onMoveDocument: (documentId: string, folderPath: string) => void
   onReload: () => void
 }
 
 export function DocumentSidebar({
   documents,
+  folders,
   activeDocumentId,
   isLoading,
   error,
   onSelectDocument,
   onCreateDocument,
+  onCreateFolder,
+  onDeleteFolder,
+  onRenameFolder,
+  onMoveDocument,
   onReload,
 }: DocumentSidebarProps) {
   return (
@@ -33,10 +43,16 @@ export function DocumentSidebar({
         </button>
       </div>
 
-      <button className="new-document-button" type="button" onClick={onCreateDocument}>
-        <Plus size={17} />
-        新建文档
-      </button>
+      <div className="sidebar-actions">
+        <button className="new-document-button" type="button" onClick={() => onCreateDocument('')}>
+          <Plus size={17} />
+          新建文档
+        </button>
+        <button className="new-folder-button" type="button" onClick={() => onCreateFolder('')}>
+          <FolderPlus size={16} />
+          新建文件夹
+        </button>
+      </div>
 
       <div className="document-list" aria-live="polite">
         {isLoading ? <p className="sidebar-message">正在整理文档...</p> : null}
@@ -45,34 +61,20 @@ export function DocumentSidebar({
           <p className="sidebar-message">还没有协同文档。</p>
         ) : null}
 
-        {documents.map((document) => (
-          <button
-            className={clsx('document-item', document.id === activeDocumentId && 'active')}
-            key={document.id}
-            type="button"
-            onClick={() => onSelectDocument(document.id)}
-          >
-            <span className="document-icon">
-              <FileText size={16} />
-            </span>
-            <span>
-              <strong>{document.title}</strong>
-              <small>
-                {document.summary ?? '多人实时编辑'} · {formatUpdatedAt(document.lastEditedAt ?? document.updatedAt)}
-              </small>
-            </span>
-          </button>
-        ))}
+        {!isLoading && !error ? (
+          <DocumentTree
+            documents={documents}
+            folders={folders}
+            activeDocumentId={activeDocumentId}
+            onSelectDocument={onSelectDocument}
+            onCreateDocument={onCreateDocument}
+            onCreateFolder={onCreateFolder}
+            onDeleteFolder={onDeleteFolder}
+            onRenameFolder={onRenameFolder}
+            onMoveDocument={onMoveDocument}
+          />
+        ) : null}
       </div>
     </aside>
   )
-}
-
-function formatUpdatedAt(value: string) {
-  return new Intl.DateTimeFormat('zh-CN', {
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-  }).format(new Date(value))
 }

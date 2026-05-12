@@ -111,6 +111,7 @@ model CollaborativeDocument {
   id           String                      @id @default(cuid())
   slug         String                      @unique
   title        String
+  folderPath   String                      @default("") @map("folderPath")
   ownerId      String?
   summary      String?
   snapshotJson String?                     @db.Text
@@ -120,8 +121,21 @@ model CollaborativeDocument {
   state        CollaborativeDocumentState?
 
   @@index([ownerId])
+  @@index([folderPath])
   @@index([lastEditedAt])
   @@map("collaborative_documents")
+}
+
+model CollaborativeDocumentFolder {
+  id         String   @id @default(cuid())
+  path       String   @unique
+  name       String
+  parentPath String   @default("") @map("parentPath")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([parentPath])
+  @@map("collaborative_document_folders")
 }
 
 model CollaborativeDocumentState {

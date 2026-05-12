@@ -13,6 +13,7 @@ export function App() {
   const [onlineUsers, setOnlineUsers] = useState<OnlineUser[]>([])
   const {
     documents,
+    folders,
     activeDocument,
     activeDocumentId,
     isLoading,
@@ -20,19 +21,54 @@ export function App() {
     setActiveDocumentId,
     createDocument,
     renameDocument,
+    moveDocument,
+    createFolder,
+    deleteFolder,
+    renameFolder,
     reloadDocuments,
   } = useDocuments()
 
-  const handleCreateDocument = async () => {
+  const handleCreateDocument = async (folderPath = '') => {
     const title = window.prompt('新文档标题', '未命名协同文档')
     if (!title) return
-    await createDocument(title)
+    await createDocument(title, folderPath)
+  }
+
+  const handleCreateFolder = async (parentPath = '') => {
+    const name = window.prompt('新文件夹名称', '新文件夹')
+    if (!name) return
+    const folderPath = [parentPath, name].filter(Boolean).join('/')
+    await createFolder(folderPath)
+  }
+
+  const handleDeleteFolder = async (folderPath: string) => {
+    const ok = window.confirm(`确认删除文件夹「${folderPath}」？只能删除空文件夹。`)
+    if (!ok) return
+    await deleteFolder(folderPath)
+  }
+
+  const handleRenameFolder = async (folderPath: string, currentName: string) => {
+    const name = window.prompt('重命名文件夹', currentName)
+    if (!name || name === currentName) return
+    await renameFolder(folderPath, name)
   }
 
   useEffect(() => {
     setConnectionStatus(activeDocument ? 'connecting' : 'disconnected')
     setOnlineUsers([])
   }, [activeDocument?.id])
+
+  useEffect(() => {
+    const documentId = new URLSearchParams(window.location.search).get('documentId')
+    if (documentId) setActiveDocumentId(documentId)
+  }, [setActiveDocumentId])
+
+  useEffect(() => {
+    const url = new URL(window.location.href)
+    if (activeDocumentId) url.searchParams.set('documentId', activeDocumentId)
+    else url.searchParams.delete('documentId')
+    window.history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`)
+  }, [activeDocumentId])
 
   return (
     <main className="app-shell">
@@ -59,11 +95,16 @@ export function App() {
         {isSidebarCollapsed ? null : (
           <DocumentSidebar
             documents={documents}
+            folders={folders}
             activeDocumentId={activeDocumentId}
             isLoading={isLoading}
             error={error}
             onSelectDocument={setActiveDocumentId}
             onCreateDocument={handleCreateDocument}
+            onCreateFolder={handleCreateFolder}
+            onDeleteFolder={handleDeleteFolder}
+            onRenameFolder={handleRenameFolder}
+            onMoveDocument={moveDocument}
             onReload={reloadDocuments}
           />
         )}
