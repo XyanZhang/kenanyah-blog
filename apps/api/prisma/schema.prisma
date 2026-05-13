@@ -115,6 +115,9 @@ model CollaborativeDocument {
   ownerId      String?
   summary      String?
   snapshotJson String?                     @db.Text
+  passwordHash String?
+  isShareable  Boolean                     @default(false)
+  shareId      String?                     @unique
   lastEditedAt DateTime?
   createdAt    DateTime                    @default(now())
   updatedAt    DateTime                    @updatedAt
@@ -131,9 +134,11 @@ model CollaborativeDocumentFolder {
   path       String   @unique
   name       String
   parentPath String   @default("") @map("parentPath")
+  ownerId    String?
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
+  @@index([ownerId])
   @@index([parentPath])
   @@map("collaborative_document_folders")
 }

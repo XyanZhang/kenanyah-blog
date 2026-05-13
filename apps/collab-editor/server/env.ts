@@ -14,4 +14,9 @@ export const env = {
   port,
   databaseUrl,
   corsOrigin: process.env.COLLAB_CORS_ORIGIN || process.env.VITE_COLLAB_APP_ORIGIN || `http://localhost:${port + 1}`,
+  accessTokenSecret:
+    process.env.COLLAB_ACCESS_TOKEN_SECRET ||
+    process.env.AUTH_SECRET ||
+    process.env.JWT_SECRET ||
+    'collab-editor-local-access-secret',
 }

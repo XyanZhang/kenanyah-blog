@@ -9,6 +9,10 @@ type DocumentSidebarProps = {
   isLoading: boolean
   error: string | null
   onSelectDocument: (documentId: string) => void
+  onCopyShareLink: (document: CollaborativeDocumentSummary) => void
+  onToggleShare: (document: CollaborativeDocumentSummary) => void
+  onSetPassword: (document: CollaborativeDocumentSummary) => void
+  onRemovePassword: (document: CollaborativeDocumentSummary) => void
   onCreateDocument: (folderPath?: string) => void
   onCreateFolder: (parentPath?: string) => void
   onDeleteFolder: (folderPath: string) => void
@@ -24,6 +28,10 @@ export function DocumentSidebar({
   isLoading,
   error,
   onSelectDocument,
+  onCopyShareLink,
+  onToggleShare,
+  onSetPassword,
+  onRemovePassword,
   onCreateDocument,
   onCreateFolder,
   onDeleteFolder,
@@ -67,6 +75,10 @@ export function DocumentSidebar({
             folders={folders}
             activeDocumentId={activeDocumentId}
             onSelectDocument={onSelectDocument}
+            onCopyShareLink={onCopyShareLink}
+            onToggleShare={onToggleShare}
+            onSetPassword={onSetPassword}
+            onRemovePassword={onRemovePassword}
             onCreateDocument={onCreateDocument}
             onCreateFolder={onCreateFolder}
             onDeleteFolder={onDeleteFolder}

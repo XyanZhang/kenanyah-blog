@@ -4,6 +4,9 @@ export type CollaborativeDocumentSummary = {
   title: string
   folderPath: string
   summary: string | null
+  isPasswordProtected: boolean
+  isShareable: boolean
+  shareId: string | null
   lastEditedAt: string | null
   createdAt: string
   updatedAt: string
@@ -29,15 +32,21 @@ export type CollaborativeEditorUser = {
 export type CreateDocumentInput = {
   title?: string
   folderPath?: string
+  ownerId?: string
 }
 
 export type UpdateDocumentInput = {
   title?: string
   folderPath?: string
+  password?: string | null
+  currentPassword?: string
+  accessToken?: string
+  isShareable?: boolean
 }
 
 export type CreateFolderInput = {
   path?: string
+  ownerId?: string
 }
 
 export type UpdateFolderInput = {

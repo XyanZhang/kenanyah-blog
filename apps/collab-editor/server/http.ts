@@ -2,8 +2,10 @@ import type { IncomingMessage, ServerResponse } from 'node:http'
 import {
   createFolder,
   createDocument,
+  createDocumentAccess,
   deleteFolder,
   getDocument,
+  getShareableDocument,
   getOrCreateEditorUser,
   listFolders,
   listDocuments,
@@ -29,13 +31,24 @@ export async function handleHttpRequest(request: IncomingMessage, response: Serv
   }
 
   if (request.method === 'GET' && url.pathname === '/documents') {
-    sendJson(response, 200, { success: true, data: await listDocuments() })
+    sendJson(response, 200, { success: true, data: await listDocuments(getPixelId(request, url)) })
     return true
   }
 
   if (request.method === 'POST' && url.pathname === '/documents') {
     const body = await readJsonBody(request)
-    await sendDbResult(response, 201, () => createDocument(body))
+    await sendDbResult(response, 201, () => createDocument({ ...body, ownerId: getPixelId(request, url) }))
+    return true
+  }
+
+  const shareMatch = url.pathname.match(/^\/share\/([^/]+)$/)
+  if (shareMatch && request.method === 'GET') {
+    const document = await getShareableDocument(shareMatch[1])
+    if (!document) {
+      sendJson(response, 404, { success: false, error: 'Document not found' })
+      return true
+    }
+    sendJson(response, 200, { success: true, data: document })
     return true
   }
 
@@ -52,13 +65,13 @@ export async function handleHttpRequest(request: IncomingMessage, response: Serv
   }
 
   if (request.method === 'GET' && url.pathname === '/folders') {
-    sendJson(response, 200, { success: true, data: await listFolders() })
+    sendJson(response, 200, { success: true, data: await listFolders(getPixelId(request, url)) })
     return true
   }
 
   if (request.method === 'POST' && url.pathname === '/folders') {
     const body = await readJsonBody(request)
-    await sendDbResult(response, 201, () => createFolder(body))
+    await sendDbResult(response, 201, () => createFolder({ ...body, ownerId: getPixelId(request, url) }))
     return true
   }
 
@@ -78,8 +91,24 @@ export async function handleHttpRequest(request: IncomingMessage, response: Serv
   }
 
   const documentMatch = url.pathname.match(/^\/documents\/([^/]+)$/)
+  const documentAccessMatch = url.pathname.match(/^\/documents\/([^/]+)\/access$/)
+
+  if (documentAccessMatch && request.method === 'POST') {
+    const body = await readJsonBody(request)
+    const access = await sendDbResult(response, 200, () =>
+      createDocumentAccess(documentAccessMatch[1], String(body.password ?? ''), getPixelId(request, url))
+    )
+    if (response.headersSent) return true
+    if (!access) {
+      sendJson(response, 404, { success: false, error: 'Document not found' })
+      return true
+    }
+    sendJson(response, 200, { success: true, data: access })
+    return true
+  }
+
   if (documentMatch && request.method === 'GET') {
-    const document = await getDocument(documentMatch[1])
+    const document = await getDocument(documentMatch[1], getPixelId(request, url))
     if (!document) {
       sendJson(response, 404, { success: false, error: 'Document not found' })
       return true
@@ -90,7 +119,9 @@ export async function handleHttpRequest(request: IncomingMessage, response: Serv
 
   if (documentMatch && request.method === 'PATCH') {
     const body = await readJsonBody(request)
-    const document = await sendDbResult(response, 200, () => updateDocument(documentMatch[1], body))
+    const document = await sendDbResult(response, 200, () =>
+      updateDocument(documentMatch[1], body, getPixelId(request, url))
+    )
     if (response.headersSent) return true
     if (!document) {
       sendJson(response, 404, { success: false, error: 'Document not found' })
@@ -141,5 +172,12 @@ function sendJson(response: ServerResponse, status: number, payload: unknown) {
 function writeCors(response: ServerResponse) {
   response.setHeader('Access-Control-Allow-Origin', env.corsOrigin)
   response.setHeader('Access-Control-Allow-Methods', 'GET,POST,PATCH,DELETE,OPTIONS')
-  response.setHeader('Access-Control-Allow-Headers', 'Content-Type')
+  response.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Collab-Pixel-Id')
+}
+
+function getPixelId(request: IncomingMessage, url: URL) {
+  const fromQuery = url.searchParams.get('pixelId')
+  if (fromQuery) return fromQuery
+  const fromHeader = request.headers['x-collab-pixel-id']
+  return Array.isArray(fromHeader) ? fromHeader[0] : fromHeader ?? null
 }

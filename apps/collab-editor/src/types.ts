@@ -4,6 +4,9 @@ export type CollaborativeDocumentSummary = {
   title: string
   folderPath: string
   summary: string | null
+  isPasswordProtected: boolean
+  isShareable: boolean
+  shareId: string | null
   lastEditedAt: string | null
   createdAt: string
   updatedAt: string

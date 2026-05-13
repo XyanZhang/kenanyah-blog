@@ -1,4 +1,4 @@
-import { ChevronRight, FileText, Folder, FolderOpen, FolderPlus, Pencil, Plus, Trash2 } from 'lucide-react'
+import { ChevronRight, FileText, Folder, FolderOpen, FolderPlus, Link2, LockKeyhole, Pencil, Plus, Share2, Trash2 } from 'lucide-react'
 import clsx from 'clsx'
 import { useMemo, useState } from 'react'
 import type { CSSProperties } from 'react'
@@ -9,6 +9,10 @@ type DocumentTreeProps = {
   folders: CollaborativeDocumentFolder[]
   activeDocumentId: string | null
   onSelectDocument: (documentId: string) => void
+  onCopyShareLink: (document: CollaborativeDocumentSummary) => void
+  onToggleShare: (document: CollaborativeDocumentSummary) => void
+  onSetPassword: (document: CollaborativeDocumentSummary) => void
+  onRemovePassword: (document: CollaborativeDocumentSummary) => void
   onCreateDocument: (folderPath?: string) => void
   onCreateFolder: (parentPath?: string) => void
   onDeleteFolder: (folderPath: string) => void
@@ -28,6 +32,10 @@ export function DocumentTree({
   folders,
   activeDocumentId,
   onSelectDocument,
+  onCopyShareLink,
+  onToggleShare,
+  onSetPassword,
+  onRemovePassword,
   onCreateDocument,
   onCreateFolder,
   onDeleteFolder,
@@ -54,6 +62,10 @@ export function DocumentTree({
       collapsedFolders={collapsedFolders}
       onToggleFolder={toggleFolder}
       onSelectDocument={onSelectDocument}
+      onCopyShareLink={onCopyShareLink}
+      onToggleShare={onToggleShare}
+      onSetPassword={onSetPassword}
+      onRemovePassword={onRemovePassword}
       onCreateDocument={onCreateDocument}
       onCreateFolder={onCreateFolder}
       onDeleteFolder={onDeleteFolder}
@@ -70,6 +82,10 @@ function FolderNode({
   collapsedFolders,
   onToggleFolder,
   onSelectDocument,
+  onCopyShareLink,
+  onToggleShare,
+  onSetPassword,
+  onRemovePassword,
   onCreateDocument,
   onCreateFolder,
   onDeleteFolder,
@@ -82,6 +98,10 @@ function FolderNode({
   collapsedFolders: Set<string>
   onToggleFolder: (folderPath: string) => void
   onSelectDocument: (documentId: string) => void
+  onCopyShareLink: (document: CollaborativeDocumentSummary) => void
+  onToggleShare: (document: CollaborativeDocumentSummary) => void
+  onSetPassword: (document: CollaborativeDocumentSummary) => void
+  onRemovePassword: (document: CollaborativeDocumentSummary) => void
   onCreateDocument: (folderPath?: string) => void
   onCreateFolder: (parentPath?: string) => void
   onDeleteFolder: (folderPath: string) => void
@@ -153,6 +173,10 @@ function FolderNode({
               collapsedFolders={collapsedFolders}
               onToggleFolder={onToggleFolder}
               onSelectDocument={onSelectDocument}
+              onCopyShareLink={onCopyShareLink}
+              onToggleShare={onToggleShare}
+              onSetPassword={onSetPassword}
+              onRemovePassword={onRemovePassword}
               onCreateDocument={onCreateDocument}
               onCreateFolder={onCreateFolder}
               onDeleteFolder={onDeleteFolder}
@@ -167,6 +191,10 @@ function FolderNode({
               active={document.id === activeDocumentId}
               level={level + (isRoot ? 0 : 1)}
               onSelectDocument={onSelectDocument}
+              onCopyShareLink={onCopyShareLink}
+              onToggleShare={onToggleShare}
+              onSetPassword={onSetPassword}
+              onRemovePassword={onRemovePassword}
             />
           ))}
         </div>
@@ -180,29 +208,71 @@ function DocumentItem({
   active,
   level,
   onSelectDocument,
+  onCopyShareLink,
+  onToggleShare,
+  onSetPassword,
+  onRemovePassword,
 }: {
   document: CollaborativeDocumentSummary
   active: boolean
   level: number
   onSelectDocument: (documentId: string) => void
+  onCopyShareLink: (document: CollaborativeDocumentSummary) => void
+  onToggleShare: (document: CollaborativeDocumentSummary) => void
+  onSetPassword: (document: CollaborativeDocumentSummary) => void
+  onRemovePassword: (document: CollaborativeDocumentSummary) => void
 }) {
   return (
-    <button
+    <div
       className={clsx('document-item', active && 'active')}
-      type="button"
       draggable
       style={{ '--tree-level': level } as CSSProperties}
-      onClick={() => onSelectDocument(document.id)}
       onDragStart={(event) => {
         event.dataTransfer.setData('application/x-collab-document-id', document.id)
         event.dataTransfer.effectAllowed = 'move'
       }}
     >
-      <span className="document-icon">
-        <FileText size={14} />
-      </span>
-      <strong>{document.title}</strong>
-    </button>
+      <button className="document-main" type="button" onClick={() => onSelectDocument(document.id)}>
+        <span className="document-icon">
+          <FileText size={14} />
+        </span>
+        <strong>{document.title}</strong>
+        {document.isPasswordProtected ? <LockKeyhole className="document-state-icon" size={13} /> : null}
+        {document.isShareable ? <Share2 className="document-state-icon" size={13} /> : null}
+      </button>
+      <div className="document-actions">
+        <button
+          type="button"
+          onClick={() => onToggleShare(document)}
+          title={document.isShareable ? '关闭分享' : '开启分享'}
+        >
+          <Share2 size={14} />
+        </button>
+        <button
+          type="button"
+          onClick={() => onCopyShareLink(document)}
+          disabled={!document.isShareable}
+          title={document.isShareable ? '复制分享链接' : '开启分享后可复制链接'}
+        >
+          <Link2 size={14} />
+        </button>
+        <button
+          type="button"
+          onClick={() => onSetPassword(document)}
+          title={document.isPasswordProtected ? '修改密码' : '设置密码'}
+        >
+          <LockKeyhole size={14} />
+        </button>
+        <button
+          type="button"
+          onClick={() => onRemovePassword(document)}
+          disabled={!document.isPasswordProtected}
+          title={document.isPasswordProtected ? '移除密码' : '还没有设置密码'}
+        >
+          <Trash2 size={14} />
+        </button>
+      </div>
+    </div>
   )
 }
 

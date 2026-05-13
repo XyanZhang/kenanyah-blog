@@ -30,12 +30,13 @@ type OutlineItem = {
 
 type CollaborativeEditorProps = {
   document: CollaborativeDocumentSummary
+  accessToken?: string | null
   onRename: (title: string) => Promise<void>
   onPresenceChange?: (status: ConnectionStatus, users: ReturnType<typeof useOnlineUsers>) => void
   user: LocalPresenceUser
 }
 
-export function CollaborativeEditor({ document, onRename, onPresenceChange, user }: CollaborativeEditorProps) {
+export function CollaborativeEditor({ document, accessToken, onRename, onPresenceChange, user }: CollaborativeEditorProps) {
   const [status, setStatus] = useState<ConnectionStatus>('connecting')
   const [outlineItems, setOutlineItems] = useState<OutlineItem[]>([])
   const [isOutlinePinned, setIsOutlinePinned] = useState(true)
@@ -46,6 +47,7 @@ export function CollaborativeEditor({ document, onRename, onPresenceChange, user
       url: collabWsUrl,
       name: `doc:${document.id}`,
       document: ydoc,
+      token: JSON.stringify({ pixelId: user.pixelId, accessToken: accessToken ?? null }),
     })
     if (!provider.awareness) {
       throw new Error('Hocuspocus provider did not initialize awareness.')
@@ -54,7 +56,7 @@ export function CollaborativeEditor({ document, onRename, onPresenceChange, user
     provider.awareness.setLocalStateField('user', user)
 
     return { ydoc, provider, awareness: provider.awareness }
-  }, [document.id, user])
+  }, [accessToken, document.id, user])
 
   useEffect(() => {
     const { provider } = collaboration

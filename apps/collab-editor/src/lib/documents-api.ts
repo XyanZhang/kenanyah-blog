@@ -10,6 +10,10 @@ export async function fetchDocuments() {
   return request<CollaborativeDocumentSummary[]>('/documents')
 }
 
+export async function fetchSharedDocument(shareId: string) {
+  return request<CollaborativeDocumentSummary>(`/share/${encodeURIComponent(shareId)}`)
+}
+
 export async function fetchFolders() {
   return request<CollaborativeDocumentFolder[]>('/folders')
 }
@@ -36,6 +40,28 @@ export async function renameDocument(documentId: string, title: string) {
   return request<CollaborativeDocumentSummary>(`/documents/${encodeURIComponent(documentId)}`, {
     method: 'PATCH',
     body: JSON.stringify({ title }),
+  })
+}
+
+export async function requestDocumentAccess(documentId: string, password: string) {
+  return request<{ accessToken: string }>(`/documents/${encodeURIComponent(documentId)}/access`, {
+    method: 'POST',
+    body: JSON.stringify({ password }),
+  })
+}
+
+export async function updateDocumentAccess(
+  documentId: string,
+  input: {
+    password?: string | null
+    currentPassword?: string
+    accessToken?: string | null
+    isShareable?: boolean
+  }
+) {
+  return request<CollaborativeDocumentSummary>(`/documents/${encodeURIComponent(documentId)}`, {
+    method: 'PATCH',
+    body: JSON.stringify(input),
   })
 }
 
@@ -67,10 +93,12 @@ export async function renameFolder(path: string, name: string) {
 }
 
 async function request<T>(path: string, init?: RequestInit) {
+  const pixelId = window.localStorage.getItem('collab-editor-pixel-id')
   const response = await fetch(`${collabApiUrl}${path}`, {
     ...init,
     headers: {
       'Content-Type': 'application/json',
+      ...(pixelId ? { 'X-Collab-Pixel-Id': pixelId } : {}),
       ...init?.headers,
     },
   })

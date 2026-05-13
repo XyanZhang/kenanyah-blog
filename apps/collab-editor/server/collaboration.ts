@@ -1,7 +1,8 @@
 import { Server } from '@hocuspocus/server'
 import { encodeStateAsUpdate, applyUpdate } from 'yjs'
-import { loadDocumentState, storeDocumentState } from './db'
+import { getDocumentAccessRecord, loadDocumentState, storeDocumentState } from './db'
 import { handleHttpRequest } from './http'
+import { canOpenDocument, parseCollaborationToken, verifyDocumentAccessToken } from './document-access'
 
 const roomPrefix = 'doc:'
 
@@ -9,6 +10,20 @@ export function createCollaborationServer(port: number) {
   return new Server({
     port,
     name: 'collab-editor',
+    async onAuthenticate({ documentName, token }) {
+      const documentId = getDocumentId(documentName)
+      if (!documentId) throw new Error('Document not found')
+
+      const document = await getDocumentAccessRecord(documentId)
+      if (!document) throw new Error('Document not found')
+      const parsedToken = parseCollaborationToken(token)
+      if (!canOpenDocument(document, parsedToken.pixelId)) {
+        throw new Error('Document is not shared')
+      }
+      if (!verifyDocumentAccessToken(document, parsedToken.accessToken)) {
+        throw new Error('Document password required')
+      }
+    },
     async onLoadDocument({ documentName, document }) {
       const documentId = getDocumentId(documentName)
       if (!documentId) return

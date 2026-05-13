@@ -1,5 +1,13 @@
 import { Pool } from 'pg'
 import { env } from './env'
+import {
+  canOpenDocument,
+  createDocumentAccessToken,
+  hashDocumentPassword,
+  verifyDocumentAccessToken,
+  verifyDocumentPassword,
+  type DocumentAccessRecord,
+} from './document-access'
 import type {
   CollaborativeDocumentFolder,
   CollaborativeDocumentSummary,
@@ -57,14 +65,27 @@ export async function ensureSchema() {
   `)
 
   await pool.query(`
+    ALTER TABLE "collaborative_documents"
+      ADD COLUMN IF NOT EXISTS "passwordHash" TEXT,
+      ADD COLUMN IF NOT EXISTS "isShareable" BOOLEAN NOT NULL DEFAULT false,
+      ADD COLUMN IF NOT EXISTS "shareId" TEXT;
+  `)
+
+  await pool.query(`
     CREATE TABLE IF NOT EXISTS "collaborative_document_folders" (
       "id" TEXT PRIMARY KEY,
       "path" TEXT NOT NULL UNIQUE,
       "name" TEXT NOT NULL,
       "parentPath" TEXT NOT NULL DEFAULT '',
+      "ownerId" TEXT,
       "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
       "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
     );
+  `)
+
+  await pool.query(`
+    ALTER TABLE "collaborative_document_folders"
+      ADD COLUMN IF NOT EXISTS "ownerId" TEXT;
   `)
 
   await pool.query(`
@@ -100,6 +121,9 @@ export async function ensureSchema() {
     'CREATE INDEX IF NOT EXISTS "collaborative_documents_lastEditedAt_idx" ON "collaborative_documents"("lastEditedAt");'
   )
   await pool.query(
+    'CREATE UNIQUE INDEX IF NOT EXISTS "collaborative_documents_shareId_key" ON "collaborative_documents"("shareId");'
+  )
+  await pool.query(
     'CREATE INDEX IF NOT EXISTS "collaborative_document_folders_parentPath_idx" ON "collaborative_document_folders"("parentPath");'
   )
   await pool.query(
@@ -118,7 +142,7 @@ export async function seedSampleDocuments() {
   }
 }
 
-export async function listDocuments(): Promise<CollaborativeDocumentSummary[]> {
+export async function listDocuments(pixelId?: string | null): Promise<CollaborativeDocumentSummary[]> {
   const result = await pool.query(`
     SELECT
       "id",
@@ -126,38 +150,88 @@ export async function listDocuments(): Promise<CollaborativeDocumentSummary[]> {
       "title",
       "folderPath",
       "summary",
+      "passwordHash",
+      "isShareable",
+      "shareId",
       "lastEditedAt",
       "createdAt",
       "updatedAt"
     FROM "collaborative_documents"
+    WHERE
+      ($1::text IS NOT NULL AND "ownerId" = $1)
+      OR "isShareable" = true
     ORDER BY COALESCE("lastEditedAt", "updatedAt", "createdAt") DESC
-  `)
+  `, [pixelId ?? null])
 
   return result.rows.map(mapDocumentRow)
 }
 
-export async function getDocument(documentId: string): Promise<CollaborativeDocumentSummary | null> {
+export async function getDocument(
+  documentId: string,
+  pixelId?: string | null
+): Promise<CollaborativeDocumentSummary | null> {
   const result = await pool.query(
-    `SELECT "id", "slug", "title", "folderPath", "summary", "lastEditedAt", "createdAt", "updatedAt"
+    `SELECT "id", "slug", "title", "folderPath", "summary", "ownerId", "passwordHash", "isShareable", "shareId", "lastEditedAt", "createdAt", "updatedAt"
      FROM "collaborative_documents"
      WHERE "id" = $1`,
     [documentId]
   )
 
+  const row = result.rows[0]
+  if (!row) return null
+  const accessRecord = mapDocumentAccessRow(row)
+  if (!canOpenDocument(accessRecord, pixelId)) return null
+  return mapDocumentRow(row)
+}
+
+export async function getShareableDocument(shareId: string): Promise<CollaborativeDocumentSummary | null> {
+  const result = await pool.query(
+    `SELECT "id", "slug", "title", "folderPath", "summary", "ownerId", "passwordHash", "isShareable", "shareId", "lastEditedAt", "createdAt", "updatedAt"
+     FROM "collaborative_documents"
+     WHERE "shareId" = $1 AND "isShareable" = true`,
+    [shareId]
+  )
+
   return result.rows[0] ? mapDocumentRow(result.rows[0]) : null
+}
+
+export async function getDocumentAccessRecord(
+  documentId: string
+): Promise<DocumentAccessRecord | null> {
+  const result = await pool.query(
+    `SELECT "id", "ownerId", "passwordHash", "isShareable", "shareId"
+     FROM "collaborative_documents"
+     WHERE "id" = $1`,
+    [documentId]
+  )
+
+  return result.rows[0] ? mapDocumentAccessRow(result.rows[0]) : null
+}
+
+export async function createDocumentAccess(documentId: string, password: string, pixelId?: string | null) {
+  const document = await getDocumentAccessRecord(documentId)
+  if (!document) return null
+  if (!canOpenDocument(document, pixelId)) throw new Error('此文档未开启分享')
+  if (!document.passwordHash) throw new Error('此文档未设置密码')
+
+  const isValid = await verifyDocumentPassword(password, document.passwordHash)
+  if (!isValid) throw new Error('密码不正确')
+
+  return { accessToken: createDocumentAccessToken(document) }
 }
 
 export async function createDocument(input: CreateDocumentInput): Promise<CollaborativeDocumentSummary> {
   const title = normalizeTitle(input.title)
   const folderPath = normalizeFolderPath(input.folderPath)
+  const ownerId = normalizeOptionalOwnerId(input.ownerId)
   assertValidFolderPath(folderPath)
-  if (folderPath) await ensureFolderAncestors(folderPath)
+  if (folderPath) await ensureFolderAncestors(folderPath, ownerId)
   const slug = await createUniqueSlug(title)
   const result = await pool.query(
-    `INSERT INTO "collaborative_documents" ("id", "slug", "title", "folderPath", "summary", "lastEditedAt")
-     VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP)
-     RETURNING "id", "slug", "title", "folderPath", "summary", "lastEditedAt", "createdAt", "updatedAt"`,
-    [crypto.randomUUID(), slug, title, folderPath, '新的协同文档，打开后即可多人同时编辑。']
+    `INSERT INTO "collaborative_documents" ("id", "slug", "title", "folderPath", "ownerId", "summary", "lastEditedAt")
+     VALUES ($1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP)
+     RETURNING "id", "slug", "title", "folderPath", "summary", "passwordHash", "isShareable", "shareId", "lastEditedAt", "createdAt", "updatedAt"`,
+    [crypto.randomUUID(), slug, title, folderPath, ownerId, '新的协同文档，打开后即可多人同时编辑。']
   )
 
   return mapDocumentRow(result.rows[0])
@@ -165,10 +239,17 @@ export async function createDocument(input: CreateDocumentInput): Promise<Collab
 
 export async function updateDocument(
   documentId: string,
-  input: UpdateDocumentInput
+  input: UpdateDocumentInput,
+  pixelId?: string | null
 ): Promise<CollaborativeDocumentSummary | null> {
-  const current = await getDocument(documentId)
+  const current = await getDocument(documentId, pixelId)
   if (!current) return null
+
+  const accessRecord = await getDocumentAccessRecord(documentId)
+  if (!accessRecord) return null
+  if (accessRecord.ownerId && accessRecord.ownerId !== pixelId) {
+    throw new Error('只有文档创建者可以修改分享和密码设置')
+  }
 
   const title = typeof input.title === 'undefined' ? current.title : normalizeTitle(input.title)
   const folderPath =
@@ -176,14 +257,25 @@ export async function updateDocument(
       ? current.folderPath
       : normalizeFolderPath(input.folderPath)
   assertValidFolderPath(folderPath)
-  if (folderPath) await ensureFolderAncestors(folderPath)
+  if (folderPath) await ensureFolderAncestors(folderPath, accessRecord.ownerId)
+
+  const passwordHash = await resolveNextPasswordHash(accessRecord, input)
+  const isShareable =
+    typeof input.isShareable === 'undefined' ? current.isShareable : Boolean(input.isShareable)
+  const shareId = isShareable ? current.shareId ?? await createUniqueShareId() : null
 
   const result = await pool.query(
     `UPDATE "collaborative_documents"
-     SET "title" = $2, "folderPath" = $3, "updatedAt" = CURRENT_TIMESTAMP
+     SET
+       "title" = $2,
+       "folderPath" = $3,
+       "passwordHash" = $4,
+       "isShareable" = $5,
+       "shareId" = $6,
+       "updatedAt" = CURRENT_TIMESTAMP
      WHERE "id" = $1
-     RETURNING "id", "slug", "title", "folderPath", "summary", "lastEditedAt", "createdAt", "updatedAt"`,
-    [documentId, title, folderPath]
+     RETURNING "id", "slug", "title", "folderPath", "summary", "passwordHash", "isShareable", "shareId", "lastEditedAt", "createdAt", "updatedAt"`,
+    [documentId, title, folderPath, passwordHash, isShareable, shareId]
   )
 
   return result.rows[0] ? mapDocumentRow(result.rows[0]) : null
@@ -231,21 +323,23 @@ export async function updateEditorUser(
   return mapEditorUserRow(result.rows[0])
 }
 
-export async function listFolders(): Promise<CollaborativeDocumentFolder[]> {
+export async function listFolders(pixelId?: string | null): Promise<CollaborativeDocumentFolder[]> {
   const result = await pool.query(`
     SELECT "id", "path", "name", "parentPath", "createdAt", "updatedAt"
     FROM "collaborative_document_folders"
+    WHERE $1::text IS NOT NULL AND "ownerId" = $1
     ORDER BY "parentPath" ASC, "name" ASC
-  `)
+  `, [pixelId ?? null])
 
   return result.rows.map(mapFolderRow)
 }
 
 export async function createFolder(input: CreateFolderInput): Promise<CollaborativeDocumentFolder> {
   const folderPath = normalizeFolderPath(input.path)
+  const ownerId = normalizeOptionalOwnerId(input.ownerId)
   if (!folderPath) throw new Error('目录名称不能为空')
   assertValidFolderPath(folderPath)
-  await ensureFolderAncestors(folderPath)
+  await ensureFolderAncestors(folderPath, ownerId)
 
   const result = await pool.query(
     `SELECT "id", "path", "name", "parentPath", "createdAt", "updatedAt"
@@ -398,12 +492,36 @@ function normalizeTitle(title: string | undefined) {
   return trimmed ? trimmed.slice(0, 80) : '未命名文档'
 }
 
+async function resolveNextPasswordHash(
+  current: DocumentAccessRecord,
+  input: UpdateDocumentInput
+) {
+  if (typeof input.password === 'undefined') return current.passwordHash
+  if (current.passwordHash) {
+    const hasToken = verifyDocumentAccessToken(current, input.accessToken)
+    const hasCurrentPassword = input.currentPassword
+      ? await verifyDocumentPassword(input.currentPassword, current.passwordHash)
+      : false
+    if (!hasToken && !hasCurrentPassword) {
+      throw new Error('需要先验证当前密码')
+    }
+  }
+
+  if (input.password === null) return null
+  return hashDocumentPassword(input.password)
+}
+
 function normalizePixelId(value: string | undefined) {
   const pixelId = value?.trim()
   if (!pixelId) throw new Error('像素 id 不能为空')
   if (pixelId.length > 96) throw new Error('像素 id 过长')
   if (!/^[a-zA-Z0-9_-]+$/.test(pixelId)) throw new Error('像素 id 格式不合法')
   return pixelId
+}
+
+function normalizeOptionalOwnerId(value: string | undefined) {
+  if (!value) return null
+  return normalizePixelId(value)
 }
 
 function normalizeNickname(value: string | undefined) {
@@ -474,7 +592,7 @@ function assertValidFolderPath(folderPath: string) {
   }
 }
 
-async function ensureFolderAncestors(folderPath: string) {
+async function ensureFolderAncestors(folderPath: string, ownerId: string | null) {
   const parts = folderPath.split('/').filter(Boolean)
   let currentPath = ''
 
@@ -482,13 +600,14 @@ async function ensureFolderAncestors(folderPath: string) {
     const parentPath = currentPath
     currentPath = currentPath ? `${currentPath}/${part}` : part
     await pool.query(
-      `INSERT INTO "collaborative_document_folders" ("id", "path", "name", "parentPath")
-       VALUES ($1, $2, $3, $4)
+      `INSERT INTO "collaborative_document_folders" ("id", "path", "name", "parentPath", "ownerId")
+       VALUES ($1, $2, $3, $4, $5)
        ON CONFLICT ("path") DO UPDATE
        SET "name" = EXCLUDED."name",
            "parentPath" = EXCLUDED."parentPath",
+           "ownerId" = COALESCE("collaborative_document_folders"."ownerId", EXCLUDED."ownerId"),
            "updatedAt" = CURRENT_TIMESTAMP`,
-      [crypto.randomUUID(), currentPath, part, parentPath]
+      [crypto.randomUUID(), currentPath, part, parentPath, ownerId]
     )
   }
 }
@@ -509,6 +628,19 @@ async function createUniqueSlug(title: string) {
   return `${base}-${crypto.randomUUID().slice(0, 8)}`
 }
 
+async function createUniqueShareId() {
+  for (let attempt = 0; attempt < 8; attempt += 1) {
+    const candidate = crypto.randomUUID().replace(/-/g, '').slice(0, 16)
+    const result = await pool.query(
+      'SELECT 1 FROM "collaborative_documents" WHERE "shareId" = $1 LIMIT 1',
+      [candidate]
+    )
+    if (result.rowCount === 0) return candidate
+  }
+
+  return crypto.randomUUID().replace(/-/g, '')
+}
+
 function slugify(value: string) {
   return value
     .toLowerCase()
@@ -527,9 +659,22 @@ function mapDocumentRow(row: Record<string, unknown>): CollaborativeDocumentSumm
     title: String(row.title),
     folderPath: row.folderPath ? String(row.folderPath) : '',
     summary: row.summary ? String(row.summary) : null,
+    isPasswordProtected: Boolean(row.passwordHash),
+    isShareable: Boolean(row.isShareable),
+    shareId: row.shareId ? String(row.shareId) : null,
     lastEditedAt: toIso(row.lastEditedAt),
     createdAt: toIso(row.createdAt) ?? new Date().toISOString(),
     updatedAt: toIso(row.updatedAt) ?? new Date().toISOString(),
+  }
+}
+
+function mapDocumentAccessRow(row: Record<string, unknown>): DocumentAccessRecord {
+  return {
+    id: String(row.id),
+    ownerId: row.ownerId ? String(row.ownerId) : null,
+    passwordHash: row.passwordHash ? String(row.passwordHash) : null,
+    isShareable: Boolean(row.isShareable),
+    shareId: row.shareId ? String(row.shareId) : null,
   }
 }
 
