@@ -1,0 +1,29 @@
+{
+  "name": "wedding-album",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0 --port 5176",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview --host 0.0.0.0 --port 5176",
+    "type-check": "tsc --noEmit",
+    "extract-narrations": "tsx scripts/extract-narrations.ts",
+    "synthesize-audio": "bash scripts/synthesize-audio.sh",
+    "clean": "rm -rf dist node_modules"
+  },
+  "dependencies": {
+    "@vitejs/plugin-react": "^4.3.4",
+    "typescript": "^5.7.2",
+    "vite": "^5.4.21",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@blog/config": "workspace:*",
+    "@types/node": "^22.10.5",
+    "@types/react": "^19.0.4",
+    "@types/react-dom": "^19.0.2",
+    "tsx": "^4.19.2"
+  }
+}

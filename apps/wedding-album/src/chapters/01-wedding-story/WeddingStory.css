@@ -1,0 +1,77 @@
+.wa {
+  position: absolute;
+  inset: 0;
+  color: var(--text);
+  background:
+    linear-gradient(90deg, color-mix(in oklch, var(--surface), var(--accent) 4%), transparent 34%),
+    radial-gradient(circle at 76% 22%, color-mix(in oklch, var(--accent), transparent 82%), transparent 28%),
+    radial-gradient(circle at 18% 82%, color-mix(in oklch, #c99a38, transparent 84%), transparent 26%),
+    var(--surface);
+  overflow: hidden;
+}
+
+.wa::before {
+  content: "";
+  position: absolute;
+  inset: 66px;
+  border: 1px solid var(--rule);
+  pointer-events: none;
+  opacity: 0.72;
+}
+
+.wa-scene {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transform: translateY(34px) scale(0.982);
+  filter: blur(10px);
+  pointer-events: none;
+  transition:
+    opacity 1050ms var(--ease-quart),
+    transform 1250ms var(--ease-quart),
+    filter 1250ms var(--ease-quart);
+}
+
+.wa-step-0 .wa-intro,
+.wa-step-1 .wa-cover,
+.wa-step-2 .wa-names,
+.wa-step-3 .wa-wall,
+.wa-step-4 .wa-feature,
+.wa-step-5 .wa-vow,
+.wa-step-6 .wa-details,
+.wa-step-7 .wa-timeline,
+.wa-step-8 .wa-seasons,
+.wa-step-9 .wa-invitation,
+.wa-step-10 .wa-thanks,
+.wa-step-11 .wa-chapel,
+.wa-step-12 .wa-rings,
+.wa-step-13 .wa-bouquet,
+.wa-step-14 .wa-aisle,
+.wa-step-15 .wa-dance,
+.wa-step-16 .wa-reception,
+.wa-step-17 .wa-champagne,
+.wa-step-18 .wa-rsvp,
+.wa-step-19 .wa-tea,
+.wa-step-20 .wa-red-veil,
+.wa-step-21 .wa-family-table,
+.wa-step-22 .wa-guest-wall,
+.wa-step-23 .wa-cake,
+.wa-step-24 .wa-after-party,
+.wa-step-25 .wa-thank-cards,
+.wa-step-26 .wa-travel,
+.wa-step-27 .wa-closing-gallery,
+.wa-step-28 .wa-end-title,
+.wa-step-29 .wa-finale {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  filter: blur(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wa *,
+  .wa *::before,
+  .wa *::after {
+    animation-duration: 1ms !important;
+    transition-duration: 1ms !important;
+  }
+}

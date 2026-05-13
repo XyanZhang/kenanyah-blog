@@ -1,0 +1,172 @@
+.wa {
+  --wedding-red: oklch(0.46 0.18 28);
+  --wedding-red-soft: color-mix(in oklch, var(--wedding-red), transparent 84%);
+  --wedding-gold: oklch(0.72 0.13 82);
+  --wedding-ink: color-mix(in oklch, var(--text), var(--wedding-red) 12%);
+}
+
+.wa::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background:
+    linear-gradient(135deg, transparent 0 46%, var(--wedding-red-soft) 46% 47%, transparent 47%),
+    radial-gradient(circle at 11% 17%, color-mix(in oklch, var(--wedding-red), transparent 88%), transparent 22%),
+    radial-gradient(circle at 89% 83%, color-mix(in oklch, var(--wedding-gold), transparent 82%), transparent 25%);
+  opacity: 0.82;
+  mix-blend-mode: multiply;
+}
+
+.wa-chinese-marks {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+}
+
+.wa-xi-main {
+  position: absolute;
+  top: 74px;
+  right: 92px;
+  font-family: var(--font-display-cn);
+  font-size: 118px;
+  font-weight: 900;
+  line-height: 1;
+  color: var(--wedding-red);
+  opacity: 0.18;
+  transform: rotate(8deg);
+  animation: wa-xi-breathe 5.8s var(--ease-soft) infinite;
+}
+
+.wa-blessing {
+  position: absolute;
+  writing-mode: vertical-rl;
+  font-family: var(--font-display-cn);
+  font-size: 34px;
+  font-weight: 900;
+  line-height: 1.2;
+  letter-spacing: 0.12em;
+  color: var(--wedding-red);
+  opacity: 0.2;
+  transform: translateY(24px);
+  animation: wa-blessing-rise 1400ms var(--ease-quart) both;
+  animation-delay: calc(var(--i) * 160ms);
+}
+
+.wa-blessing:nth-of-type(2) {
+  left: 82px;
+  top: 142px;
+}
+
+.wa-blessing:nth-of-type(3) {
+  right: 72px;
+  bottom: 162px;
+}
+
+.wa-blessing:nth-of-type(4) {
+  left: 118px;
+  bottom: 114px;
+}
+
+.wa-blessing:nth-of-type(5) {
+  right: 170px;
+  top: 116px;
+}
+
+.wa-red-seal {
+  position: absolute;
+  left: 96px;
+  bottom: 82px;
+  width: 86px;
+  height: 86px;
+  display: grid;
+  place-items: center;
+  border: 4px solid var(--wedding-red);
+  font-family: var(--font-display-cn);
+  font-size: 54px;
+  font-weight: 900;
+  line-height: 1;
+  color: var(--wedding-red);
+  opacity: 0.36;
+  transform: rotate(-8deg);
+}
+
+.wa-art-cn {
+  display: block;
+  margin-bottom: 16px;
+  font-size: 140px;
+  line-height: 0.86;
+  color: var(--wedding-red);
+  text-shadow: 0 10px 0 color-mix(in oklch, var(--wedding-gold), transparent 62%);
+}
+
+.wa-cover-xi {
+  display: inline-block;
+  margin-right: 24px;
+  color: var(--wedding-red);
+  transform: rotate(-8deg) translateY(8px);
+  text-shadow: 0 8px 0 color-mix(in oklch, var(--wedding-gold), transparent 62%);
+}
+
+.wa-rsvp-cn {
+  display: block;
+  margin-top: 18px;
+  font-family: var(--font-display-cn);
+  font-size: 62px;
+  font-style: normal;
+  font-weight: 900;
+  color: var(--wedding-red);
+  letter-spacing: 0.08em;
+}
+
+.wa-name-card strong,
+.wa-feature-copy h2,
+.wa-vow h2,
+.wa-thanks h2,
+.wa-final-card h2 {
+  color: var(--wedding-ink);
+}
+
+.wa-date,
+.wa-invite-copy p:last-child,
+.wa-section-num {
+  color: var(--wedding-red);
+}
+
+.wa-final-card,
+.wa-rsvp-card,
+.wa-name-card,
+.wa-reception-item {
+  background:
+    linear-gradient(135deg, transparent, color-mix(in oklch, var(--wedding-gold), transparent 90%)),
+    color-mix(in oklch, var(--surface-2), var(--wedding-red) 2%);
+}
+
+.wa-chapel-copy h2,
+.wa-rings-copy h2,
+.wa-bouquet-copy h2,
+.wa-aisle-copy h2,
+.wa-dance-copy h2,
+.wa-champagne h2,
+.wa-rsvp-card h2 {
+  color: var(--wedding-ink);
+}
+
+@keyframes wa-xi-breathe {
+  0%, 100% {
+    transform: rotate(8deg) scale(1);
+    opacity: 0.16;
+  }
+  50% {
+    transform: rotate(5deg) scale(1.05);
+    opacity: 0.27;
+  }
+}
+
+@keyframes wa-blessing-rise {
+  to {
+    transform: translateY(0);
+  }
+}

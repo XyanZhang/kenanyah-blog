@@ -1,0 +1,366 @@
+.wa-extended-copy {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  gap: 26px;
+  max-width: 880px;
+}
+
+.wa-extended-copy h2,
+.wa-cake h2,
+.wa-after-party h2,
+.wa-end-title h2 {
+  margin: 0;
+  font-family: var(--font-display-cn);
+  font-size: 78px;
+  font-weight: 900;
+  line-height: 1.14;
+  letter-spacing: 0;
+  color: var(--wedding-ink, var(--text));
+}
+
+.wa-tea,
+.wa-red-veil,
+.wa-family-table,
+.wa-guest-wall,
+.wa-travel {
+  display: grid;
+  align-items: center;
+  padding: 124px 150px;
+}
+
+.wa-tea {
+  place-items: center;
+  text-align: center;
+}
+
+.wa-tea-cup {
+  position: absolute;
+  width: 260px;
+  height: 170px;
+  border: 8px solid var(--wedding-red, var(--accent));
+  border-radius: 0 0 120px 120px;
+  background: color-mix(in oklch, var(--surface-2), var(--wedding-gold, var(--accent)) 8%);
+  opacity: 0;
+}
+
+.wa-tea-cup::after {
+  content: "";
+  position: absolute;
+  right: -76px;
+  top: 38px;
+  width: 82px;
+  height: 78px;
+  border: 8px solid var(--wedding-red, var(--accent));
+  border-left: 0;
+  border-radius: 0 80px 80px 0;
+}
+
+.wa-tea-left {
+  transform: translateX(-760px) rotate(-9deg);
+  animation: wa-tea-left-in 1350ms var(--ease-expo) forwards;
+}
+
+.wa-tea-right {
+  transform: translateX(760px) rotate(9deg);
+  animation: wa-tea-right-in 1350ms var(--ease-expo) forwards;
+}
+
+.wa-red-veil {
+  place-items: center;
+  text-align: center;
+}
+
+.wa-veil-panel {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 50% 35%, color-mix(in oklch, var(--wedding-gold, var(--accent)), transparent 78%), transparent 32%),
+    linear-gradient(90deg, transparent, color-mix(in oklch, var(--wedding-red, var(--accent)), transparent 18%), transparent);
+  transform: translateX(-110%);
+  animation: wa-veil-sweep 1600ms var(--ease-expo) both;
+}
+
+.wa-family-table {
+  grid-template-columns: 1.15fr 0.85fr;
+  gap: 70px;
+}
+
+.wa-wide-photo {
+  height: 650px;
+  margin: 0;
+  overflow: hidden;
+  border: 1px solid var(--rule);
+  box-shadow: var(--card-shadow);
+  transform: translateX(-980px) rotate(-2deg);
+  opacity: 0;
+  animation: wa-wide-photo-in 1500ms var(--ease-expo) forwards;
+}
+
+.wa-wide-photo img,
+.wa-passport-photo img,
+.wa-closing-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: saturate(0.78) contrast(0.94);
+}
+
+.wa-guest-wall {
+  grid-template-columns: repeat(4, 1fr);
+  gap: 22px;
+  align-content: center;
+}
+
+.wa-guest-name {
+  min-height: 150px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--rule);
+  background: color-mix(in oklch, var(--surface-2), var(--wedding-red, var(--accent)) 3%);
+  font-family: var(--font-display-en);
+  font-size: 46px;
+  font-style: italic;
+  color: var(--wedding-ink, var(--text));
+  opacity: 0;
+  transform: translateY(calc(360px - var(--i) * 60px)) rotate(calc(-5deg + var(--i) * 1deg));
+  animation: wa-guest-in 1050ms var(--ease-expo) forwards;
+  animation-delay: calc(var(--i) * 85ms);
+}
+
+.wa-guest-wall .wa-extended-copy {
+  position: absolute;
+  left: 150px;
+  right: 150px;
+  bottom: 96px;
+  max-width: none;
+  flex-direction: row;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.wa-guest-wall .wa-extended-copy h2 {
+  max-width: 760px;
+  text-align: right;
+}
+
+.wa-cake {
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 34px;
+  padding: 120px;
+  text-align: center;
+}
+
+.wa-cake-tier {
+  border: 1px solid var(--rule);
+  background:
+    linear-gradient(180deg, color-mix(in oklch, var(--surface-2), var(--wedding-gold, var(--accent)) 8%), var(--surface-2));
+  box-shadow: var(--card-shadow);
+  opacity: 0;
+  animation: wa-cake-tier-in 1000ms var(--ease-expo) forwards;
+}
+
+.wa-tier-1 { width: 620px; height: 150px; animation-delay: 420ms; }
+.wa-tier-2 { width: 470px; height: 130px; animation-delay: 220ms; }
+.wa-tier-3 { width: 320px; height: 110px; animation-delay: 0ms; }
+
+.wa-after-party {
+  display: grid;
+  place-items: center;
+  padding: 120px;
+  text-align: center;
+  background:
+    radial-gradient(circle at 20% 20%, color-mix(in oklch, var(--wedding-red, var(--accent)), transparent 70%), transparent 24%),
+    radial-gradient(circle at 80% 70%, color-mix(in oklch, var(--wedding-gold, var(--accent)), transparent 68%), transparent 24%);
+}
+
+.wa-party-light {
+  position: absolute;
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  background: color-mix(in oklch, var(--wedding-gold, var(--accent)), transparent 46%);
+  left: calc(9% + var(--i) * 10%);
+  top: calc(18% + (var(--i) % 3) * 22%);
+  opacity: 0;
+  transform: scale(0.3);
+  animation: wa-party-pop 950ms var(--ease-overshoot) forwards;
+  animation-delay: calc(var(--i) * 80ms);
+}
+
+.wa-thank-cards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 34px;
+  align-content: center;
+  padding: 150px;
+}
+
+.wa-thank-card {
+  min-height: 520px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 22px;
+  border: 1px solid var(--rule);
+  background: color-mix(in oklch, var(--surface-2), var(--wedding-gold, var(--accent)) 5%);
+  box-shadow: var(--card-shadow);
+  opacity: 0;
+  transform: translateY(-680px) rotate(calc(-5deg + var(--i) * 5deg));
+  animation: wa-thank-drop 1350ms var(--ease-expo) forwards;
+  animation-delay: calc(var(--i) * 160ms);
+}
+
+.wa-thank-card span {
+  font-family: var(--font-display-cn);
+  font-size: 82px;
+  font-weight: 900;
+  color: var(--wedding-red, var(--accent));
+}
+
+.wa-thank-card p {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--text-mute);
+}
+
+.wa-travel {
+  grid-template-columns: 0.8fr 1.2fr;
+  gap: 80px;
+}
+
+.wa-passport-photo {
+  height: 700px;
+  margin: 0;
+  overflow: hidden;
+  border: 1px solid var(--rule);
+  box-shadow: var(--card-shadow);
+  opacity: 0;
+  transform: translateX(-860px) rotate(-7deg) scale(0.9);
+  animation: wa-passport-in 1450ms var(--ease-expo) forwards;
+}
+
+.wa-passport-stamp {
+  position: absolute;
+  left: 280px;
+  bottom: 170px;
+  padding: 18px 26px;
+  border: 5px solid var(--wedding-red, var(--accent));
+  font-family: var(--font-mono);
+  font-size: 24px;
+  letter-spacing: 0.2em;
+  color: var(--wedding-red, var(--accent));
+  transform: rotate(-13deg) scale(2.2);
+  opacity: 0;
+  animation: wa-stamp-in 800ms var(--ease-overshoot) 820ms forwards;
+}
+
+.wa-closing-gallery {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 18px;
+  align-content: center;
+  padding: 118px 96px;
+}
+
+.wa-closing-photo {
+  height: 700px;
+  margin: 0;
+  overflow: hidden;
+  border: 1px solid var(--rule);
+  box-shadow: var(--card-shadow);
+  opacity: 0;
+  transform: translateY(calc(620px - var(--i) * 70px)) rotate(calc(-8deg + var(--i) * 2deg));
+  animation: wa-closing-photo-in 1250ms var(--ease-expo) forwards;
+  animation-delay: calc(var(--i) * 90ms);
+}
+
+.wa-end-title {
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 28px;
+  padding: 130px;
+  text-align: center;
+}
+
+.wa-end-xi {
+  font-family: var(--font-display-cn);
+  font-size: 210px;
+  font-weight: 900;
+  line-height: 0.8;
+  color: var(--wedding-red, var(--accent));
+  opacity: 0;
+  transform: scale(0.45) rotate(-16deg);
+  animation: wa-end-xi-in 1200ms var(--ease-overshoot) forwards;
+}
+
+.wa-end-title h2 {
+  font-family: var(--font-display-en);
+  font-size: 108px;
+  font-style: italic;
+}
+
+.wa-end-title p {
+  margin: 0;
+  font-family: var(--font-display-cn);
+  font-size: 42px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  color: var(--wedding-red, var(--accent));
+}
+
+@keyframes wa-tea-left-in {
+  to { opacity: 1; transform: translateX(-170px) rotate(-6deg); }
+}
+
+@keyframes wa-tea-right-in {
+  to { opacity: 1; transform: translateX(170px) rotate(6deg); }
+}
+
+@keyframes wa-veil-sweep {
+  to { transform: translateX(0); }
+}
+
+@keyframes wa-wide-photo-in {
+  to { opacity: 1; transform: translateX(0) rotate(-1deg); }
+}
+
+@keyframes wa-guest-in {
+  to { opacity: 1; transform: translateY(0) rotate(0deg); }
+}
+
+@keyframes wa-cake-tier-in {
+  from { opacity: 0; transform: translateY(-420px) scale(0.92); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes wa-party-pop {
+  to { opacity: 0.58; transform: scale(1); }
+}
+
+@keyframes wa-thank-drop {
+  to { opacity: 1; transform: translateY(0) rotate(calc(-2deg + var(--i) * 2deg)); }
+}
+
+@keyframes wa-passport-in {
+  to { opacity: 1; transform: translateX(0) rotate(-3deg) scale(1); }
+}
+
+@keyframes wa-stamp-in {
+  to { opacity: 1; transform: rotate(-13deg) scale(1); }
+}
+
+@keyframes wa-closing-photo-in {
+  to { opacity: 1; transform: translateY(0) rotate(calc(-4deg + var(--i) * 1.4deg)); }
+}
+
+@keyframes wa-end-xi-in {
+  to { opacity: 1; transform: scale(1) rotate(-6deg); }
+}

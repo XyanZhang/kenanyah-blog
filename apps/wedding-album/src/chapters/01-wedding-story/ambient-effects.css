@@ -1,0 +1,51 @@
+.wa-petals {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.wa-petals img {
+  position: absolute;
+  top: -120px;
+  left: calc(8% + var(--i) * 7%);
+  width: var(--petal-size);
+  opacity: 0.2;
+  transform: translateY(-100px) rotate(0deg);
+  animation: wa-petal-fall calc(12s + var(--i) * 1.15s) linear infinite;
+  animation-delay: calc(var(--i) * -1.25s);
+}
+
+.wa-grain {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  pointer-events: none;
+  opacity: 0.1;
+  background-image:
+    repeating-radial-gradient(circle at 13% 23%, var(--text) 0 1px, transparent 1px 5px),
+    repeating-radial-gradient(circle at 87% 71%, var(--accent) 0 1px, transparent 1px 7px);
+  mix-blend-mode: multiply;
+}
+
+@keyframes wa-point-in {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes wa-rule-breathe {
+  0%, 100% { transform: scaleX(0.72); opacity: 0.45; }
+  50% { transform: scaleX(1); opacity: 1; }
+}
+
+@keyframes wa-petal-fall {
+  0% {
+    transform: translate3d(0, -120px, 0) rotate(0deg);
+  }
+  100% {
+    transform: translate3d(calc(-90px + var(--i) * 18px), 1320px, 0) rotate(320deg);
+  }
+}

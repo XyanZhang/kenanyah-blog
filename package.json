@@ -9,6 +9,7 @@
     "dev:admin": "turbo run dev --filter=admin",
     "dev:api": "turbo run dev --filter=@blog/api",
     "dev:collab-editor": "turbo run dev --filter=collab-editor",
+    "dev:wedding-album": "turbo run dev --filter=wedding-album",
     "dev": "turbo run dev --filter=!chm-to-pdf",
     "build": "turbo run build",
     "test": "turbo run test",
