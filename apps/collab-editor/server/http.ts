@@ -4,9 +4,11 @@ import {
   createDocument,
   deleteFolder,
   getDocument,
+  getOrCreateEditorUser,
   listFolders,
   listDocuments,
   renameFolder,
+  updateEditorUser,
   updateDocument,
 } from './db'
 import { env } from './env'
@@ -34,6 +36,18 @@ export async function handleHttpRequest(request: IncomingMessage, response: Serv
   if (request.method === 'POST' && url.pathname === '/documents') {
     const body = await readJsonBody(request)
     await sendDbResult(response, 201, () => createDocument(body))
+    return true
+  }
+
+  const userMatch = url.pathname.match(/^\/users\/([^/]+)$/)
+  if (userMatch && request.method === 'GET') {
+    await sendDbResult(response, 200, () => getOrCreateEditorUser(userMatch[1]))
+    return true
+  }
+
+  if (userMatch && request.method === 'PATCH') {
+    const body = await readJsonBody(request)
+    await sendDbResult(response, 200, () => updateEditorUser(userMatch[1], body))
     return true
   }
 

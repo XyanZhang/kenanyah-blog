@@ -191,10 +191,10 @@ export function ProjectsPage() {
           }
         />
 
-        <div className="admin-panel grid gap-2 rounded-2xl p-3 md:grid-cols-4">
+        <div className="admin-panel admin-motion-enter grid gap-2 rounded-2xl p-3 md:grid-cols-4">
           <Input placeholder="Search title, link, description" value={search} onChange={(event) => setSearch(event.target.value)} />
           <Input placeholder="Exact category" value={category} onChange={(event) => setCategory(event.target.value)} />
-          <select className="rounded-xl border border-[var(--border)] bg-[var(--surface-strong)] px-3 py-2 text-sm text-[var(--text)] outline-none" value={status} onChange={(event) => setStatus(event.target.value as ProjectStatus | 'all')}>
+          <select className="admin-select" value={status} onChange={(event) => setStatus(event.target.value as ProjectStatus | 'all')}>
             <option value="all">All statuses</option>
             <option value="planned">Planned</option>
             <option value="active">Active</option>
@@ -205,11 +205,11 @@ export function ProjectsPage() {
         </div>
       </div>
 
-      {error ? <p className="mb-4 rounded-xl border border-[var(--danger)]/20 bg-[var(--danger-soft)] px-3 py-2 text-sm text-[var(--danger)]">{error}</p> : null}
+      {error ? <p className="admin-alert mb-4 rounded-xl border border-[var(--danger)]/20 bg-[var(--danger-soft)] px-3 py-2 text-sm text-[var(--danger)]">{error}</p> : null}
 
       {isFormOpen ? (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-black/45 px-4 py-6 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="project-form-title">
-          <div className="admin-panel max-h-[calc(100vh-48px)] w-full max-w-2xl overflow-y-auto rounded-2xl p-5 shadow-2xl">
+        <div className="project-dialog-backdrop fixed inset-0 z-50 grid place-items-center bg-black/45 px-4 py-6 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="project-form-title">
+          <div className="project-dialog-panel admin-panel max-h-[calc(100vh-48px)] w-full max-w-2xl overflow-y-auto rounded-2xl p-5 shadow-2xl">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="font-['IBM_Plex_Mono'] text-[11px] uppercase tracking-[0.12em] text-[var(--text-muted)]">Project</p>
@@ -237,7 +237,7 @@ export function ProjectsPage() {
               <div className="grid gap-3 md:grid-cols-3">
                 <Input placeholder="Category" value={form.category} onChange={(event) => setForm({ ...form, category: event.target.value })} />
                 <Input type="date" value={form.date} onChange={(event) => setForm({ ...form, date: event.target.value })} />
-                <select className="rounded-xl border border-[var(--border)] bg-[var(--surface-strong)] px-3 py-2 text-sm text-[var(--text)] outline-none" value={form.status} onChange={(event) => setForm({ ...form, status: event.target.value as ProjectStatus })}>
+                <select className="admin-select" value={form.status} onChange={(event) => setForm({ ...form, status: event.target.value as ProjectStatus })}>
                   <option value="planned">Planned</option>
                   <option value="active">Active</option>
                   <option value="completed">Completed</option>
@@ -259,7 +259,7 @@ export function ProjectsPage() {
         </div>
       ) : null}
 
-      <div className="mb-4">
+      <div className="admin-motion-enter mb-4">
         <SectionTable title={`Projects${meta ? ` · ${meta.total}` : ''}`}>
           {!items.length ? (
             <div className="p-5">
@@ -277,7 +277,7 @@ export function ProjectsPage() {
               </thead>
               <tbody>
                 {items.map((project) => (
-                  <tr key={project.id} className="border-t border-[var(--border)]">
+                  <tr key={project.id} className="project-table-row border-t border-[var(--border)]">
                     <td className="max-w-[520px] px-5 py-4 align-top">
                       <p className="font-medium text-[var(--text)]">{project.title}</p>
                       {project.href ? <p className="mt-1 truncate text-xs text-[var(--text-muted)]">{project.href}</p> : null}

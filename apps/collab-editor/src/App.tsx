@@ -3,7 +3,9 @@ import { useEffect, useState } from 'react'
 import { useDocuments } from './hooks/useDocuments'
 import { DocumentSidebar } from './components/DocumentSidebar'
 import { CollaborativeEditor } from './components/CollaborativeEditor'
+import { NicknameSetupDialog } from './components/NicknameSetupDialog'
 import { PresenceBar } from './components/PresenceBar'
+import { useEditorUserProfile } from './hooks/useEditorUserProfile'
 import type { OnlineUser } from './hooks/useOnlineUsers'
 import type { ConnectionStatus } from './types'
 
@@ -11,6 +13,7 @@ export function App() {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('connecting')
   const [onlineUsers, setOnlineUsers] = useState<OnlineUser[]>([])
+  const userProfile = useEditorUserProfile()
   const {
     documents,
     folders,
@@ -91,8 +94,15 @@ export function App() {
         <PresenceBar users={onlineUsers} status={activeDocument ? connectionStatus : 'disconnected'} />
       </header>
 
+      <NicknameSetupDialog
+        defaultNickname={userProfile.user.name}
+        error={userProfile.error}
+        isOpen={userProfile.status === 'needs-nickname'}
+        onSave={userProfile.saveNickname}
+      />
+
       <section className={`workspace-grid ${isSidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
-        {isSidebarCollapsed ? null : (
+        <div className="sidebar-slot" aria-hidden={isSidebarCollapsed}>
           <DocumentSidebar
             documents={documents}
             folders={folders}
@@ -107,13 +117,14 @@ export function App() {
             onMoveDocument={moveDocument}
             onReload={reloadDocuments}
           />
-        )}
+        </div>
 
         <div className="workspace">
           {activeDocument ? (
             <CollaborativeEditor
               key={activeDocument.id}
               document={activeDocument}
+              user={userProfile.user}
               onRename={(title) => renameDocument(activeDocument.id, title)}
               onPresenceChange={(nextStatus, nextUsers) => {
                 setConnectionStatus(nextStatus)

@@ -18,8 +18,8 @@ import { BlockFormatMenu } from './BlockFormatMenu'
 import { handleCodeAwarePaste } from '../lib/code-paste'
 import { collabWsUrl } from '../lib/env'
 import { uploadEditorFile } from '../lib/file-upload'
-import { getLocalUser } from '../lib/user-presence'
 import { useOnlineUsers } from '../hooks/useOnlineUsers'
+import type { LocalPresenceUser } from '../lib/user-presence'
 import type { ConnectionStatus, CollaborativeDocumentSummary } from '../types'
 
 type OutlineItem = {
@@ -32,13 +32,13 @@ type CollaborativeEditorProps = {
   document: CollaborativeDocumentSummary
   onRename: (title: string) => Promise<void>
   onPresenceChange?: (status: ConnectionStatus, users: ReturnType<typeof useOnlineUsers>) => void
+  user: LocalPresenceUser
 }
 
-export function CollaborativeEditor({ document, onRename, onPresenceChange }: CollaborativeEditorProps) {
+export function CollaborativeEditor({ document, onRename, onPresenceChange, user }: CollaborativeEditorProps) {
   const [status, setStatus] = useState<ConnectionStatus>('connecting')
   const [outlineItems, setOutlineItems] = useState<OutlineItem[]>([])
   const [isOutlinePinned, setIsOutlinePinned] = useState(true)
-  const user = useMemo(() => getLocalUser(), [])
 
   const collaboration = useMemo(() => {
     const ydoc = new Y.Doc()
@@ -54,7 +54,7 @@ export function CollaborativeEditor({ document, onRename, onPresenceChange }: Co
     provider.awareness.setLocalStateField('user', user)
 
     return { ydoc, provider, awareness: provider.awareness }
-  }, [document.id])
+  }, [document.id, user])
 
   useEffect(() => {
     const { provider } = collaboration

@@ -3,8 +3,10 @@ import { env } from './env'
 import type {
   CollaborativeDocumentFolder,
   CollaborativeDocumentSummary,
+  CollaborativeEditorUser,
   CreateFolderInput,
   CreateDocumentInput,
+  UpdateUserInput,
   UpdateDocumentInput,
   UpdateFolderInput,
 } from './types'
@@ -30,6 +32,8 @@ const sampleDocuments = [
     summary: '适合展示块级文档在长资料整理中的编辑体验。',
   },
 ]
+
+const userColors = ['#c24162', '#2f6f73', '#8b5e34', '#5b6c9d', '#8f4c38', '#486b42', '#7a5b92', '#b35c24']
 
 export async function ensureSchema() {
   await pool.query(`
@@ -76,6 +80,16 @@ export async function ensureSchema() {
     );
   `)
 
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS "collaborative_editor_users" (
+      "pixelId" TEXT PRIMARY KEY,
+      "nickname" TEXT,
+      "color" TEXT NOT NULL,
+      "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+  `)
+
   await pool.query(
     'CREATE INDEX IF NOT EXISTS "collaborative_documents_ownerId_idx" ON "collaborative_documents"("ownerId");'
   )
@@ -87,6 +101,9 @@ export async function ensureSchema() {
   )
   await pool.query(
     'CREATE INDEX IF NOT EXISTS "collaborative_document_folders_parentPath_idx" ON "collaborative_document_folders"("parentPath");'
+  )
+  await pool.query(
+    'CREATE INDEX IF NOT EXISTS "collaborative_editor_users_updatedAt_idx" ON "collaborative_editor_users"("updatedAt");'
   )
 }
 
@@ -170,6 +187,48 @@ export async function updateDocument(
   )
 
   return result.rows[0] ? mapDocumentRow(result.rows[0]) : null
+}
+
+export async function getOrCreateEditorUser(pixelIdInput: string): Promise<CollaborativeEditorUser> {
+  const pixelId = normalizePixelId(pixelIdInput)
+  const existing = await pool.query(
+    `SELECT "pixelId", "nickname", "color", "createdAt", "updatedAt"
+     FROM "collaborative_editor_users"
+     WHERE "pixelId" = $1`,
+    [pixelId]
+  )
+  if (existing.rows[0]) return mapEditorUserRow(existing.rows[0])
+
+  const result = await pool.query(
+    `INSERT INTO "collaborative_editor_users" ("pixelId", "color")
+     VALUES ($1, $2)
+     RETURNING "pixelId", "nickname", "color", "createdAt", "updatedAt"`,
+    [pixelId, colorForPixelId(pixelId)]
+  )
+
+  return mapEditorUserRow(result.rows[0])
+}
+
+export async function updateEditorUser(
+  pixelIdInput: string,
+  input: UpdateUserInput
+): Promise<CollaborativeEditorUser> {
+  const current = await getOrCreateEditorUser(pixelIdInput)
+  const nickname =
+    typeof input.nickname === 'undefined'
+      ? current.nickname
+      : normalizeNickname(input.nickname)
+  const color = typeof input.color === 'undefined' ? current.color : normalizeColor(input.color)
+
+  const result = await pool.query(
+    `UPDATE "collaborative_editor_users"
+     SET "nickname" = $2, "color" = $3, "updatedAt" = CURRENT_TIMESTAMP
+     WHERE "pixelId" = $1
+     RETURNING "pixelId", "nickname", "color", "createdAt", "updatedAt"`,
+    [current.pixelId, nickname, color]
+  )
+
+  return mapEditorUserRow(result.rows[0])
 }
 
 export async function listFolders(): Promise<CollaborativeDocumentFolder[]> {
@@ -339,6 +398,36 @@ function normalizeTitle(title: string | undefined) {
   return trimmed ? trimmed.slice(0, 80) : '未命名文档'
 }
 
+function normalizePixelId(value: string | undefined) {
+  const pixelId = value?.trim()
+  if (!pixelId) throw new Error('像素 id 不能为空')
+  if (pixelId.length > 96) throw new Error('像素 id 过长')
+  if (!/^[a-zA-Z0-9_-]+$/.test(pixelId)) throw new Error('像素 id 格式不合法')
+  return pixelId
+}
+
+function normalizeNickname(value: string | undefined) {
+  const nickname = value?.trim().replace(/\s+/g, ' ')
+  if (!nickname) throw new Error('昵称不能为空')
+  if (nickname.length > 24) throw new Error('昵称最多 24 个字符')
+  return nickname
+}
+
+function normalizeColor(value: string | undefined) {
+  const color = value?.trim()
+  if (!color) throw new Error('颜色不能为空')
+  if (!/^#[0-9a-fA-F]{6}$/.test(color)) throw new Error('颜色格式不合法')
+  return color.toLowerCase()
+}
+
+function colorForPixelId(pixelId: string) {
+  let hash = 0
+  for (const char of pixelId) {
+    hash = (hash * 31 + char.charCodeAt(0)) >>> 0
+  }
+  return userColors[hash % userColors.length]
+}
+
 function normalizeFolderPath(value: string | undefined) {
   return (value ?? '')
     .split('/')
@@ -450,6 +539,16 @@ function mapFolderRow(row: Record<string, unknown>): CollaborativeDocumentFolder
     path: String(row.path),
     name: String(row.name),
     parentPath: row.parentPath ? String(row.parentPath) : '',
+    createdAt: toIso(row.createdAt) ?? new Date().toISOString(),
+    updatedAt: toIso(row.updatedAt) ?? new Date().toISOString(),
+  }
+}
+
+function mapEditorUserRow(row: Record<string, unknown>): CollaborativeEditorUser {
+  return {
+    pixelId: String(row.pixelId),
+    nickname: row.nickname ? String(row.nickname) : null,
+    color: String(row.color),
     createdAt: toIso(row.createdAt) ?? new Date().toISOString(),
     updatedAt: toIso(row.updatedAt) ?? new Date().toISOString(),
   }

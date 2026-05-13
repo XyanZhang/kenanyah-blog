@@ -142,7 +142,7 @@ function FolderNode({
         </div>
       ) : null}
 
-      {!isCollapsed ? (
+      <div className={clsx('folder-children-frame', isCollapsed && 'collapsed')} aria-hidden={isCollapsed}>
         <div className="folder-children">
           {node.folders.map((folder) => (
             <FolderNode
@@ -170,7 +170,7 @@ function FolderNode({
             />
           ))}
         </div>
-      ) : null}
+      </div>
     </div>
   )
 }

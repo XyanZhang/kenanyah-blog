@@ -3,6 +3,7 @@ import type {
   ApiResponse,
   CollaborativeDocumentFolder,
   CollaborativeDocumentSummary,
+  CollaborativeEditorUser,
 } from '../types'
 
 export async function fetchDocuments() {
@@ -11,6 +12,17 @@ export async function fetchDocuments() {
 
 export async function fetchFolders() {
   return request<CollaborativeDocumentFolder[]>('/folders')
+}
+
+export async function fetchEditorUser(pixelId: string) {
+  return request<CollaborativeEditorUser>(`/users/${encodeURIComponent(pixelId)}`)
+}
+
+export async function saveEditorUser(pixelId: string, nickname: string, color?: string) {
+  return request<CollaborativeEditorUser>(`/users/${encodeURIComponent(pixelId)}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ nickname, color }),
+  })
 }
 
 export async function createDocument(title: string, folderPath = '') {

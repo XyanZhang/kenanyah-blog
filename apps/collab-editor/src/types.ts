@@ -18,6 +18,14 @@ export type CollaborativeDocumentFolder = {
   updatedAt: string
 }
 
+export type CollaborativeEditorUser = {
+  pixelId: string
+  nickname: string | null
+  color: string
+  createdAt: string
+  updatedAt: string
+}
+
 export type ApiResponse<T> = {
   success: boolean
   data?: T

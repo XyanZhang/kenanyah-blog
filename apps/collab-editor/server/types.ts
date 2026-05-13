@@ -18,6 +18,14 @@ export type CollaborativeDocumentFolder = {
   updatedAt: string
 }
 
+export type CollaborativeEditorUser = {
+  pixelId: string
+  nickname: string | null
+  color: string
+  createdAt: string
+  updatedAt: string
+}
+
 export type CreateDocumentInput = {
   title?: string
   folderPath?: string
@@ -34,4 +42,9 @@ export type CreateFolderInput = {
 
 export type UpdateFolderInput = {
   name?: string
+}
+
+export type UpdateUserInput = {
+  nickname?: string
+  color?: string
 }
