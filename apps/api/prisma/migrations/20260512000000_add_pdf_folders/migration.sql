@@ -1,0 +1,3 @@
+-- No-op migration.
+-- This migration directory existed without a migration.sql file, which blocks
+-- Prisma migrate deploy from applying later migrations.

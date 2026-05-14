@@ -44,6 +44,32 @@ enum EventStatus {
   canceled
 }
 
+enum PlanSpaceStatus {
+  active
+  archived
+  completed
+}
+
+enum PlanItemStatus {
+  planned
+  in_progress
+  done
+  blocked
+  canceled
+}
+
+enum PlanItemPriority {
+  low
+  medium
+  high
+  urgent
+}
+
+enum PlanSharePermission {
+  read
+  edit
+}
+
 enum DraftIdeaStatus {
   idea
   outlining
@@ -85,6 +111,7 @@ model User {
   mediaAssets         MediaAsset[]
   eventItems          EventItem[]
   draftIdeas          DraftIdea[]
+  planSpaces          PlanSpace[]
 
   @@index([email])
   @@index([username])
@@ -640,12 +667,83 @@ model EventItem {
   updatedAt     DateTime        @updatedAt @map("updated_at")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  planItems PlanItem[]
 
   @@index([userId])
   @@index([userId, eventDate])
   @@index([userId, status, eventDate])
   @@index([sourceType, sourceId])
   @@map("event_items")
+}
+
+model PlanSpace {
+  id              String          @id @default(cuid())
+  ownerId         String          @map("owner_id")
+  title           String
+  type            String          @default("general")
+  icon            String          @default("CalendarCheck")
+  description     String?         @db.Text
+  status          PlanSpaceStatus @default(active)
+  startDate       DateTime?       @db.Date @map("start_date")
+  endDate         DateTime?       @db.Date @map("end_date")
+  collaborationOn Boolean         @default(true) @map("collaboration_on")
+  shareToken      String          @unique @map("share_token")
+  createdAt       DateTime        @default(now()) @map("created_at")
+  updatedAt       DateTime        @updatedAt @map("updated_at")
+
+  owner      User            @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  items      PlanItem[]
+  shareLinks PlanShareLink[]
+
+  @@index([ownerId])
+  @@index([status])
+  @@index([startDate])
+  @@map("plan_spaces")
+}
+
+model PlanItem {
+  id              String           @id @default(cuid())
+  spaceId         String           @map("space_id")
+  title           String
+  description     String?          @db.Text
+  date            DateTime         @db.Date
+  startTime       String?          @map("start_time")
+  endTime         String?          @map("end_time")
+  allDay          Boolean          @default(true) @map("all_day")
+  status          PlanItemStatus   @default(planned)
+  priority        PlanItemPriority @default(medium)
+  assignee        String?
+  category        String?
+  isMilestone     Boolean          @default(false) @map("is_milestone")
+  syncedEventId   String?          @unique @map("synced_event_id")
+  sortOrder       Int              @default(0) @map("sort_order")
+  createdAt       DateTime         @default(now()) @map("created_at")
+  updatedAt       DateTime         @updatedAt @map("updated_at")
+
+  space       PlanSpace  @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  syncedEvent EventItem? @relation(fields: [syncedEventId], references: [id], onDelete: SetNull)
+
+  @@index([spaceId])
+  @@index([spaceId, date])
+  @@index([spaceId, status])
+  @@index([spaceId, isMilestone])
+  @@map("plan_items")
+}
+
+model PlanShareLink {
+  id         String              @id @default(cuid())
+  spaceId    String              @map("space_id")
+  token      String              @unique
+  permission PlanSharePermission @default(edit)
+  expiresAt  DateTime?           @map("expires_at")
+  createdAt  DateTime            @default(now()) @map("created_at")
+  updatedAt  DateTime            @updatedAt @map("updated_at")
+
+  space PlanSpace @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+
+  @@index([spaceId])
+  @@index([expiresAt])
+  @@map("plan_share_links")
 }
 
 model DraftIdea {

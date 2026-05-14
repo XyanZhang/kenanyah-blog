@@ -179,6 +179,25 @@ Embeddings require a configured embedding provider and pgvector.
 | GET    | `/api/projects`           | No           | List projects                   |
 | POST   | `/api/projects`           | User         | Create project                  |
 
+## Plan Spaces
+
+| Method | Endpoint                                      | Auth  | Description                    |
+| ------ | --------------------------------------------- | ----- | ------------------------------ |
+| GET    | `/api/plan-spaces`                            | User  | List focused plan spaces       |
+| POST   | `/api/plan-spaces`                            | User  | Create a plan space            |
+| GET    | `/api/plan-spaces/:id`                        | User  | Get plan space with items      |
+| PATCH  | `/api/plan-spaces/:id`                        | User  | Update plan space              |
+| DELETE | `/api/plan-spaces/:id`                        | User  | Delete plan space              |
+| GET    | `/api/plan-spaces/:id/items`                  | User  | List items in a plan space     |
+| POST   | `/api/plan-spaces/:id/items`                  | User  | Create item                    |
+| PATCH  | `/api/plan-spaces/:id/items/:itemId`          | User  | Update item                    |
+| DELETE | `/api/plan-spaces/:id/items/:itemId`          | User  | Delete item                    |
+| POST   | `/api/plan-spaces/:id/share-links`            | User  | Create share link              |
+| GET    | `/api/plan-spaces/share/:token`               | Link  | Open shared plan space         |
+| POST   | `/api/plan-spaces/share/:token/items`         | Link  | Create item through edit link  |
+| PATCH  | `/api/plan-spaces/share/:token/items/:itemId` | Link  | Update item through edit link  |
+| DELETE | `/api/plan-spaces/share/:token/items/:itemId` | Link  | Delete item through edit link  |
+
 ## Calendar, Countdown, Weather, Voice
 
 | Method | Endpoint                            | Auth     | Description                    |

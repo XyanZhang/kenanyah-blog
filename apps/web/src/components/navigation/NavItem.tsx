@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import type { Route } from 'next'
-import { Home, FileText, Search, User, Camera, FolderOpen, Wrench, LayoutGrid, MessageCircle, Bookmark, LucideIcon } from 'lucide-react'
+import { Home, FileText, Search, User, Camera, FolderOpen, Wrench, LayoutGrid, MessageCircle, Bookmark, CalendarCheck, ClipboardList, Map, Plane, LucideIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { NavItem as NavItemType } from './nav-items'
 
@@ -19,6 +19,10 @@ const iconMap: Record<string, LucideIcon> = {
   LayoutGrid,
   MessageCircle,
   Bookmark,
+  CalendarCheck,
+  ClipboardList,
+  Map,
+  Plane,
 }
 
 interface NavItemProps {
@@ -38,7 +42,7 @@ export function NavItem({
   isCompact = false,
   onMouseEnter,
 }: NavItemProps) {
-  const IconComponent = iconMap[item.icon]
+  const IconComponent = iconMap[item.icon] ?? Home
   const isExternal = item.href.startsWith('http://') || item.href.startsWith('https://')
 
   const handleMouseEnter = () => {

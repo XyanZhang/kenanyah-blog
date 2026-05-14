@@ -22,6 +22,10 @@ import {
   MessageCircle,
   Search,
   Bookmark,
+  CalendarCheck,
+  ClipboardList,
+  Map,
+  Plane,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -36,6 +40,10 @@ const iconMap: Record<string, LucideIcon> = {
   MessageCircle,
   Search,
   Bookmark,
+  CalendarCheck,
+  ClipboardList,
+  Map,
+  Plane,
 }
 
 interface NavConfigDialogProps {
@@ -70,7 +78,7 @@ export function NavConfigDialog({ open, onOpenChange }: NavConfigDialogProps) {
             <Label className="text-sm font-medium">显示项目</Label>
             <div className="space-y-2">
               {items.map((item) => {
-                const IconComponent = iconMap[item.icon]
+                const IconComponent = iconMap[item.icon] ?? Home
                 const isVisible = item.visible !== false
                 const isLastVisible = isVisible && items.filter((i) => i.visible !== false).length === 1
 

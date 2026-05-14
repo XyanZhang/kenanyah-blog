@@ -70,6 +70,18 @@ export type {
   PhotoEntryDto,
 } from './calendar'
 
+export type {
+  PlanSpaceStatus,
+  PlanItemStatus,
+  PlanItemPriority,
+  PlanSharePermission,
+  PlanItemDto,
+  PlanSpaceSummaryDto,
+  PlanSpaceDto,
+  PlanShareLinkDto,
+  SharedPlanSpaceDto,
+} from './planSpace'
+
 // Divination types
 export type {
   DivinationConsultationMode,

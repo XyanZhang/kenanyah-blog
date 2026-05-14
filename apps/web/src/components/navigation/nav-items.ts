@@ -1,4 +1,4 @@
-export type NavHref = '/' | '/blog' | '/search' | '/about' | '/pictures' | '/projects' | '/tools' | '/works' | '/thoughts' | '/bookmarks'
+export type NavHref = '/' | '/blog' | '/search' | '/about' | '/pictures' | '/projects' | '/plans' | '/tools' | '/works' | '/thoughts' | '/bookmarks'
 
 /** 导航项展示用（来自配置或默认） */
 export interface NavItem {
@@ -25,10 +25,11 @@ const DEFAULT_NAV_ITEMS: NavItemConfig[] = [
   { id: 'about', label: '关于', href: '/about', icon: 'User', visible: true, sortOrder: 3 },
   { id: 'pictures', label: '摄影', href: '/pictures', icon: 'Camera', visible: true, sortOrder: 4 },
   { id: 'projects', label: '项目', href: '/projects', icon: 'FolderOpen', visible: true, sortOrder: 5 },
-  { id: 'tools', label: '工具', href: '/tools', icon: 'Wrench', visible: true, sortOrder: 6 },
-  { id: 'works', label: '作品', href: '/works', icon: 'LayoutGrid', visible: true, sortOrder: 7 },
-  { id: 'thoughts', label: '随笔', href: '/thoughts', icon: 'MessageCircle', visible: true, sortOrder: 8 },
-  { id: 'bookmarks', label: '收藏', href: '/bookmarks', icon: 'Bookmark', visible: true, sortOrder: 9 },
+  { id: 'plans', label: '计划', href: '/plans', icon: 'CalendarCheck', visible: true, sortOrder: 6 },
+  { id: 'tools', label: '工具', href: '/tools', icon: 'Wrench', visible: true, sortOrder: 7 },
+  { id: 'works', label: '作品', href: '/works', icon: 'LayoutGrid', visible: true, sortOrder: 8 },
+  { id: 'thoughts', label: '随笔', href: '/thoughts', icon: 'MessageCircle', visible: true, sortOrder: 9 },
+  { id: 'bookmarks', label: '收藏', href: '/bookmarks', icon: 'Bookmark', visible: true, sortOrder: 10 },
 ]
 
 /** 默认导航项配置（用于新配置或旧数据迁移） */

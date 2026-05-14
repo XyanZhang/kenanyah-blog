@@ -29,6 +29,7 @@ import thoughts from './routes/thoughts'
 import blogWorkflow from './routes/blog-workflow'
 import voice from './routes/voice'
 import projects from './routes/projects'
+import planSpaces from './routes/plan-spaces'
 import admin from './routes/admin'
 import divination from './routes/divination'
 import yijing from './routes/yijing'
@@ -87,6 +88,7 @@ app.get('/', (c) => {
         blogWorkflow: '/blog-workflow',
         voice: '/voice',
         projects: '/projects',
+        planSpaces: '/plan-spaces',
         divination: '/divination',
         collab: '/collab',
         knowledge: '/knowledge',
@@ -117,6 +119,7 @@ app.route('/thoughts', thoughts)
 app.route('/blog-workflow', blogWorkflow)
 app.route('/voice', voice)
 app.route('/projects', projects)
+app.route('/plan-spaces', planSpaces)
 app.route('/divination', divination)
 app.route('/collab', collab)
 app.route('/knowledge', knowledge)
