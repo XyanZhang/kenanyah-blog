@@ -38,7 +38,14 @@ function sanitize(cursor: Cursor, chapters: ChapterDef[]): Cursor {
   return { chapter, step };
 }
 
-export function useStepper(chapters: ChapterDef[]): StepperState {
+interface StepperOptions {
+  keyboardEnabled?: boolean;
+}
+
+export function useStepper(
+  chapters: ChapterDef[],
+  { keyboardEnabled = true }: StepperOptions = {},
+): StepperState {
   const [cursor, setCursor] = useState<Cursor>(() => {
     const fallback = { chapter: 0, step: 0 };
     if (typeof window === "undefined") return fallback;
@@ -137,6 +144,7 @@ export function useStepper(chapters: ChapterDef[]): StepperState {
   );
 
   useEffect(() => {
+    if (!keyboardEnabled) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement) return;
       if (e.key === "ArrowRight" || e.key === " ") {
@@ -157,7 +165,7 @@ export function useStepper(chapters: ChapterDef[]): StepperState {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [next, prev, jumpToChapter, chapters]);
+  }, [next, prev, jumpToChapter, chapters, keyboardEnabled]);
 
   const ch = chapters[cursor.chapter]!;
   return {

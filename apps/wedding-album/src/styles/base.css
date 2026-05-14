@@ -413,3 +413,19 @@ body {
   from { opacity: 0; }
   to   { opacity: 1; }
 }
+
+.timeline-runtime-error {
+  position: fixed;
+  left: 24px;
+  bottom: 24px;
+  z-index: 30;
+  max-width: 360px;
+  padding: 12px 14px;
+  border: 1px solid oklch(60% 0.14 35);
+  border-radius: 8px;
+  background: oklch(20% 0.045 42);
+  color: oklch(92% 0.04 82);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.5;
+}

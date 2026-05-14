@@ -1,9 +1,11 @@
 import type { CSSProperties, ReactNode } from "react";
+import { useRef } from "react";
 import { useStageScale } from "../hooks/useStageScale";
 
 interface Props {
   onAdvance(): void;
   children: ReactNode;
+  fitToContainer?: boolean;
 }
 
 /**
@@ -19,8 +21,15 @@ interface Props {
  * Surface colors come from the active theme's CSS custom properties
  * (var(--shell), var(--surface)) — see themes/<id>/tokens.css.
  */
-export function Stage({ onAdvance, children }: Props) {
-  const scale = useStageScale();
+export function Stage({ onAdvance, children, fitToContainer = false }: Props) {
+  const shellRef = useRef<HTMLDivElement | null>(null);
+  const scale = useStageScale(
+    1920,
+    1080,
+    fitToContainer ? 24 : 80,
+    fitToContainer ? 24 : 100,
+    fitToContainer ? shellRef : undefined,
+  );
   const fitterStyle: CSSProperties = {
     width: 1920 * scale,
     height: 1080 * scale,
@@ -29,7 +38,7 @@ export function Stage({ onAdvance, children }: Props) {
     transform: `scale(${scale})`,
   };
   return (
-    <div className="app-shell">
+    <div className="app-shell" ref={shellRef}>
       <div className="stage-fitter" style={fitterStyle}>
         <div
           className="stage-frame"
