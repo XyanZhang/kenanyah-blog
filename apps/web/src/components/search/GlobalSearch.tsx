@@ -89,7 +89,7 @@ function getHitKey(hit: SemanticSearchHit): string {
 function getHitHref(hit: SemanticSearchHit): string {
   if (hit.href) return hit.href
   if (hit.type === 'post') return `/posts/${hit.slug}`
-  if (hit.type === 'conversation') return `/ai-chat/${hit.conversationId}`
+  if (hit.type === 'conversation') return `/workspace/ai-chat/${hit.conversationId}`
   return '/'
 }
 

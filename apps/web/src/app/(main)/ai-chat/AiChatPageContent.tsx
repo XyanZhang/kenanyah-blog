@@ -198,7 +198,7 @@ function getConversationDisplayTitle(title?: string | null): string {
 }
 
 function buildConversationRoute(conversationId: string) {
-  return `/ai-chat/${encodeURIComponent(conversationId)}`
+  return `/workspace/ai-chat/${encodeURIComponent(conversationId)}`
 }
 
 function formatConversationTranscript(messages: UiMessage[]): string {
