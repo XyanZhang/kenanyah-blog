@@ -22,7 +22,21 @@ function timelineSavePlugin() {
         req.on("end", async () => {
           try {
             const parsed = JSON.parse(body);
-            if (!parsed || typeof parsed.musicSrc !== "string" || !Array.isArray(parsed.markers)) {
+            const isLegacy =
+              parsed && typeof parsed.musicSrc === "string" && Array.isArray(parsed.markers);
+            const isMultiTrack =
+              parsed &&
+              typeof parsed.activeTrackId === "string" &&
+              Array.isArray(parsed.tracks) &&
+              parsed.tracks.every(
+                (track) =>
+                  track &&
+                  typeof track.id === "string" &&
+                  typeof track.name === "string" &&
+                  typeof track.musicSrc === "string" &&
+                  Array.isArray(track.markers),
+              );
+            if (!isLegacy && !isMultiTrack) {
               throw new Error("invalid timeline payload");
             }
             const outPath = resolve(__dirname, "public/timeline.json");

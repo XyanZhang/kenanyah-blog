@@ -7,6 +7,13 @@ export interface TimelineMarker {
 }
 
 export interface TimelineConfig {
+  activeTrackId: string;
+  tracks: TimelineTrack[];
+}
+
+export interface TimelineTrack {
+  id: string;
+  name: string;
   musicSrc: string;
   markers: TimelineMarker[];
 }

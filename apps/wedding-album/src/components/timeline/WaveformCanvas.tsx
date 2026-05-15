@@ -125,7 +125,6 @@ export function WaveformCanvas({
         if (key) {
           draggingKeyRef.current = key;
           onSelect(key);
-          onDragMarker(key, time);
         } else {
           onSeek(time);
         }

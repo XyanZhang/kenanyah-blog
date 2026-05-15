@@ -1,15 +1,20 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ChapterDef } from "../../registry/types";
 import {
+  addTimelineTrack,
   fillMissingMarkers,
   findTimelineIssues,
+  getActiveTrack,
   loadTimeline,
+  stepForTime,
   toPortableTimeline,
+  updateActiveTrack,
 } from "../../timeline/config";
 import {
   flattenTimelineSteps,
   markerKey,
   type TimelineConfig,
+  type TimelineTrack,
   type TimelineStep,
 } from "../../timeline/types";
 import { useAudioWaveform } from "../../hooks/useAudioWaveform";
@@ -47,20 +52,28 @@ export function TimelineStudio({ chapters, cursor, onJumpChapter, children }: Pr
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [currentTime, setCurrentTime] = useState(0);
   const [playing, setPlaying] = useState(false);
+  const [previewing, setPreviewing] = useState(false);
+  const [newMusicSrc, setNewMusicSrc] = useState("/music/");
   const [status, setStatus] = useState("读取 timeline.json…");
   const [saveError, setSaveError] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const frameRef = useRef<number | null>(null);
+  const cursorRef = useRef(cursor);
+  const onJumpChapterRef = useRef(onJumpChapter);
 
-  const waveform = useAudioWaveform(timeline?.musicSrc ?? "");
+  cursorRef.current = cursor;
+  onJumpChapterRef.current = onJumpChapter;
+
+  const activeTrack = timeline ? getActiveTrack(timeline) : null;
+  const waveform = useAudioWaveform(activeTrack?.musicSrc ?? "");
   const issues = useMemo(
-    () => (timeline ? findTimelineIssues(timeline, chapters) : []),
-    [chapters, timeline],
+    () => (activeTrack ? findTimelineIssues(activeTrack, chapters) : []),
+    [activeTrack, chapters],
   );
 
   const markerMap = useMemo(
-    () => new Map((timeline?.markers ?? []).map((marker) => [markerKey(marker), marker])),
-    [timeline],
+    () => new Map((activeTrack?.markers ?? []).map((marker) => [markerKey(marker), marker])),
+    [activeTrack],
   );
   const selectedMarker = selectedKey ? markerMap.get(selectedKey) : null;
   const selectedStep = useMemo(
@@ -72,14 +85,16 @@ export function TimelineStudio({ chapters, cursor, onJumpChapter, children }: Pr
     loadTimeline(chapters).then((loaded) => {
       const filled = fillMissingMarkers(loaded, chapters);
       setTimeline(filled);
-      setSelectedKey(markerKey(filled.markers[0] ?? steps[0]!));
+      const track = getActiveTrack(filled);
+      setSelectedKey(markerKey(track.markers[0] ?? steps[0]!));
+      setNewMusicSrc(track.musicSrc);
       setStatus("已载入时间轴");
     });
   }, [chapters, steps]);
 
   useEffect(() => {
-    if (!timeline) return;
-    const audio = new Audio(timeline.musicSrc);
+    if (!activeTrack) return;
+    const audio = new Audio(activeTrack.musicSrc);
     audio.preload = "auto";
     audioRef.current = audio;
     audio.addEventListener("loadedmetadata", () => {
@@ -89,6 +104,7 @@ export function TimelineStudio({ chapters, cursor, onJumpChapter, children }: Pr
       setStatus("BGM 加载失败：请把音乐放到 public/music 并更新 timeline.json");
     });
     audio.addEventListener("ended", () => setPlaying(false));
+    audio.addEventListener("ended", () => setPreviewing(false));
     return () => {
       if (frameRef.current != null) cancelAnimationFrame(frameRef.current);
       audio.pause();
@@ -96,7 +112,7 @@ export function TimelineStudio({ chapters, cursor, onJumpChapter, children }: Pr
       audio.load();
       audioRef.current = null;
     };
-  }, [timeline?.musicSrc]);
+  }, [activeTrack?.musicSrc]);
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -120,12 +136,44 @@ export function TimelineStudio({ chapters, cursor, onJumpChapter, children }: Pr
     };
   }, [playing]);
 
+  useEffect(() => {
+    if (!previewing || !activeTrack) return;
+    const step = stepForTime(activeTrack.markers, steps, currentTime);
+    const currentCursor = cursorRef.current;
+    if (step && (currentCursor.chapter !== step.chapterIndex || currentCursor.step !== step.step)) {
+      onJumpChapterRef.current(step.chapterIndex, step.step);
+      setSelectedKey(markerKey(step));
+    }
+  }, [activeTrack, currentTime, previewing, steps]);
+
   const seek = (time: number) => {
     const audio = audioRef.current;
     const nextTime = Math.max(0, Math.min(time, waveform.duration || audio?.duration || time));
     if (audio) audio.currentTime = nextTime;
     setCurrentTime(nextTime);
+    syncPreviewAtTime(nextTime);
   };
+
+  const syncPreviewAtTime = (time: number) => {
+    if (!activeTrack) return;
+    const step = stepForTime(activeTrack.markers, steps, time);
+    if (!step) return;
+    onJumpChapter(step.chapterIndex, step.step);
+    setSelectedKey(markerKey(step));
+  };
+
+  const togglePreview = useCallback(() => {
+    const next = !previewing;
+    setPreviewing(next);
+    setPlaying(next);
+    if (next && activeTrack) {
+      const step = stepForTime(activeTrack.markers, steps, currentTime);
+      if (step) {
+        onJumpChapter(step.chapterIndex, step.step);
+        setSelectedKey(markerKey(step));
+      }
+    }
+  }, [activeTrack, currentTime, onJumpChapter, previewing, steps]);
 
   const selectStep = (step: TimelineStep) => {
     const key = markerKey(step);
@@ -138,17 +186,79 @@ export function TimelineStudio({ chapters, cursor, onJumpChapter, children }: Pr
   const updateMarker = (key: string, at: number) => {
     setTimeline((current) => {
       if (!current) return current;
-      return {
-        ...current,
-        markers: current.markers
+      return updateActiveTrack(current, (track) => ({
+        ...track,
+        markers: track.markers
           .map((marker) =>
             markerKey(marker) === key
               ? { ...marker, at: Number(Math.max(0, at).toFixed(3)) }
               : marker,
           )
           .sort((a, b) => a.at - b.at),
-      };
+      }));
     });
+  };
+
+  const autoPlaceMarkers = () => {
+    if (!activeTrack || waveform.beatTimes.length === 0) {
+      setStatus("还没有识别到可用卡点，请确认 BGM 已加载完成。");
+      return;
+    }
+    const usableBeats = waveform.beatTimes.filter((time) => time >= 0.2);
+    const lastBeat = usableBeats[usableBeats.length - 1] ?? waveform.duration;
+    const fallbackGap = Math.max(2.5, waveform.duration / Math.max(1, steps.length));
+
+    setTimeline((current) => {
+      if (!current) return current;
+      return updateActiveTrack(current, (track) => ({
+        ...track,
+        markers: steps.map((step, index) => {
+          const at = usableBeats[index] ?? lastBeat + (index - usableBeats.length + 1) * fallbackGap;
+          return {
+            chapterId: step.chapterId,
+            step: step.step,
+            at: Number(Math.min(at, waveform.duration || at).toFixed(3)),
+          };
+        }),
+      }));
+    });
+    seek(usableBeats[0] ?? 0);
+    setStatus(`已根据 ${usableBeats.length} 个候选卡点自动定位节奏点`);
+  };
+
+  const switchTrack = (trackId: string) => {
+    setPlaying(false);
+    setPreviewing(false);
+    setCurrentTime(0);
+    setTimeline((current) => (current ? { ...current, activeTrackId: trackId } : current));
+    const track = timeline?.tracks.find((item) => item.id === trackId);
+    if (track) {
+      setSelectedKey(markerKey(track.markers[0] ?? steps[0]!));
+      setNewMusicSrc(track.musicSrc);
+      onJumpChapter(0, 0);
+    }
+  };
+
+  const addTrack = () => {
+    const musicSrc = newMusicSrc.trim();
+    if (!musicSrc || !timeline) return;
+    setPlaying(false);
+    setPreviewing(false);
+    setCurrentTime(0);
+    const next = addTimelineTrack(timeline, chapters, musicSrc);
+    const track = getActiveTrack(next);
+    setTimeline(next);
+    setSelectedKey(markerKey(track.markers[0] ?? steps[0]!));
+    onJumpChapter(0, 0);
+    setStatus(`已新增 BGM：${track.name}`);
+  };
+
+  const renameActiveTrack = (name: string) => {
+    setTimeline((current) =>
+      current
+        ? updateActiveTrack(current, (track): TimelineTrack => ({ ...track, name }))
+        : current,
+    );
   };
 
   const save = async () => {
@@ -174,7 +284,7 @@ export function TimelineStudio({ chapters, cursor, onJumpChapter, children }: Pr
       if (event.target instanceof HTMLInputElement) return;
       if (event.key === " ") {
         event.preventDefault();
-        setPlaying((value) => !value);
+        togglePreview();
       }
       if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
         event.preventDefault();
@@ -190,28 +300,63 @@ export function TimelineStudio({ chapters, cursor, onJumpChapter, children }: Pr
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [currentTime, markerMap, selectedKey, waveform.duration]);
+  }, [currentTime, markerMap, selectedKey, togglePreview, waveform.duration]);
 
-  if (!timeline) {
+  if (!timeline || !activeTrack) {
     return <div className="timeline-loading">正在准备时间轴工作台…</div>;
   }
 
   return (
     <div className="timeline-studio">
-      <div className="timeline-preview">{children}</div>
+      <div className="timeline-preview">
+        {previewing ? <div className="timeline-preview-badge">Preview sync</div> : null}
+        {children}
+      </div>
       <aside className="timeline-side" data-no-advance>
         <div>
           <p className="timeline-kicker">Wedding timeline studio</p>
           <h1>音乐卡点工作台</h1>
+        </div>
+        <div className="timeline-track-panel">
+          <label>
+            <span>当前 BGM</span>
+            <select
+              value={timeline.activeTrackId}
+              onChange={(event) => switchTrack(event.target.value)}
+            >
+              {timeline.tracks.map((track) => (
+                <option value={track.id} key={track.id}>
+                  {track.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            <span>名称</span>
+            <input
+              value={activeTrack.name}
+              onChange={(event) => renameActiveTrack(event.target.value)}
+            />
+          </label>
+          <label>
+            <span>新增音乐路径</span>
+            <input
+              value={newMusicSrc}
+              onChange={(event) => setNewMusicSrc(event.target.value)}
+              placeholder="/music/song.mp3"
+            />
+          </label>
+          <button onClick={addTrack}>新增 BGM 节奏</button>
         </div>
         <div className="timeline-readout">
           <span>{formatTime(currentTime)}</span>
           <small>{selectedStep?.label ?? "未选择 step"}</small>
         </div>
         <div className="timeline-actions">
-          <button onClick={() => setPlaying((value) => !value)}>
-            {playing ? "暂停" : "播放"}
+          <button className="is-primary" onClick={togglePreview}>
+            {previewing ? "暂停预览" : "播放预览"}
           </button>
+          <button onClick={autoPlaceMarkers}>自动卡点</button>
           <button onClick={save}>保存</button>
           <button onClick={() => downloadTimeline(timeline)}>下载 JSON</button>
         </div>
@@ -246,7 +391,10 @@ export function TimelineStudio({ chapters, cursor, onJumpChapter, children }: Pr
         <div className="timeline-deck-head">
           <div>
             <strong>{waveform.loading ? "正在解码波形…" : "BGM Waveform"}</strong>
-            <span>{timeline.musicSrc}</span>
+            <span>
+              {activeTrack.musicSrc}
+              {waveform.beatTimes.length > 0 ? ` / ${waveform.beatTimes.length} 个候选卡点` : ""}
+            </span>
           </div>
           {selectedMarker ? (
             <label>
@@ -264,10 +412,16 @@ export function TimelineStudio({ chapters, cursor, onJumpChapter, children }: Pr
           peaks={waveform.peaks}
           duration={waveform.duration || audioRef.current?.duration || 120}
           currentTime={currentTime}
-          markers={timeline.markers}
+          markers={activeTrack.markers}
           selectedKey={selectedKey}
           onSeek={seek}
-          onSelect={setSelectedKey}
+          onSelect={(key) => {
+            setSelectedKey(key);
+            const marker = markerMap.get(key);
+            const step = steps.find((item) => markerKey(item) === key);
+            if (marker) seek(marker.at);
+            if (step) onJumpChapter(step.chapterIndex, step.step);
+          }}
           onDragMarker={(key, time) => {
             updateMarker(key, time);
             const step = steps.find((item) => markerKey(item) === key);

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ChapterDef } from "../registry/types";
 import { flattenTimelineSteps } from "../timeline/types";
-import { loadTimeline, stepForTime } from "../timeline/config";
+import { getActiveTrack, loadTimeline, stepForTime } from "../timeline/config";
 
 interface Options {
   chapters: ChapterDef[];
@@ -46,12 +46,13 @@ export function useTimelinePlayback({
     loadTimeline(chapters)
       .then((timeline) => {
         if (cancelled) return;
-        const audio = new Audio(timeline.musicSrc);
+        const track = getActiveTrack(timeline);
+        const audio = new Audio(track.musicSrc);
         audio.preload = "auto";
         audioRef.current = audio;
 
         const tick = () => {
-          const step = stepForTime(timeline.markers, steps, audio.currentTime);
+          const step = stepForTime(track.markers, steps, audio.currentTime);
           if (step) {
             const key = `${step.chapterIndex}:${step.step}`;
             if (key !== lastKeyRef.current) {
