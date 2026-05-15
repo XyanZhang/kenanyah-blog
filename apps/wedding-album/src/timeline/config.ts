@@ -85,6 +85,10 @@ function normalizeTrack(
     name: track.name || trackNameFromMusicSrc(musicSrc),
     musicSrc,
     markers: markers.sort((a, b) => a.at - b.at),
+    ignoredBeatTimes: [...new Set(track.ignoredBeatTimes ?? [])]
+      .filter((time) => Number.isFinite(time) && time >= 0)
+      .map(roundTime)
+      .sort((a, b) => a - b),
   };
 }
 
@@ -242,6 +246,9 @@ export function toPortableTimeline(config: TimelineConfig): TimelineConfig {
       id: track.id,
       name: track.name,
       musicSrc: track.musicSrc,
+      ignoredBeatTimes: [...new Set(track.ignoredBeatTimes ?? [])]
+        .map(roundTime)
+        .sort((a, b) => a - b),
       markers: [...track.markers]
         .sort((a, b) => a.at - b.at)
         .map((marker) => ({

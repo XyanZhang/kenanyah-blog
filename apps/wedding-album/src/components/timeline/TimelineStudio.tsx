@@ -46,6 +46,8 @@ function downloadTimeline(config: TimelineConfig) {
   URL.revokeObjectURL(url);
 }
 
+const isSameBeat = (a: number, b: number) => Math.abs(a - b) <= 0.03;
+
 export function TimelineStudio({ chapters, cursor, onJumpChapter, children }: Props) {
   const steps = useMemo(() => flattenTimelineSteps(chapters), [chapters]);
   const [timeline, setTimeline] = useState<TimelineConfig | null>(null);
@@ -79,6 +81,14 @@ export function TimelineStudio({ chapters, cursor, onJumpChapter, children }: Pr
   const selectedStep = useMemo(
     () => steps.find((step) => markerKey(step) === selectedKey) ?? null,
     [selectedKey, steps],
+  );
+  const ignoredBeatTimes = activeTrack?.ignoredBeatTimes ?? [];
+  const usableBeatTimes = useMemo(
+    () =>
+      waveform.beatTimes.filter((time) => {
+        return time >= 0.2 && ignoredBeatTimes.every((ignored) => !isSameBeat(ignored, time));
+      }),
+    [ignoredBeatTimes, waveform.beatTimes],
   );
 
   useEffect(() => {
@@ -199,12 +209,12 @@ export function TimelineStudio({ chapters, cursor, onJumpChapter, children }: Pr
     });
   };
 
-  const autoPlaceMarkers = () => {
-    if (!activeTrack || waveform.beatTimes.length === 0) {
+  const autoPlaceMarkers = (beatTimes = usableBeatTimes) => {
+    if (!activeTrack || beatTimes.length === 0) {
       setStatus("还没有识别到可用卡点，请确认 BGM 已加载完成。");
       return;
     }
-    const usableBeats = waveform.beatTimes.filter((time) => time >= 0.2);
+    const usableBeats = beatTimes;
     const lastBeat = usableBeats[usableBeats.length - 1] ?? waveform.duration;
     const fallbackGap = Math.max(2.5, waveform.duration / Math.max(1, steps.length));
 
@@ -223,7 +233,30 @@ export function TimelineStudio({ chapters, cursor, onJumpChapter, children }: Pr
       }));
     });
     seek(usableBeats[0] ?? 0);
-    setStatus(`已根据 ${usableBeats.length} 个候选卡点自动定位节奏点`);
+    setStatus(`已根据 ${usableBeats.length} 个可用候选卡点自动定位节奏点`);
+  };
+
+  const toggleIgnoredBeat = (beatTime: number) => {
+    const nextIgnored = ignoredBeatTimes.some((time) => isSameBeat(time, beatTime))
+      ? ignoredBeatTimes.filter((time) => !isSameBeat(time, beatTime))
+      : [...ignoredBeatTimes, Number(beatTime.toFixed(3))].sort((a, b) => a - b);
+    const nextUsable = waveform.beatTimes.filter((time) => {
+      return time >= 0.2 && nextIgnored.every((ignored) => !isSameBeat(ignored, time));
+    });
+
+    setTimeline((current) => {
+      if (!current) return current;
+      return updateActiveTrack(current, (track) => ({
+        ...track,
+        ignoredBeatTimes: nextIgnored,
+      }));
+    });
+    autoPlaceMarkers(nextUsable);
+    setStatus(
+      nextIgnored.some((time) => isSameBeat(time, beatTime))
+        ? `已忽略 ${formatTime(beatTime)}，后续页面已顺延`
+        : `已恢复 ${formatTime(beatTime)}，节奏点已重新分配`,
+    );
   };
 
   const switchTrack = (trackId: string) => {
@@ -356,7 +389,7 @@ export function TimelineStudio({ chapters, cursor, onJumpChapter, children }: Pr
           <button className="is-primary" onClick={togglePreview}>
             {previewing ? "暂停预览" : "播放预览"}
           </button>
-          <button onClick={autoPlaceMarkers}>自动卡点</button>
+          <button onClick={() => autoPlaceMarkers()}>自动卡点</button>
           <button onClick={save}>保存</button>
           <button onClick={() => downloadTimeline(timeline)}>下载 JSON</button>
         </div>
@@ -393,7 +426,9 @@ export function TimelineStudio({ chapters, cursor, onJumpChapter, children }: Pr
             <strong>{waveform.loading ? "正在解码波形…" : "BGM Waveform"}</strong>
             <span>
               {activeTrack.musicSrc}
-              {waveform.beatTimes.length > 0 ? ` / ${waveform.beatTimes.length} 个候选卡点` : ""}
+              {waveform.beatTimes.length > 0
+                ? ` / 候选 ${waveform.beatTimes.length} / 已忽略 ${ignoredBeatTimes.length}`
+                : ""}
             </span>
           </div>
           {selectedMarker ? (
@@ -413,6 +448,8 @@ export function TimelineStudio({ chapters, cursor, onJumpChapter, children }: Pr
           duration={waveform.duration || audioRef.current?.duration || 120}
           currentTime={currentTime}
           markers={activeTrack.markers}
+          beatTimes={waveform.beatTimes}
+          ignoredBeatTimes={ignoredBeatTimes}
           selectedKey={selectedKey}
           onSeek={seek}
           onSelect={(key) => {
@@ -427,6 +464,7 @@ export function TimelineStudio({ chapters, cursor, onJumpChapter, children }: Pr
             const step = steps.find((item) => markerKey(item) === key);
             if (step) onJumpChapter(step.chapterIndex, step.step);
           }}
+          onToggleBeat={toggleIgnoredBeat}
         />
       </section>
     </div>

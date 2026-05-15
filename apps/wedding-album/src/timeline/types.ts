@@ -16,6 +16,7 @@ export interface TimelineTrack {
   name: string;
   musicSrc: string;
   markers: TimelineMarker[];
+  ignoredBeatTimes?: number[];
 }
 
 export interface TimelineStep {

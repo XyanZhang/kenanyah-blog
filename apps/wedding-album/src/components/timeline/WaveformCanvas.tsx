@@ -6,10 +6,13 @@ interface Props {
   duration: number;
   currentTime: number;
   markers: TimelineMarker[];
+  beatTimes: number[];
+  ignoredBeatTimes: number[];
   selectedKey: string | null;
   onSeek(time: number): void;
   onSelect(key: string): void;
   onDragMarker(key: string, time: number): void;
+  onToggleBeat(time: number): void;
 }
 
 function keyFor(marker: TimelineMarker) {
@@ -27,10 +30,13 @@ export function WaveformCanvas({
   duration,
   currentTime,
   markers,
+  beatTimes,
+  ignoredBeatTimes,
   selectedKey,
   onSeek,
   onSelect,
   onDragMarker,
+  onToggleBeat,
 }: Props) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const draggingKeyRef = useRef<string | null>(null);
@@ -73,6 +79,23 @@ export function WaveformCanvas({
       ctx.stroke();
     }
 
+    for (const beatTime of beatTimes) {
+      const x = duration > 0 ? (beatTime / duration) * rect.width : 0;
+      const ignored = ignoredBeatTimes.some((time) => Math.abs(time - beatTime) <= 0.03);
+      ctx.strokeStyle = ignored ? "rgba(126, 113, 93, 0.45)" : "rgba(212, 180, 131, 0.38)";
+      ctx.lineWidth = ignored ? 1 : 1.5;
+      ctx.setLineDash(ignored ? [4, 5] : [2, 6]);
+      ctx.beginPath();
+      ctx.moveTo(x, rect.height * 0.08);
+      ctx.lineTo(x, rect.height * 0.92);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = ignored ? "rgba(126, 113, 93, 0.65)" : "rgba(212, 180, 131, 0.75)";
+      ctx.beginPath();
+      ctx.rect(x - 3, rect.height * 0.9, 6, 6);
+      ctx.fill();
+    }
+
     for (const marker of markers) {
       const key = keyFor(marker);
       const x = duration > 0 ? (marker.at / duration) * rect.width : 0;
@@ -96,7 +119,23 @@ export function WaveformCanvas({
     ctx.moveTo(playheadX, 0);
     ctx.lineTo(playheadX, rect.height);
     ctx.stroke();
-  }, [currentTime, duration, markers, peaks, selectedKey]);
+  }, [beatTimes, currentTime, duration, ignoredBeatTimes, markers, peaks, selectedKey]);
+
+  const hitBeat = (clientX: number, clientY: number) => {
+    const canvas = canvasRef.current;
+    if (!canvas || duration <= 0) return null;
+    const rect = canvas.getBoundingClientRect();
+    if (clientY - rect.top < rect.height * 0.76) return null;
+    let best: { time: number; distance: number } | null = null;
+    for (const beatTime of beatTimes) {
+      const x = (beatTime / duration) * rect.width;
+      const distance = Math.abs(clientX - rect.left - x);
+      if (distance <= 8 && (!best || distance < best.distance)) {
+        best = { time: beatTime, distance };
+      }
+    }
+    return best?.time ?? null;
+  };
 
   const hitMarker = (clientX: number) => {
     const canvas = canvasRef.current;
@@ -118,13 +157,16 @@ export function WaveformCanvas({
       ref={canvasRef}
       className="timeline-waveform"
       onPointerDown={(event) => {
-        const key = hitMarker(event.clientX);
+        const beatTime = hitBeat(event.clientX, event.clientY);
+        const key = beatTime == null ? hitMarker(event.clientX) : null;
         const canvas = event.currentTarget;
         const time = timeFromEvent(canvas, event.clientX, duration);
         canvas.setPointerCapture(event.pointerId);
         if (key) {
           draggingKeyRef.current = key;
           onSelect(key);
+        } else if (beatTime != null) {
+          onToggleBeat(beatTime);
         } else {
           onSeek(time);
         }
