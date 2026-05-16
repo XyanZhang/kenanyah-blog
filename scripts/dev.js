@@ -54,6 +54,12 @@ const DEV_ENV = {
 
 const service = process.argv[2] || 'all'
 
+const SERVICE_PORT = {
+  web: '3000',
+  api: '3001',
+  drink: '3002',
+}
+
 if (service === 'api') {
   const required = ['DATABASE_URL', 'JWT_SECRET', 'JWT_REFRESH_SECRET']
   const missing = required.filter((k) => !DEV_ENV[k] || (k.startsWith('JWT_') && DEV_ENV[k].length < 32))
@@ -77,8 +83,17 @@ if (service === 'api') {
     env: { ...process.env, ...DEV_ENV },
   })
   child.on('close', (code) => process.exit(code))
+} else if (service === 'drink') {
+  const port = SERVICE_PORT.drink
+  const child = spawn('pnpm', ['exec', 'next', 'dev', '-p', port], {
+    cwd: path.join(rootDir, 'apps', 'drink-picker'),
+    stdio: 'inherit',
+    shell: true,
+    env: { ...process.env, ...DEV_ENV },
+  })
+  child.on('close', (code) => process.exit(code))
 } else {
-  console.log('Usage: node dev.js [api|web]')
+  console.log('Usage: node dev.js [api|web|drink]')
   console.log('  dev 环境仅读取 .env.development，与 .env.test（Docker 测试）无关')
   process.exit(1)
 }
