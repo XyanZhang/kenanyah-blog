@@ -25,8 +25,8 @@ COPY packages/utils/package.json ./packages/utils/package.json
 COPY packages/validation/package.json ./packages/validation/package.json
 COPY apps/web/package.json ./apps/web/package.json
 
-# Install dependencies
-RUN --mount=type=cache,id=pnpm-web-store,target=/pnpm/store pnpm --filter web install --frozen-lockfile
+# Install the web app and its workspace dependency closure.
+RUN --mount=type=cache,id=pnpm-web-store,target=/pnpm/store pnpm --filter web... install --frozen-lockfile
 
 # Copy source after dependency install
 COPY packages ./packages
