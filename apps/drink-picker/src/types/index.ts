@@ -1,6 +1,9 @@
 export type Brand = 'luckin' | 'cotti' | 'starbucks'
 
 export type DrinkCategory = 'coffee' | 'milk_tea' | 'fruit_tea' | 'specialty' | 'cold_brew'
+export type DrinkDataSource = 'manual' | 'official_page' | 'partner_api' | 'ai_agent'
+export type CaffeineLevel = 'none' | 'low' | 'medium' | 'high'
+export type TemperatureOption = 'hot' | 'iced'
 
 export type MoodType =
   | 'happy'
@@ -39,6 +42,13 @@ export interface Drink {
   season: Season[]
   description: string
   emoji: string
+  isAvailable?: boolean
+  priceRange?: string
+  caffeineLevel?: CaffeineLevel
+  temperatureOptions?: TemperatureOption[]
+  source?: DrinkDataSource
+  sourceUrl?: string
+  updatedAt?: string
 }
 
 export interface Mood {

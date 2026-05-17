@@ -1,7 +1,8 @@
 import type { Brand, Drink, MbtiType, MoodType, Recommendation, TasteProfile } from '@/types'
-import { brandLabels, drinks } from '@/data/drinks'
+import { brandLabels } from '@/data/drinks'
 import { mbtiProfiles } from '@/data/mbti'
 import { getCalendarInfo, getSeason } from '@/data/calendar'
+import { listDrinks } from '@/lib/drink-repository'
 
 function dotProduct(a: TasteProfile, b: TasteProfile): number {
   return a.sweet * b.sweet + a.bitter * b.bitter + a.sour * b.sour + a.rich * b.rich + a.refreshing * b.refreshing
@@ -81,8 +82,7 @@ export function recommend(brand: Brand, mood: MoodType, mbti: MbtiType, date?: D
   const calendarInfo = getCalendarInfo(targetDate, { brand, mood, mbti })
   const season = getSeason(targetDate.getMonth() + 1)
 
-  const recommendations: Recommendation[] = drinks
-    .filter((drink) => drink.brand === brand)
+  const recommendations: Recommendation[] = listDrinks({ brand })
     .map((drink) => ({
       drink,
       score: scoreDrink(drink, mood, mbti, season),

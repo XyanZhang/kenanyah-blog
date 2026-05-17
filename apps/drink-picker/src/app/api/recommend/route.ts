@@ -1,20 +1,13 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { recommend } from '@/lib/recommend'
+import { brandSchema, mbtiSchema, moodSchema } from '@/lib/drink-schema'
 import type { Brand, MbtiType, MoodType } from '@/types'
 
 const recommendSchema = z.object({
-  brand: z.enum(['luckin', 'cotti', 'starbucks']),
-  mood: z.enum([
-    'happy', 'sad', 'angry', 'tired',
-    'excited', 'calm', 'romantic', 'energetic',
-  ]),
-  mbti: z.enum([
-    'INTJ', 'INTP', 'ENTJ', 'ENTP',
-    'INFJ', 'INFP', 'ENFJ', 'ENFP',
-    'ISTJ', 'ISFJ', 'ESTJ', 'ESFJ',
-    'ISTP', 'ISFP', 'ESTP', 'ESFP',
-  ]),
+  brand: brandSchema,
+  mood: moodSchema,
+  mbti: mbtiSchema,
   date: z.string().optional(),
 })
 

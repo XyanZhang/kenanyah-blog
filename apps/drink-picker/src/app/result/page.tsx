@@ -108,16 +108,6 @@ function ResultContent() {
         />
       </div>
 
-      <section className="w-full mb-6 rounded-2xl border border-brand-champagne/45 bg-brand-porcelain/70 p-4">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-brand-burgundy/60">Benefit</p>
-        <p className="mt-2 text-sm font-semibold text-brand-ink">
-          这里可接饮品券、公众号关注或小红书引流
-        </p>
-        <p className="mt-1 text-xs leading-relaxed text-brand-coffee/55">
-          上线投放前替换为真实广告组件，并记录曝光、点击和分享来源。
-        </p>
-      </section>
-
       <Link
         href="/"
         className="w-full rounded-xl border border-brand-latte/35 bg-white/55 py-3 text-center text-sm font-medium text-brand-coffee"
