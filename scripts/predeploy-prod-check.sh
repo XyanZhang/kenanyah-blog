@@ -55,15 +55,27 @@ pnpm --filter web exec tsc --noEmit
 log_info "Type-checking Admin..."
 pnpm --filter admin exec tsc --noEmit
 
+log_info "Type-checking Wedding Album..."
+pnpm --filter wedding-album exec tsc --noEmit
+
+log_info "Type-checking Drink Picker..."
+pnpm --filter drink-picker exec tsc --noEmit
+
 log_info "Building Web locally to catch Next.js production build errors early..."
 pnpm --filter web build
 
 log_info "Building Admin locally to catch production build errors early..."
 pnpm --filter admin build
 
+log_info "Building Wedding Album locally to catch production build errors early..."
+pnpm --filter wedding-album build
+
+log_info "Building Drink Picker locally to catch production build errors early..."
+pnpm --filter drink-picker build
+
 if [ "$RUN_DOCKER_BUILD" = true ]; then
-  log_warn "Running Docker production build verification for api, web, and admin..."
-  docker compose -f docker-compose.prod.yml --env-file "$ENV_FILE" build api web admin
+  log_warn "Running Docker production build verification for api, web, admin, wedding-album, and drink-picker..."
+  docker compose -f docker-compose.prod.yml --env-file "$ENV_FILE" build api web admin wedding-album drink-picker
 fi
 
 echo ""

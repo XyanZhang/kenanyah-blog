@@ -1,0 +1,28 @@
+# Wedding album Dockerfile - Vite static app served by nginx
+FROM node:20-alpine AS builder
+
+WORKDIR /app
+ENV NPM_CONFIG_REGISTRY=https://registry.npmmirror.com
+
+RUN npm config set registry https://registry.npmmirror.com \
+  && npm i -g pnpm@9.15.4 \
+  && pnpm config set registry https://registry.npmmirror.com \
+  && pnpm config set store-dir /pnpm/store
+
+COPY pnpm-lock.yaml pnpm-workspace.yaml package.json turbo.json ./
+COPY packages/config/package.json ./packages/config/package.json
+COPY apps/wedding-album/package.json ./apps/wedding-album/package.json
+
+RUN --mount=type=cache,id=pnpm-wedding-album-store,target=/pnpm/store pnpm --filter wedding-album... install --frozen-lockfile
+
+COPY packages ./packages
+COPY apps/wedding-album ./apps/wedding-album
+
+RUN pnpm --filter wedding-album build
+
+FROM nginx:alpine AS runner
+
+COPY apps/wedding-album/nginx.conf /etc/nginx/conf.d/default.conf
+COPY --from=builder /app/apps/wedding-album/dist /usr/share/nginx/html
+
+EXPOSE 5176

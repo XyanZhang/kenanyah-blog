@@ -1,0 +1,47 @@
+# Drink picker Dockerfile - Next.js standalone build
+FROM node:20-alpine AS builder
+
+WORKDIR /app
+ENV NPM_CONFIG_REGISTRY=https://registry.npmmirror.com
+
+RUN npm config set registry https://registry.npmmirror.com \
+  && npm i -g pnpm@9.15.4 \
+  && pnpm config set registry https://registry.npmmirror.com \
+  && pnpm config set store-dir /pnpm/store
+
+COPY pnpm-lock.yaml pnpm-workspace.yaml package.json turbo.json ./
+COPY packages/config/package.json ./packages/config/package.json
+COPY packages/types/package.json ./packages/types/package.json
+COPY packages/utils/package.json ./packages/utils/package.json
+COPY apps/drink-picker/package.json ./apps/drink-picker/package.json
+
+RUN --mount=type=cache,id=pnpm-drink-picker-store,target=/pnpm/store pnpm --filter drink-picker... install --frozen-lockfile
+
+COPY packages ./packages
+COPY apps/drink-picker ./apps/drink-picker
+
+ENV NEXT_TELEMETRY_DISABLED=1
+RUN mkdir -p /app/apps/drink-picker/public \
+  && pnpm --filter drink-picker build \
+  && test -d /app/apps/drink-picker/.next/static \
+  && test -d /app/apps/drink-picker/.next/standalone
+
+FROM node:20-alpine AS runner
+
+WORKDIR /app
+RUN addgroup --system --gid 1001 nodejs \
+  && adduser --system --uid 1001 nextjs
+
+COPY --from=builder --chown=nextjs:nodejs /app/apps/drink-picker/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/apps/drink-picker/.next/static ./apps/drink-picker/.next/static
+COPY --from=builder --chown=nextjs:nodejs /app/apps/drink-picker/public ./apps/drink-picker/public
+COPY --from=builder --chown=nextjs:nodejs /app/apps/drink-picker/data ./apps/drink-picker/data
+
+ENV NODE_ENV=production
+ENV PORT=3003
+ENV HOSTNAME="0.0.0.0"
+
+USER nextjs
+EXPOSE 3003
+WORKDIR /app/apps/drink-picker
+CMD ["node", "server.js"]

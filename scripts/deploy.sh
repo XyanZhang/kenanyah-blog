@@ -84,16 +84,19 @@ default_host() {
 }
 
 resolve_runtime_compose_file() {
-  local env_api env_web
+  local env_api env_web env_admin env_wedding_album env_drink_picker
   env_api="${DOCKER_IMAGE_API:-$(get_env_var DOCKER_IMAGE_API)}"
   env_web="${DOCKER_IMAGE_WEB:-$(get_env_var DOCKER_IMAGE_WEB)}"
+  env_admin="${DOCKER_IMAGE_ADMIN:-$(get_env_var DOCKER_IMAGE_ADMIN)}"
+  env_wedding_album="${DOCKER_IMAGE_WEDDING_ALBUM:-$(get_env_var DOCKER_IMAGE_WEDDING_ALBUM)}"
+  env_drink_picker="${DOCKER_IMAGE_DRINK_PICKER:-$(get_env_var DOCKER_IMAGE_DRINK_PICKER)}"
 
   if [ -n "${1:-}" ]; then
     printf '%s' "$PULL_COMPOSE_FILE"
     return 0
   fi
 
-  if [ -n "$env_api" ] && [ -n "$env_web" ]; then
+  if [ -n "$env_api" ] && [ -n "$env_web" ] && [ -n "$env_admin" ] && [ -n "$env_wedding_album" ] && [ -n "$env_drink_picker" ]; then
     printf '%s' "$PULL_COMPOSE_FILE"
   else
     printf '%s' "$BUILD_COMPOSE_FILE"
@@ -115,6 +118,9 @@ compose_runtime() {
   if [ -n "$release_tag" ]; then
     DOCKER_IMAGE_API="blog-api:${release_tag}" \
       DOCKER_IMAGE_WEB="blog-web:${release_tag}" \
+      DOCKER_IMAGE_ADMIN="blog-admin:${release_tag}" \
+      DOCKER_IMAGE_WEDDING_ALBUM="blog-wedding-album:${release_tag}" \
+      DOCKER_IMAGE_DRINK_PICKER="blog-drink-picker:${release_tag}" \
       docker compose -f "$compose_file" --env-file "$ENV_FILE" "$@"
   else
     docker compose -f "$compose_file" --env-file "$ENV_FILE" "$@"
@@ -166,7 +172,7 @@ deploy_build() {
   local services=("$@")
 
   if [ "${#services[@]}" -eq 0 ]; then
-    services=(api web admin nginx)
+    services=(api web admin wedding-album drink-picker nginx)
   fi
 
   log_info "Building and starting production services: ${services[*]}"
@@ -241,7 +247,7 @@ deploy_app() {
   fi
 
   log_info "Deploying primary app services..."
-  compose_runtime "$release_tag" up -d api web nginx
+  compose_runtime "$release_tag" up -d api web wedding-album drink-picker nginx
   log_info "Primary app services updated."
 }
 
@@ -384,7 +390,7 @@ stop() {
 
 restart() {
   check_prerequisites
-  compose_runtime "" restart api web nginx
+  compose_runtime "" restart api web wedding-album drink-picker nginx
 }
 
 status() {
@@ -428,7 +434,7 @@ Commands:
   check                    Check Docker and env prerequisites
   predeploy                Run pnpm predeploy:prod locally
   build                    Build production images on the server (legacy)
-  deploy-build [services]  Build and start api/web/admin/nginx, or selected services
+  deploy-build [services]  Build and start api/web/admin/wedding-album/drink-picker/nginx, or selected services
   start                    Start postgres, run migrations, then start api/web/nginx
   stop                     Stop the current production stack
   restart                  Restart api/web/nginx

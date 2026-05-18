@@ -45,9 +45,13 @@ RELEASE_TAG="${BUILD_SAVE_TAG:-$(date +%Y%m%d-%H%M%S)-$(git rev-parse --short HE
 IMAGE_API="blog-api:${RELEASE_TAG}"
 IMAGE_WEB="blog-web:${RELEASE_TAG}"
 IMAGE_ADMIN="blog-admin:${RELEASE_TAG}"
+IMAGE_WEDDING_ALBUM="blog-wedding-album:${RELEASE_TAG}"
+IMAGE_DRINK_PICKER="blog-drink-picker:${RELEASE_TAG}"
 IMAGE_API_LATEST="blog-api:latest"
 IMAGE_WEB_LATEST="blog-web:latest"
 IMAGE_ADMIN_LATEST="blog-admin:latest"
+IMAGE_WEDDING_ALBUM_LATEST="blog-wedding-album:latest"
+IMAGE_DRINK_PICKER_LATEST="blog-drink-picker:latest"
 RELEASE_ENV_FILE="${OUTPUT_TAR%.tar}.release.env"
 # 上传目标：第二参数或环境变量 BUILD_SAVE_UPLOAD，如 root@192.168.1.1:/opt/blog
 UPLOAD_DEST="${BUILD_SAVE_UPLOAD:-$2}"
@@ -77,8 +81,19 @@ docker build --platform "$PLATFORM" -f Dockerfile.admin \
   -t "$IMAGE_ADMIN" .
 docker tag "$IMAGE_ADMIN" "$IMAGE_ADMIN_LATEST"
 
+log_info "Building Wedding Album image: $IMAGE_WEDDING_ALBUM"
+docker build --platform "$PLATFORM" -f Dockerfile.wedding-album -t "$IMAGE_WEDDING_ALBUM" .
+docker tag "$IMAGE_WEDDING_ALBUM" "$IMAGE_WEDDING_ALBUM_LATEST"
+
+log_info "Building Drink Picker image: $IMAGE_DRINK_PICKER"
+docker build --platform "$PLATFORM" -f Dockerfile.drink-picker -t "$IMAGE_DRINK_PICKER" .
+docker tag "$IMAGE_DRINK_PICKER" "$IMAGE_DRINK_PICKER_LATEST"
+
 log_info "Saving images to $OUTPUT_TAR ..."
-docker save "$IMAGE_API" "$IMAGE_WEB" "$IMAGE_ADMIN" "$IMAGE_API_LATEST" "$IMAGE_WEB_LATEST" "$IMAGE_ADMIN_LATEST" -o "$OUTPUT_TAR"
+docker save \
+  "$IMAGE_API" "$IMAGE_WEB" "$IMAGE_ADMIN" "$IMAGE_WEDDING_ALBUM" "$IMAGE_DRINK_PICKER" \
+  "$IMAGE_API_LATEST" "$IMAGE_WEB_LATEST" "$IMAGE_ADMIN_LATEST" "$IMAGE_WEDDING_ALBUM_LATEST" "$IMAGE_DRINK_PICKER_LATEST" \
+  -o "$OUTPUT_TAR"
 log_info "Done. File size: $(du -h "$OUTPUT_TAR" | cut -f1)"
 
 cat >"$RELEASE_ENV_FILE" <<EOF
@@ -86,6 +101,8 @@ RELEASE_TAG=$RELEASE_TAG
 DOCKER_IMAGE_API=$IMAGE_API
 DOCKER_IMAGE_WEB=$IMAGE_WEB
 DOCKER_IMAGE_ADMIN=$IMAGE_ADMIN
+DOCKER_IMAGE_WEDDING_ALBUM=$IMAGE_WEDDING_ALBUM
+DOCKER_IMAGE_DRINK_PICKER=$IMAGE_DRINK_PICKER
 EOF
 log_info "Release metadata saved to $RELEASE_ENV_FILE"
 

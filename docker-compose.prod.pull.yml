@@ -199,6 +199,42 @@ services:
     networks:
       - blog-network
 
+  wedding-album:
+    image: ${DOCKER_IMAGE_WEDDING_ALBUM:?DOCKER_IMAGE_WEDDING_ALBUM is required for pull deploy}
+    container_name: blog-wedding-album-prod
+    restart: unless-stopped
+    ports:
+      - '${WEDDING_ALBUM_HOST_PORT:-5176}:5176'
+    healthcheck:
+      test: ['CMD', 'wget', '-q', '-O', '-', 'http://127.0.0.1:5176/']
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      - blog-network
+
+  drink-picker:
+    image: ${DOCKER_IMAGE_DRINK_PICKER:?DOCKER_IMAGE_DRINK_PICKER is required for pull deploy}
+    container_name: blog-drink-picker-prod
+    restart: unless-stopped
+    ports:
+      - '${DRINK_PICKER_HOST_PORT:-33333}:3003'
+    environment:
+      NODE_ENV: production
+      PORT: 3003
+      DRINK_ADMIN_TOKEN: ${DRINK_ADMIN_TOKEN:-}
+    volumes:
+      - drink_picker_data:/app/apps/drink-picker/data
+    healthcheck:
+      test: ['CMD', 'node', '-e', "require('http').get('http://127.0.0.1:3003/',r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    networks:
+      - blog-network
+
   web-green:
     profiles: ['green']
     image: ${DOCKER_IMAGE_WEB:?DOCKER_IMAGE_WEB is required for pull deploy}
@@ -253,6 +289,8 @@ services:
 
 volumes:
   postgres_prod_data:
+    driver: local
+  drink_picker_data:
     driver: local
 
 networks:
